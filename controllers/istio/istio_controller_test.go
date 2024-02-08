@@ -1059,7 +1059,6 @@ func TestGetPruningGracePeriod(t *testing.T) {
 //   - default profile(s)
 //   - profile selected in IstioRevision.spec.profile
 //   - IstioRevision.spec.values
-//   - IstioRevision.spec.rawValues
 //   - other (non-value) fields in the IstioRevision resource (e.g. the value global.istioNamespace is set from IstioRevision.spec.namespace)
 func TestComputeIstioRevisionValues(t *testing.T) {
 	const version = "my-version"
@@ -1072,21 +1071,19 @@ apiVersion: operator.istio.io/v1alpha1
 kind: IstioRevision
 spec:
   values:
-    defaultRevision: from-default-profile
-    ownerName: from-default-profile  # this gets overridden in my-profile
     pilot: 
-      hub: from-default-profile      # this gets overridden in my-profile and values
-      image: from-default-profile    # this gets overridden in my-profile, values, and rawValues`)), 0o644))
+      hub: from-default-profile
+      tag: from-default-profile      # this gets overridden in my-profile
+      image: from-default-profile    # this gets overridden in my-profile and values`)), 0o644))
 
 	Must(t, os.WriteFile(path.Join(profilesDir, "my-profile.yaml"), []byte((`
 apiVersion: operator.istio.io/v1alpha1
 kind: IstioRevision
 spec:
   values:
-    ownerName: overridden-in-my-profile
     pilot:
-      hub: overridden-in-my-profile    # this gets overridden in values
-      image: overridden-in-my-profile  # this gets overridden in rawValues`)), 0o644))
+      tag: from-my-profile
+      image: from-my-profile  # this gets overridden in values`)), 0o644))
 
 	istio := v1alpha1.Istio{
 		ObjectMeta: objectMeta,
@@ -1096,15 +1093,9 @@ spec:
 			Namespace: istioNamespace,
 			Values: &v1alpha1.Values{
 				Pilot: &v1alpha1.PilotConfig{
-					Hub:   "overridden-in-values",
-					Image: "overridden-in-values", // this gets overridden in rawValues,
+					Image: "from-istio-spec-values",
 				},
 			},
-			RawValues: toJSON(helm.HelmValues{
-				"pilot": map[string]any{
-					"image": "overridden-in-raw-values",
-				},
-			}),
 		},
 	}
 
@@ -1114,11 +1105,10 @@ spec:
 	}
 
 	expected := helm.HelmValues{
-		"defaultRevision": "from-default-profile",
-		"ownerName":       "overridden-in-my-profile",
 		"pilot": map[string]any{
-			"hub":   "overridden-in-values",
-			"image": "overridden-in-raw-values",
+			"hub":   "from-default-profile",
+			"tag":   "from-my-profile",
+			"image": "from-istio-spec-values",
 		},
 		"global": map[string]any{
 			"istioNamespace": istioNamespace, // this value is always added/overridden based on IstioRevision.spec.namespace

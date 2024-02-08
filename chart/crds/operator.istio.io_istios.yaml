@@ -94,10 +94,6 @@ spec:
                 - preview
                 - remote
                 type: string
-              rawValues:
-                description: Defines the non-validated values to be passed to the
-                  Helm charts when installing Istio.
-                x-kubernetes-preserve-unknown-fields: true
               updateStrategy:
                 description: Defines the update strategy to use when the version in
                   the Istio CR is updated.
