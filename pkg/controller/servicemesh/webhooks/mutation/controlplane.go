@@ -282,5 +282,20 @@ func (m *smcpv2mutator) IsOpenShiftRouteEnabled() *bool {
 }
 
 func (m *smcpv2mutator) SetOpenShiftRouteEnabled(value bool) {
-	m.patches = append(m.patches, jsonpatch.NewPatch("add", "/spec/gateways/openshiftRoute/enabled", value))
+	gateways := m.smcp.Spec.Gateways
+
+	if gateways == nil {
+		gateways = &v2.GatewaysConfig{}
+	}
+
+	route := gateways.OpenShiftRoute
+
+	if route == nil {
+		route = &v2.OpenShiftRouteConfig{}
+		gateways.OpenShiftRoute = route
+	}
+
+	route.Enablement = v2.Enablement{Enabled: &value}
+
+	m.patches = append(m.patches, jsonpatch.NewPatch("add", "/spec/gateways", *gateways))
 }

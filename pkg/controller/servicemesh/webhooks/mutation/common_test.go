@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	v1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
+	v2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/common/test"
 	"github.com/maistra/istio-operator/pkg/controller/versions"
@@ -28,7 +29,14 @@ var (
 	acceptWithNoMutation        = admission.Allowed("")
 	acceptV2WithDefaultMutation = admission.Patched("",
 		jsonpatch.NewPatch("add", "/spec/version", versions.DefaultVersion.String()),
-		jsonpatch.NewPatch("add", "/spec/gateways/openshiftRoute/enabled", false),
+		jsonpatch.NewPatch("add", "/spec/gateways",
+			v2.GatewaysConfig{
+				OpenShiftRoute: &v2.OpenShiftRouteConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureDisabled,
+					},
+				},
+			}),
 		jsonpatch.NewPatch("add", "/spec/profiles", []interface{}{v1.DefaultTemplate}),
 	)
 	acceptV1WithDefaultMutation = admission.Patched("",
