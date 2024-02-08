@@ -23,7 +23,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/istio-operator:3.0-latest
-    createdAt: "2024-02-08T03:05:38Z"
+    createdAt: "2024-02-08T09:53:56Z"
     description: Experimental operator for installing Istio service mesh
     operators.operatorframework.io/builder: operator-sdk-v1.33.0
     operators.operatorframework.io/internal-objects: '["wasmplugins.extensions.istio.io","destinationrules.networking.istio.io","envoyfilters.networking.istio.io","gateways.networking.istio.io","proxyconfigs.networking.istio.io","serviceentries.networking.istio.io","sidecars.networking.istio.io","virtualservices.networking.istio.io","workloadentries.networking.istio.io","workloadgroups.networking.istio.io","authorizationpolicies.security.istio.io","peerauthentications.security.istio.io","requestauthentications.security.istio.io","telemetries.telemetry.istio.io"]'
@@ -87,6 +87,24 @@ spec:
     - kind: WorkloadGroup
       name: workloadgroups.networking.istio.io
       version: v1beta1
+    - kind: AuthorizationPolicy
+      name: authorizationpolicies.security.istio.io
+      version: v1
+    - kind: AuthorizationPolicy
+      name: authorizationpolicies.security.istio.io
+      version: v1beta1
+    - kind: PeerAuthentication
+      name: peerauthentications.security.istio.io
+      version: v1beta1
+    - kind: RequestAuthentication
+      name: requestauthentications.security.istio.io
+      version: v1
+    - kind: RequestAuthentication
+      name: requestauthentications.security.istio.io
+      version: v1beta1
+    - kind: Telemetry
+      name: telemetries.telemetry.istio.io
+      version: v1alpha1
     - description: IstioRevision represents a single revision of an Istio Service
         Mesh deployment. Users shouldn't create IstioRevision objects directly. Instead,
         they should create an Istio object and allow the Istio operator to create
@@ -95,15 +113,15 @@ spec:
       kind: IstioRevision
       name: istiorevisions.operator.istio.io
       specDescriptors:
-      - description: 'Defines the version of Istio to install. Must be one of: v1.20.1,
-          v1.20.0, v1.19.5, latest, gwAPIControllerMode.'
+      - description: 'Defines the version of Istio to install. Must be one of: v1.20.2,
+          v1.20.1, v1.19.6, latest, gwAPIControllerMode.'
         displayName: Istio Version
         path: version
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:General
+        - urn:alm:descriptor:com.tectonic.ui:select:v1.20.2
         - urn:alm:descriptor:com.tectonic.ui:select:v1.20.1
-        - urn:alm:descriptor:com.tectonic.ui:select:v1.20.0
-        - urn:alm:descriptor:com.tectonic.ui:select:v1.19.5
+        - urn:alm:descriptor:com.tectonic.ui:select:v1.19.6
         - urn:alm:descriptor:com.tectonic.ui:select:latest
         - urn:alm:descriptor:com.tectonic.ui:select:gwAPIControllerMode
       - description: Namespace to which the Istio components should be installed.
@@ -140,15 +158,15 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:select:InPlace
         - urn:alm:descriptor:com.tectonic.ui:select:RevisionBased
-      - description: 'Defines the version of Istio to install. Must be one of: v1.20.1,
-          v1.20.0, v1.19.5, latest, gwAPIControllerMode.'
+      - description: 'Defines the version of Istio to install. Must be one of: v1.20.2,
+          v1.20.1, v1.19.6, latest, gwAPIControllerMode.'
         displayName: Istio Version
         path: version
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:General
+        - urn:alm:descriptor:com.tectonic.ui:select:v1.20.2
         - urn:alm:descriptor:com.tectonic.ui:select:v1.20.1
-        - urn:alm:descriptor:com.tectonic.ui:select:v1.20.0
-        - urn:alm:descriptor:com.tectonic.ui:select:v1.19.5
+        - urn:alm:descriptor:com.tectonic.ui:select:v1.19.6
         - urn:alm:descriptor:com.tectonic.ui:select:latest
         - urn:alm:descriptor:com.tectonic.ui:select:gwAPIControllerMode
       - description: Defines how many seconds the operator should wait before removing
@@ -177,7 +195,7 @@ spec:
       - description: 'The built-in installation configuration profile to use. The
           ''default'' profile is always applied. On OpenShift, the ''openshift'' profile
           is also applied on top of ''default''. Must be one of: ambient, default,
-          demo, empty, external, minimal, openshift, preview, remote.'
+          demo, empty, external, minimal, openshift-ambient, openshift, preview, remote.'
         displayName: Profile
         path: profile
         x-descriptors:
@@ -194,24 +212,6 @@ spec:
           Istio.
         displayName: Helm Values
         path: values
-      version: v1alpha1
-    - kind: AuthorizationPolicy
-      name: authorizationpolicies.security.istio.io
-      version: v1
-    - kind: AuthorizationPolicy
-      name: authorizationpolicies.security.istio.io
-      version: v1beta1
-    - kind: PeerAuthentication
-      name: peerauthentications.security.istio.io
-      version: v1beta1
-    - kind: RequestAuthentication
-      name: requestauthentications.security.istio.io
-      version: v1
-    - kind: RequestAuthentication
-      name: requestauthentications.security.istio.io
-      version: v1beta1
-    - kind: Telemetry
-      name: telemetries.telemetry.istio.io
       version: v1alpha1
   description: |-
     This is an experimental operator for installing Istio service mesh.
