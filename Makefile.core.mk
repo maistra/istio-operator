@@ -397,6 +397,14 @@ $(ENVTEST): $(LOCALBIN)
 bundle: gen helm operator-sdk ## Generate bundle manifests and metadata, then validate generated files.
 	$(HELM) template chart chart $(HELM_TEMPL_DEF_FLAGS) --set platform=openshift --set bundleGeneration=true | $(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS)
 
+	# update CSV's spec.customresourcedefinitions.owned field. ideally we could do this straight in ./bundle, but
+	# sadly this is only possible if the file lives in a `bases` directory
+	mkdir -p _tmp/bases
+	cp bundle/manifests/$(OPERATOR_NAME).clusterserviceversion.yaml _tmp/bases
+	$(OPERATOR_SDK) generate kustomize manifests --input-dir=_tmp --output-dir=_tmp
+	mv _tmp/bases/$(OPERATOR_NAME).clusterserviceversion.yaml bundle/manifests/$(OPERATOR_NAME).clusterserviceversion.yaml
+	rm -rf _tmp
+
 	# check if the only change in the CSV is the createdAt timestamp; if so, revert the change
 	@csvPath="bundle/manifests/${OPERATOR_NAME}.clusterserviceversion.yaml"; \
 		if (git ls-files --error-unmatch "$$csvPath" &>/dev/null); then \
