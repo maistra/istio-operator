@@ -261,6 +261,10 @@ type PilotConfig struct {
 	//
 	// Allowed values: 0.0 to 1.0
 	TraceSampling float64 `json:"traceSampling,omitempty"`
+	// K8s resources settings.
+	//
+	// See https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#resource-requests-and-limits-of-pod-and-container
+	Resources *k8sv1.ResourceRequirements `json:"resources,omitempty"`
 	// Namespace that the configuration management feature is installed into, if different from Pilot namespace.
 	ConfigNamespace string `json:"configNamespace,omitempty"`
 	// Maximum duration that a sidecar can be connected to a pilot.
