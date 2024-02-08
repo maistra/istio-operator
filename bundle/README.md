@@ -102,7 +102,7 @@ For a list of available configuration for the `values` field, refer to [Istio's 
 
 ## Validating the configuration
 
-The Kubernetes API server validates the contents of the `spec.values` field. When it encounters an unknown value, it generates an error message. To pass an unknown value, use the `spec.rawValues` field.
+The Kubernetes API server validates the contents of the `spec.values` field. When it encounters an unknown value, it generates an error message.
 
 You can use the `kubectl explain` command to display the valid values for the fields in the Istio Custom Resoure Definition (CRD) file. For example, `kubectl explain istio.spec.values`.
 

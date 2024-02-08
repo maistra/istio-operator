@@ -8,7 +8,7 @@ spec:
   updateStrategy:
     type: InPlace
     inactiveRevisionDeletionGracePeriodSeconds: 30
-  rawValues:
+  values:
     pilot:
       resources:
         requests:

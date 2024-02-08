@@ -65,20 +65,10 @@ type IstioSpec struct {
 	// Defines the values to be passed to the Helm charts when installing Istio.
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Helm Values"
 	Values *Values `json:"values,omitempty"`
-
-	// Defines the non-validated values to be passed to the Helm charts when installing Istio.
-	// +kubebuilder:pruning:PreserveUnknownFields
-	// +kubebuilder:validation:Schemaless
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Raw Helm Values"
-	RawValues json.RawMessage `json:"rawValues,omitempty"`
 }
 
 func (s *IstioSpec) GetValues() helm.HelmValues {
 	return s.Values.ToHelmValues()
-}
-
-func (s *IstioSpec) GetRawValues() helm.HelmValues {
-	return toHelmValues(s.RawValues)
 }
 
 func (s *IstioSpec) SetValues(values helm.HelmValues) error {

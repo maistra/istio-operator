@@ -288,27 +288,24 @@ func getActiveRevisionName(istio *v1alpha1.Istio) string {
 }
 
 func computeIstioRevisionValues(istio v1alpha1.Istio, defaultProfiles []string, resourceDir string) (helm.HelmValues, error) {
-	// 1. get userValues from Istio.spec.values
+	// get userValues from Istio.spec.values
 	userValues := istio.Spec.GetValues()
 
-	// 2. apply values from Istio.spec.rawValues, overwriting the current userValues
-	userValues = mergeOverwrite(userValues, istio.Spec.GetRawValues())
-
-	// 3. apply image digests from configuration, if not already set by user
+	// apply image digests from configuration, if not already set by user
 	var err error
 	userValues, err = applyImageDigests(&istio, userValues, common.Config)
 	if err != nil {
 		return nil, err
 	}
 
-	// 4. apply userValues on top of defaultValues from profiles
+	// apply userValues on top of defaultValues from profiles
 	defaultValues, err := getValuesFromProfiles(getProfilesDir(resourceDir, istio), getProfiles(istio, defaultProfiles))
 	if err != nil {
 		return nil, err
 	}
 	values := mergeOverwrite(defaultValues, userValues)
 
-	// 5. override values that are not configurable by the user
+	// override values that are not configurable by the user
 	return applyOverrides(&istio, values)
 }
 
