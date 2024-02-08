@@ -1408,6 +1408,11 @@ func (in *PilotConfig) DeepCopyInto(out *PilotConfig) {
 			(*out)[key] = val
 		}
 	}
+	if in.Resources != nil {
+		in, out := &in.Resources, &out.Resources
+		*out = new(corev1.ResourceRequirements)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.DeploymentLabels != nil {
 		in, out := &in.DeploymentLabels, &out.DeploymentLabels
 		*out = make(map[string]string, len(*in))
