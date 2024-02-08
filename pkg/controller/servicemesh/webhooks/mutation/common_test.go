@@ -29,7 +29,14 @@ var (
 	acceptWithNoMutation        = admission.Allowed("")
 	acceptV2WithDefaultMutation = admission.Patched("",
 		jsonpatch.NewPatch("add", "/spec/version", versions.DefaultVersion.String()),
-		jsonpatch.NewPatch("add", "/spec/gateways", v2.GatewaysConfig{OpenShiftRoute: &v2.OpenShiftRouteConfig{Enablement: v2.Enablement{Enabled: &featureDisabled}}}),
+		jsonpatch.NewPatch("add", "/spec/gateways",
+			v2.GatewaysConfig{
+				OpenShiftRoute: &v2.OpenShiftRouteConfig{
+					Enablement: v2.Enablement{
+						Enabled: &featureDisabled,
+					},
+				},
+			}),
 		jsonpatch.NewPatch("add", "/spec/profiles", []interface{}{v1.DefaultTemplate}),
 	)
 	acceptV1WithDefaultMutation = admission.Patched("",
