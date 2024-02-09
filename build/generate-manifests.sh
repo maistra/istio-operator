@@ -26,16 +26,16 @@ if [[ ${COMMUNITY} == "true" ]]; then
   OLM_FEATURES="[]"
   ARCHITECTURE_LABELS=$(generateArchitectureLabels amd64)
   OLM_SUBSCRIPTION_ANNOTATION=""
-  OLM_FEATURE_DISCONNECTED='"false"'
-  OLM_FEATURE_FIPS_COMPLIANT='"false"'
-  OLM_FEATURE_PROXY_AWARE='"true"'
-  OLM_FEATURE_TLS_PROFILES='"false"'
-  OLM_FEATURE_TOKEN_AUTH_AWS='"false"'
-  OLM_FEATURE_TOKEN_AUTH_AZURE='"false"'
-  OLM_FEATURE_TOKEN_AUTH_GCP='"false"'
-  OLM_FEATURE_CNF='"false"'
-  OLM_FEATURE_CNI='"true"'
-  OLM_FEATURE_CSI='"false"'
+  OLM_FEATURE_DISCONNECTED="false"
+  OLM_FEATURE_FIPS_COMPLIANT="false"
+  OLM_FEATURE_PROXY_AWARE="true"
+  OLM_FEATURE_TLS_PROFILES="false"
+  OLM_FEATURE_TOKEN_AUTH_AWS="false"
+  OLM_FEATURE_TOKEN_AUTH_AZURE="false"
+  OLM_FEATURE_TOKEN_AUTH_GCP="false"
+  OLM_FEATURE_CNF="false"
+  OLM_FEATURE_CNI="true"
+  OLM_FEATURE_CSI="false"
 else
   BUILD_TYPE="servicemesh"
   JAEGER_STORAGE="Memory"
@@ -47,16 +47,16 @@ else
   OLM_FEATURES="[\"Disconnected\",\"fips\"]"
   ARCHITECTURE_LABELS=$(generateArchitectureLabels amd64 s390x ppc64le arm64)
   OLM_SUBSCRIPTION_ANNOTATION="operators.openshift.io/valid-subscription: '[\"OpenShift Container Platform\", \"OpenShift Platform Plus\"]'"
-  OLM_FEATURE_DISCONNECTED='"true"'
-  OLM_FEATURE_FIPS_COMPLIANT='"true"'
-  OLM_FEATURE_PROXY_AWARE='"true"'
-  OLM_FEATURE_TLS_PROFILES='"false"'
-  OLM_FEATURE_TOKEN_AUTH_AWS='"false"'
-  OLM_FEATURE_TOKEN_AUTH_AZURE='"false"'
-  OLM_FEATURE_TOKEN_AUTH_GCP='"false"'
-  OLM_FEATURE_CNF='"false"'
-  OLM_FEATURE_CNI='"true"'
-  OLM_FEATURE_CSI='"false"'
+  OLM_FEATURE_DISCONNECTED="true"
+  OLM_FEATURE_FIPS_COMPLIANT="true"
+  OLM_FEATURE_PROXY_AWARE="true"
+  OLM_FEATURE_TLS_PROFILES="false"
+  OLM_FEATURE_TOKEN_AUTH_AWS="false"
+  OLM_FEATURE_TOKEN_AUTH_AZURE="false"
+  OLM_FEATURE_TOKEN_AUTH_GCP="false"
+  OLM_FEATURE_CNF="false"
+  OLM_FEATURE_CNI="true"
+  OLM_FEATURE_CSI="false"
   
 fi
 : "${DEPLOYMENT_FILE:=deploy/${BUILD_TYPE}-operator.yaml}"

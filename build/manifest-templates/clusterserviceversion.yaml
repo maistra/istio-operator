@@ -19,16 +19,16 @@ metadata:
     olm.skipRange: ">=1.0.2 <__SEMANTIC_VERSION__"
     operators.openshift.io/infrastructure-features: '__OLM_FEATURES__'
     __OLM_SUBSCRIPTION_ANNOTATION__
-    features.operators.openshift.io/disconnected: __OLM_FEATURE_DISCONNECTED__
-    features.operators.openshift.io/fips-compliant: __OLM_FEATURE_FIPS_COMPLIANT__
-    features.operators.openshift.io/proxy-aware: __OLM_FEATURE_PROXY_AWARE__
-    features.operators.openshift.io/tls-profiles: __OLM_FEATURE_TLS_PROFILES__
-    features.operators.openshift.io/token-auth-aws: __OLM_FEATURE_TOKEN_AUTH_AWS__
-    features.operators.openshift.io/token-auth-azure: __OLM_FEATURE_TOKEN_AUTH_AZURE__
-    features.operators.openshift.io/token-auth-gcp: __OLM_FEATURE_TOKEN_AUTH_GCP__
-    features.operators.openshift.io/cnf: __OLM_FEATURE_CNF__
-    features.operators.openshift.io/cni: __OLM_FEATURE_CNI__
-    features.operators.openshift.io/csi: __OLM_FEATURE_CSI__
+    features.operators.openshift.io/disconnected: '__OLM_FEATURE_DISCONNECTED__'
+    features.operators.openshift.io/fips-compliant: '__OLM_FEATURE_FIPS_COMPLIANT__'
+    features.operators.openshift.io/proxy-aware: '__OLM_FEATURE_PROXY_AWARE__'
+    features.operators.openshift.io/tls-profiles: '__OLM_FEATURE_TLS_PROFILES__'
+    features.operators.openshift.io/token-auth-aws: '__OLM_FEATURE_TOKEN_AUTH_AWS__'
+    features.operators.openshift.io/token-auth-azure: '__OLM_FEATURE_TOKEN_AUTH_AZURE__'
+    features.operators.openshift.io/token-auth-gcp: '__OLM_FEATURE_TOKEN_AUTH_GCP__'
+    features.operators.openshift.io/cnf: '__OLM_FEATURE_CNF__'
+    features.operators.openshift.io/cni: '__OLM_FEATURE_CNI__'
+    features.operators.openshift.io/csi: '__OLM_FEATURE_CSI__'
     alm-examples: |-
       [
         {
