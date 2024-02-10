@@ -51,7 +51,7 @@ type CNIConfig struct {
 	PspClusterRole    string              `json:"psp_cluster_role,omitempty"`
 	LogLevel          string              `json:"logLevel,omitempty"`
 	Repair            *CNIRepairConfig    `json:"repair,omitempty"`
-	Chained           bool                `json:"chained,omitempty"`
+	Chained           *bool               `json:"chained,omitempty"`
 	ResourceQuotas    *ResourceQuotas     `json:"resource_quotas,omitempty"`
 	Privileged        bool                `json:"privileged,omitempty"`
 	// The Container seccompProfile

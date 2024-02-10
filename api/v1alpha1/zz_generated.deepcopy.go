@@ -85,6 +85,11 @@ func (in *CNIConfig) DeepCopyInto(out *CNIConfig) {
 		*out = new(CNIRepairConfig)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.Chained != nil {
+		in, out := &in.Chained, &out.Chained
+		*out = new(bool)
+		**out = **in
+	}
 	if in.ResourceQuotas != nil {
 		in, out := &in.ResourceQuotas, &out.ResourceQuotas
 		*out = new(ResourceQuotas)
