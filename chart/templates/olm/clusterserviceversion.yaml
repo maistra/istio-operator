@@ -12,6 +12,11 @@ metadata:
     operators.operatorframework.io/internal-objects: '["wasmplugins.extensions.istio.io","destinationrules.networking.istio.io","envoyfilters.networking.istio.io","gateways.networking.istio.io","proxyconfigs.networking.istio.io","serviceentries.networking.istio.io","sidecars.networking.istio.io","virtualservices.networking.istio.io","workloadentries.networking.istio.io","workloadgroups.networking.istio.io","authorizationpolicies.security.istio.io","peerauthentications.security.istio.io","requestauthentications.security.istio.io","telemetries.telemetry.istio.io"]'
     repository: https://github.com/maistra/istio-operator/tree/maistra-3.0
     support: {{ .Values.csv.support }}
+{{- if .Values.csv.annotations }}
+{{- range $key, $val := .Values.csv.annotations }}
+    {{ $key }}: "{{ $val }}" 
+{{- end}}
+{{- end}}
   name: {{ .Values.name }}.v{{ .Values.csv.version }}
   namespace: placeholder
 spec:
