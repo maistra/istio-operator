@@ -12,16 +12,16 @@ metadata:
     operators.operatorframework.io/internal-objects: '["wasmplugins.extensions.istio.io","destinationrules.networking.istio.io","envoyfilters.networking.istio.io","gateways.networking.istio.io","proxyconfigs.networking.istio.io","serviceentries.networking.istio.io","sidecars.networking.istio.io","virtualservices.networking.istio.io","workloadentries.networking.istio.io","workloadgroups.networking.istio.io","authorizationpolicies.security.istio.io","peerauthentications.security.istio.io","requestauthentications.security.istio.io","telemetries.telemetry.istio.io"]'
     repository: https://github.com/maistra/istio-operator/tree/maistra-3.0
     support: {{ .Values.csv.support }}
-    features.operators.openshift.io/disconnected: {{ .Values.csv.olmFeatures.disconnected }}
-    features.operators.openshift.io/fips-compliant: {{ .Values.csv.olmFeatures.FIPSCompliant }}
-    features.operators.openshift.io/proxy-aware: {{ .Values.csv.olmFeatures.proxyAware }}
-    features.operators.openshift.io/tls-profiles: {{ .Values.csv.olmFeatures.TLSProfiles }}
-    features.operators.openshift.io/token-auth-aws: {{ .Values.csv.olmFeatures.tokenAuthAWS }}
-    features.operators.openshift.io/token-auth-azure: {{ .Values.csv.olmFeatures.tokenAuthAzure }}
-    features.operators.openshift.io/token-auth-gcp: {{ .Values.csv.olmFeatures.tokenAuthGCP }}
-    features.operators.openshift.io/cnf: {{ .Values.csv.olmFeatures.CNF }}
-    features.operators.openshift.io/cni: {{ .Values.csv.olmFeatures.CNI }}
-    features.operators.openshift.io/csi: {{ .Values.csv.olmFeatures.CSI }}
+    features.operators.openshift.io/disconnected: {{ .Values.csv.annotations.olmFeatureDisconnected }}
+    features.operators.openshift.io/fips-compliant: {{ .Values.csv.annotations.olmFeatureFIPSCompliant }}
+    features.operators.openshift.io/proxy-aware: {{ .Values.csv.annotations.olmFeatureProxyAware }}
+    features.operators.openshift.io/tls-profiles: {{ .Values.csv.annotations.olmFeatureTLSProfiles }}
+    features.operators.openshift.io/token-auth-aws: {{ .Values.csv.annotations.olmFeatureTokenAuthAWS }}
+    features.operators.openshift.io/token-auth-azure: {{ .Values.csv.annotations.olmFeatureTokenAuthAzure }}
+    features.operators.openshift.io/token-auth-gcp: {{ .Values.csv.annotations.olmFeatureTokenAuthGCP }}
+    features.operators.openshift.io/cnf: {{ .Values.csv.annotations.olmFeatureCNF }}
+    features.operators.openshift.io/cni: {{ .Values.csv.annotations.olmFeatureCNI }}
+    features.operators.openshift.io/csi: {{ .Values.csv.annotations.olmFeatureCSI }}
   name: {{ .Values.name }}.v{{ .Values.csv.version }}
   namespace: placeholder
 spec:

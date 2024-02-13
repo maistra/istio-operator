@@ -32,18 +32,17 @@ csv:
   - istio
   - servicemesh
   - envoy
-  olmFeatures: 
-    disconnected: false
-    FIPSCompliant: false
-    proxyAware: false
-    TLSProfiles: false
-    tokenAuthAWS: false
-    tokenAuthAzure: false
-    tokenAuthGCP: false
-    CNF: false
-    CNI: false
-    CSI: false
-  
+  annotations: 
+    olmFeatureDisconnected: false
+    olmFeatureFIPSCompliant: false
+    olmFeatureProxyAware: false
+    olmFeatureTLSProfiles: false
+    olmFeatureTokenAuthAWS: false
+    olmFeatureTokenAuthAzure: false
+    olmFeatureTokenAuthGCP: false
+    olmFeatureCNF: false
+    olmFeatureCNI: false
+    olmFeatureCSI: false
 image: quay.io/maistra-dev/istio-operator:3.0-latest
 imagePullPolicy: Always
 
