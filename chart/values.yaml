@@ -43,6 +43,7 @@ csv:
     features.operators.openshift.io/cnf: "false"
     features.operators.openshift.io/cni: "true"
     features.operators.openshift.io/csi: "false"
+# !! note that this value is always overwritten in the makefile !!
 image: quay.io/maistra-dev/istio-operator:3.0-latest
 imagePullPolicy: Always
 
