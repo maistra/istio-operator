@@ -239,7 +239,8 @@ func isCNIEnabled(values *v1alpha1.Values) bool {
 		return true
 	}
 
-	return values.IstioCni != nil && values.IstioCni.Enabled
+	//nolint:staticcheck	// ignore use of deprecated field (this code will be removed when we implement the IstioCNI resource)
+	return values.IstioCni != nil && values.IstioCni.Enabled != nil && *values.IstioCni.Enabled
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -454,7 +455,8 @@ func (r *IstioRevisionReconciler) isRevisionReferencedByWorkloads(ctx context.Co
 
 	if rev.Name == v1alpha1.DefaultRevision && rev.Spec.Values != nil &&
 		rev.Spec.Values.SidecarInjectorWebhook != nil &&
-		rev.Spec.Values.SidecarInjectorWebhook.EnableNamespacesByDefault {
+		rev.Spec.Values.SidecarInjectorWebhook.EnableNamespacesByDefault != nil &&
+		*rev.Spec.Values.SidecarInjectorWebhook.EnableNamespacesByDefault {
 		return true, nil
 	}
 

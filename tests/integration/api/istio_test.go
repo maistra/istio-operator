@@ -108,8 +108,8 @@ var _ = Describe("Istio resource", Ordered, func() {
 						Pilot: &v1alpha1.PilotConfig{
 							Image: pilotImage,
 						},
-						IstioCni: &v1alpha1.CNIConfig{
-							Enabled: true,
+						IstioCni: &v1alpha1.CNIUsageConfig{
+							Enabled: ptr.Of(true),
 						},
 					},
 				},
@@ -137,11 +137,11 @@ var _ = Describe("Istio resource", Ordered, func() {
 				Namespace: istio.Spec.Namespace,
 				Values: &v1alpha1.Values{
 					Global: &v1alpha1.GlobalConfig{
-						ConfigValidation: true,
+						ConfigValidation: ptr.Of(true),
 						IstioNamespace:   istio.Spec.Namespace,
 					},
-					IstioCni: &v1alpha1.CNIConfig{
-						Enabled: true,
+					IstioCni: &v1alpha1.CNIUsageConfig{
+						Enabled: ptr.Of(true),
 					},
 					Pilot: &v1alpha1.PilotConfig{
 						Image: pilotImage,
@@ -172,11 +172,11 @@ var _ = Describe("Istio resource", Ordered, func() {
 					Namespace: istio.Spec.Namespace,
 					Values: &v1alpha1.Values{
 						Global: &v1alpha1.GlobalConfig{
-							ConfigValidation: true,
+							ConfigValidation: ptr.Of(true),
 							IstioNamespace:   istio.Spec.Namespace,
 						},
-						IstioCni: &v1alpha1.CNIConfig{
-							Enabled: true,
+						IstioCni: &v1alpha1.CNIUsageConfig{
+							Enabled: ptr.Of(true),
 						},
 						Pilot: &v1alpha1.PilotConfig{
 							Image: pilotImage,

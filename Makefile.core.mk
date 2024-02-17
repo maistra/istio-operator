@@ -253,7 +253,7 @@ uninstall: ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. C
 .PHONY: deploy
 deploy: helm ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	$(info NAMESPACE: $(NAMESPACE))
-	$(MAKE) -e HELM_TEMPL_DEF_FLAGS="$(HELM_TEMPL_DEF_FLAGS)" -s deploy-yaml | kubectl apply -f -
+	$(MAKE) -e HELM_TEMPL_DEF_FLAGS="$(HELM_TEMPL_DEF_FLAGS)" -s deploy-yaml | kubectl apply --server-side=true -f -
 
 .PHONY: deploy-yaml
 deploy-yaml: helm ## Outputs YAML manifests needed to deploy the controller
@@ -262,7 +262,7 @@ deploy-yaml: helm ## Outputs YAML manifests needed to deploy the controller
 .PHONY: deploy-openshift # TODO: remove this target and use deploy-olm instead (when we fix the internal registry TLS issues when using operator-sdk run bundle)
 deploy-openshift: helm ## Deploy controller to OpenShift via YAML manifests
 	$(info NAMESPACE: $(NAMESPACE))
-	$(MAKE) -e HELM_TEMPL_DEF_FLAGS="$(HELM_TEMPL_DEF_FLAGS)" -s deploy-yaml-openshift | kubectl apply -f -
+	$(MAKE) -e HELM_TEMPL_DEF_FLAGS="$(HELM_TEMPL_DEF_FLAGS)" -s deploy-yaml-openshift | kubectl apply --server-side=true -f -
 
 .PHONY: deploy-yaml-openshift
 deploy-yaml-openshift: helm ## Outputs YAML manifests needed to deploy the controller in OpenShift
@@ -302,6 +302,26 @@ deploy-example-kubernetes: ## Deploy an example Istio resource on Kubernetes
 gen-manifests: controller-gen ## Generate WebhookConfiguration and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) crd:allowDangerousTypes=true webhook paths="./..." output:crd:artifacts:config=chart/crds
 
+# TODO: move this to versions.yaml or get the files via go.mod instead of downloading them
+ISTIO_REPO_BASE=https://raw.githubusercontent.com/istio/istio/0e7ecbd31f9524b063ced1f49f1a6f6e063d2bf5
+API_REPO_BASE=https://raw.githubusercontent.com/istio/api/ccd5cd40965ccba232d1f7c3b0e4ecacd0f6ceda
+.PHONY: gen-api
+gen-api: ## Generate API types from upstream files
+	# TODO: should we get these files from the local filesystem by inspecting go.mod?
+	curl -o /tmp/values_types.pb.go $(ISTIO_REPO_BASE)/operator/pkg/apis/istio/v1alpha1/values_types.pb.go
+	go run hack/api_transformer/main.go hack/api_transformer/values_types.transform.yaml
+
+	curl -o /tmp/config.pb.go $(API_REPO_BASE)/mesh/v1alpha1/config.pb.go
+	go run hack/api_transformer/main.go hack/api_transformer/meshconfig_types.transform.yaml
+
+	curl -o /tmp/network.pb.go $(API_REPO_BASE)/mesh/v1alpha1/network.pb.go
+	curl -o /tmp/proxy.pb.go $(API_REPO_BASE)/mesh/v1alpha1/proxy.pb.go
+	curl -o /tmp/proxy_config.pb.go $(API_REPO_BASE)/networking/v1beta1/proxy_config.pb.go
+	curl -o /tmp/selector.pb.go $(API_REPO_BASE)/type/v1beta1/selector.pb.go
+	curl -o /tmp/destination_rule.pb.go $(API_REPO_BASE)/networking/v1alpha3/destination_rule.pb.go
+	curl -o /tmp/virtual_service.pb.go $(API_REPO_BASE)/networking/v1alpha3/virtual_service.pb.go
+	go run hack/api_transformer/main.go hack/api_transformer/meshconfig_deps_types.transform.yaml
+
 .PHONY: gen-code
 gen-code: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="common/scripts/copyright-banner-go.txt" paths="./..."
@@ -326,7 +346,7 @@ gen-charts: ## Pull charts from maistra/istio repository
 	@hack/copy-crds.sh "resources/$$(yq eval '.crdSourceVersion' versions.yaml)/charts"
 
 .PHONY: gen ## Generate everything
-gen: controller-gen gen-charts gen-manifests gen-code bundle
+gen: controller-gen gen-api gen-charts gen-manifests gen-code bundle
 
 .PHONY: gen-check
 gen-check: gen restore-manifest-dates check-clean-repo ## Verifies that changes in generated resources have been checked in

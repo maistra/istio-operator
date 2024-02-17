@@ -26,6 +26,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"maistra.io/istio-operator/api/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"istio.io/istio/pkg/ptr"
 )
 
 var _ = Describe("IstioRevision resource", Ordered, func() {
@@ -172,8 +174,8 @@ var _ = Describe("IstioRevision resource", Ordered, func() {
 					Pilot: &v1alpha1.PilotConfig{
 						Image: pilotImage,
 					},
-					IstioCni: &v1alpha1.CNIConfig{
-						Enabled: true,
+					IstioCni: &v1alpha1.CNIUsageConfig{
+						Enabled: ptr.Of(true),
 					},
 				},
 			},

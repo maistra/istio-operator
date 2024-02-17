@@ -1,0 +1,94 @@
+outputFile: api/v1alpha1/values_types.go
+headerFile: common/scripts/copyright-banner-go.txt
+package: v1alpha1
+
+globalTransformations:
+  removeImports:
+  - github.com/golang/protobuf/ptypes/duration
+  - github.com/golang/protobuf/ptypes/wrappers
+  - github.com/golang/protobuf/ptypes/struct
+  - google.golang.org/protobuf/types/known/wrapperspb
+  - google.golang.org/protobuf/types/known/structpb
+  - google.golang.org/protobuf/types/known/durationpb
+  - google.golang.org/protobuf/types/known/anypb
+  - google.golang.org/genproto/googleapis/api/annotations
+  - google.golang.org/protobuf/reflect/protoreflect
+  - google.golang.org/protobuf/runtime/protoimpl
+  - reflect
+  - sync
+  - istio.io/api/type/v1beta1
+  - istio.io/api/networking/v1alpha3
+  - istio.io/api/networking/v1beta1
+  removeFields:
+  - "*.state"         # protobuf-specific field
+  - "*.sizeCache"     # protobuf-specific field
+  - "*.unknownFields" # protobuf-specific field
+  removeFunctions:
+  - "*.*"   # remove all functions for now (these are only getters, which we don't need (yet?))
+  replaceTypes:
+    "*wrappers.BoolValue": "*bool"
+    "*wrappers.Int32Value": "*int32"
+    "*wrappers.Int64Value": "*int64"
+    "*wrappers.UInt32Value": "*uint32"
+    "*duration.Duration": "*metav1.Duration"
+
+inputFiles:
+- path: /tmp/values_types.pb.go
+  transformations:
+    addImports:
+      metav1: k8s.io/apimachinery/pkg/apis/meta/v1
+      k8sv1: k8s.io/api/core/v1
+      autoscalingv2: k8s.io/api/autoscaling/v2
+      intstr: k8s.io/apimachinery/pkg/util/intstr
+    removeTypes:
+    - EgressGatewayConfig
+    - IngressGatewayConfig
+    - IngressGatewayZvpnConfig
+    - PilotIngressConfig
+    - GatewaysConfig
+    - ServiceAccount
+    - Resources
+    - DefaultResourcesConfig
+    - IntOrString
+    removeFields:
+    - Values.Gateways                      # operator doesn't support deployment of ingress/egress gateways
+    - Values.OwnerName                     # operator sets this internally
+    - Values.Ztunnel                       # ambient is not yet supported
+    - SidecarInjectorConfig.ObjectSelector # appears to be unused
+    replaceTypes:
+      "*IntOrString": "*intstr.IntOrString"
+      "*wrapperspb.BoolValue": "*bool"
+      "*durationpb.Duration": "*metav1.Duration"
+      "*Resources": "*k8sv1.ResourceRequirements"
+    replaceFieldTypes:
+      "*.Tag": "*intstr.IntOrString"
+      CNIConfig.Affinity: "*k8sv1.Affinity"
+      CNIConfig.PodAnnotations: "map[string]string"
+      CNIConfig.SeccompProfile: "*k8sv1.SeccompProfile"
+      Values.MeshConfig: "*MeshConfig"
+      GlobalConfig.DefaultNodeSelector: "*k8sv1.NodeSelector"
+      GlobalConfig.DefaultResources: "*k8sv1.ResourceRequirements"
+      GlobalConfig.DefaultTolerations: "[]k8sv1.Toleration"
+      GlobalConfig.ImagePullPolicy: "*k8sv1.PullPolicy"
+      GlobalConfig.MeshNetworks: "map[string]Network"
+      PilotConfig.Affinity: "*k8sv1.Affinity"
+      PilotConfig.AutoscaleBehavior: "*autoscalingv2.HorizontalPodAutoscalerBehavior"
+      PilotConfig.Env: "map[string]string"
+      PilotConfig.ExtraContainerArgs: "[]string"
+      PilotConfig.DeploymentLabels: "map[string]string"
+      PilotConfig.NodeSelector: "*k8sv1.NodeSelector"
+      PilotConfig.PodAnnotations: "map[string]string"
+      PilotConfig.PodLabels: "map[string]string"
+      PilotConfig.ServiceAnnotations: "map[string]string"
+      PilotConfig.SeccompProfile: "*k8sv1.SeccompProfile"
+      PilotConfig.Tolerations: "[]k8sv1.Toleration"
+      PilotConfig.TopologySpreadConstraints: "[]k8sv1.TopologySpreadConstraint"
+      PilotConfig.VolumeMounts: "[]k8sv1.VolumeMount"
+      PilotConfig.Volumes: "[]k8sv1.Volume"
+      ProxyConfig.Resources: "*k8sv1.ResourceRequirements"
+      ProxyConfig.Lifecycle: "*k8sv1.Lifecycle"
+      SDSConfig.Token: "*SDSConfigToken"
+      SidecarInjectorConfig.NeverInjectSelector: "[]metav1.LabelSelector"
+      SidecarInjectorConfig.AlwaysInjectSelector: "[]metav1.LabelSelector"
+      SidecarInjectorConfig.InjectedAnnotations: "map[string]string"
+      SidecarInjectorConfig.Templates: "map[string]string"
