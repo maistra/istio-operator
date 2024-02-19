@@ -9,6 +9,15 @@ crdSourceVersion: latest
 # the Git repository and commit hash for retrieving the profiles, and
 # a list of URLs for retrieving the charts.
 versions:
+  - name: v1.20.3
+    repo: https://github.com/istio/istio
+    commit: 1.20.3
+    charts:
+      - https://istio-release.storage.googleapis.com/charts/base-1.20.3.tgz
+      - https://istio-release.storage.googleapis.com/charts/istiod-1.20.3.tgz
+      - https://istio-release.storage.googleapis.com/charts/gateway-1.20.3.tgz
+      - https://istio-release.storage.googleapis.com/charts/cni-1.20.3.tgz
+      - https://istio-release.storage.googleapis.com/charts/ztunnel-1.20.3.tgz
   - name: v1.20.2
     repo: https://github.com/istio/istio
     commit: 1.20.2
@@ -27,6 +36,15 @@ versions:
       - https://istio-release.storage.googleapis.com/charts/gateway-1.20.1.tgz
       - https://istio-release.storage.googleapis.com/charts/cni-1.20.1.tgz
       - https://istio-release.storage.googleapis.com/charts/ztunnel-1.20.1.tgz
+  - name: v1.19.7
+    repo: https://github.com/istio/istio
+    commit: 1.19.7
+    charts:
+      - https://istio-release.storage.googleapis.com/charts/base-1.19.7.tgz
+      - https://istio-release.storage.googleapis.com/charts/istiod-1.19.7.tgz
+      - https://istio-release.storage.googleapis.com/charts/gateway-1.19.7.tgz
+      - https://istio-release.storage.googleapis.com/charts/cni-1.19.7.tgz
+      - https://istio-release.storage.googleapis.com/charts/ztunnel-1.19.7.tgz
   - name: v1.19.6
     repo: https://github.com/istio/istio
     commit: 1.19.6
