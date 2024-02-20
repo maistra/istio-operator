@@ -3190,6 +3190,10 @@ spec:
             - namespace
             - version
             type: object
+            x-kubernetes-validations:
+            - message: spec.values.global.istioNamespace must match spec.namespace
+              rule: '!has(self.values) || !has(self.values.global) || !has(self.values.global.istioNamespace)
+                || self.values.global.istioNamespace == self.__namespace__'
           status:
             description: IstioStatus defines the observed state of Istio
             properties:
