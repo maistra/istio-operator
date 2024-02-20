@@ -3118,10 +3118,12 @@ spec:
               version:
                 description: |-
                   Defines the version of Istio to install.
-                  Must be one of: v1.20.2, v1.20.1, v1.19.6, latest, gwAPIControllerMode.
+                  Must be one of: v1.20.3, v1.20.2, v1.20.1, v1.19.7, v1.19.6, latest, gwAPIControllerMode.
                 enum:
+                - v1.20.3
                 - v1.20.2
                 - v1.20.1
+                - v1.19.7
                 - v1.19.6
                 - latest
                 - gwAPIControllerMode

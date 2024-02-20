@@ -23,7 +23,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/istio-operator:3.0-latest
-    createdAt: "2024-02-13T14:20:12Z"
+    createdAt: "2024-02-19T16:01:35Z"
     description: Experimental operator for installing Istio service mesh
     features.operators.openshift.io/cnf: "false"
     features.operators.openshift.io/cni: "true"
@@ -123,14 +123,16 @@ spec:
       kind: IstioRevision
       name: istiorevisions.operator.istio.io
       specDescriptors:
-      - description: 'Defines the version of Istio to install. Must be one of: v1.20.2,
-          v1.20.1, v1.19.6, latest, gwAPIControllerMode.'
+      - description: 'Defines the version of Istio to install. Must be one of: v1.20.3,
+          v1.20.2, v1.20.1, v1.19.7, v1.19.6, latest, gwAPIControllerMode.'
         displayName: Istio Version
         path: version
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:General
+        - urn:alm:descriptor:com.tectonic.ui:select:v1.20.3
         - urn:alm:descriptor:com.tectonic.ui:select:v1.20.2
         - urn:alm:descriptor:com.tectonic.ui:select:v1.20.1
+        - urn:alm:descriptor:com.tectonic.ui:select:v1.19.7
         - urn:alm:descriptor:com.tectonic.ui:select:v1.19.6
         - urn:alm:descriptor:com.tectonic.ui:select:latest
         - urn:alm:descriptor:com.tectonic.ui:select:gwAPIControllerMode
@@ -168,14 +170,16 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:select:InPlace
         - urn:alm:descriptor:com.tectonic.ui:select:RevisionBased
-      - description: 'Defines the version of Istio to install. Must be one of: v1.20.2,
-          v1.20.1, v1.19.6, latest, gwAPIControllerMode.'
+      - description: 'Defines the version of Istio to install. Must be one of: v1.20.3,
+          v1.20.2, v1.20.1, v1.19.7, v1.19.6, latest, gwAPIControllerMode.'
         displayName: Istio Version
         path: version
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:General
+        - urn:alm:descriptor:com.tectonic.ui:select:v1.20.3
         - urn:alm:descriptor:com.tectonic.ui:select:v1.20.2
         - urn:alm:descriptor:com.tectonic.ui:select:v1.20.1
+        - urn:alm:descriptor:com.tectonic.ui:select:v1.19.7
         - urn:alm:descriptor:com.tectonic.ui:select:v1.19.6
         - urn:alm:descriptor:com.tectonic.ui:select:latest
         - urn:alm:descriptor:com.tectonic.ui:select:gwAPIControllerMode
@@ -224,8 +228,10 @@ spec:
 
     This version of the operator supports the following Istio versions:
 
+    - v1.20.3
     - v1.20.2
     - v1.20.1
+    - v1.19.7
     - v1.19.6
     - latest (ffed2074)
     - gwAPIControllerMode
