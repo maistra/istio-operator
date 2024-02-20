@@ -73,6 +73,88 @@ var _ = Describe("IstioRevision resource", Ordered, func() {
 
 	rev := &v1alpha1.IstioRevision{}
 
+	Describe("validation", func() {
+		AfterEach(func() {
+			Expect(k8sClient.DeleteAllOf(ctx, &v1alpha1.IstioRevision{})).To(Succeed())
+		})
+
+		It("rejects an IstioRevision where spec.values.global.istioNamespace doesn't match spec.namespace", func() {
+			rev = &v1alpha1.IstioRevision{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: revName,
+				},
+				Spec: v1alpha1.IstioRevisionSpec{
+					Version:   defaultVersion,
+					Namespace: istioNamespace,
+					Values: &v1alpha1.Values{
+						Revision: revName,
+						Global: &v1alpha1.GlobalConfig{
+							IstioNamespace: "wrong-namespace",
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, rev)).To(Not(Succeed()))
+		})
+
+		It("rejects an IstioRevision where spec.values.revision doesn't match metadata.name (when name is not default)", func() {
+			rev = &v1alpha1.IstioRevision{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: revName,
+				},
+				Spec: v1alpha1.IstioRevisionSpec{
+					Version:   defaultVersion,
+					Namespace: istioNamespace,
+					Values: &v1alpha1.Values{
+						Revision: "is-not-" + revName,
+						Global: &v1alpha1.GlobalConfig{
+							IstioNamespace: istioNamespace,
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, rev)).To(Not(Succeed()))
+		})
+
+		It("rejects an IstioRevision where metadata.name is default and spec.values.revision isn't empty", func() {
+			rev = &v1alpha1.IstioRevision{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "default",
+				},
+				Spec: v1alpha1.IstioRevisionSpec{
+					Version:   defaultVersion,
+					Namespace: istioNamespace,
+					Values: &v1alpha1.Values{
+						Revision: "default", // this must be rejected, because revision needs to be '' when metadata.name is 'default'
+						Global: &v1alpha1.GlobalConfig{
+							IstioNamespace: istioNamespace,
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, rev)).To(Not(Succeed()))
+		})
+
+		It("accepts an IstioRevision where metadata.name is default and spec.values.revision is empty", func() {
+			rev = &v1alpha1.IstioRevision{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "default",
+				},
+				Spec: v1alpha1.IstioRevisionSpec{
+					Version:   defaultVersion,
+					Namespace: istioNamespace,
+					Values: &v1alpha1.Values{
+						Revision: "",
+						Global: &v1alpha1.GlobalConfig{
+							IstioNamespace: istioNamespace,
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, rev)).To(Succeed())
+		})
+	})
+
 	It("successfully reconciles the resource", func() {
 		Step("Creating the custom resource")
 		rev = &v1alpha1.IstioRevision{

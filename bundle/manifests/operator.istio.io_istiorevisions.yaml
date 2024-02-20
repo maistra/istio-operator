@@ -2855,6 +2855,9 @@ spec:
             - namespace
             - version
             type: object
+            x-kubernetes-validations:
+            - message: spec.values.global.istioNamespace must match spec.namespace
+              rule: self.values.global.istioNamespace == self.__namespace__
           status:
             description: IstioRevisionStatus defines the observed state of IstioRevision
             properties:
@@ -2900,6 +2903,11 @@ spec:
                 type: string
             type: object
         type: object
+        x-kubernetes-validations:
+        - message: spec.values.revision must match metadata.name
+          rule: 'self.metadata.name == ''default'' ? (!has(self.spec.values.revision)
+            || size(self.spec.values.revision) == 0) : self.spec.values.revision ==
+            self.metadata.name'
     served: true
     storage: true
     subresources:

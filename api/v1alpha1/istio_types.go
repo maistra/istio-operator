@@ -35,6 +35,7 @@ const (
 )
 
 // IstioSpec defines the desired state of Istio
+// +kubebuilder:validation:XValidation:rule="!has(self.values) || !has(self.values.global) || !has(self.values.global.istioNamespace) || self.values.global.istioNamespace == self.__namespace__",message="spec.values.global.istioNamespace must match spec.namespace"
 type IstioSpec struct {
 	// +sail:version
 	// Defines the version of Istio to install.

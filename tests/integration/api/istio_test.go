@@ -70,6 +70,26 @@ var _ = Describe("Istio resource", Ordered, func() {
 		deleteAllIstiosAndRevisions(ctx)
 	})
 
+	Describe("validation", func() {
+		It("rejects an Istio where spec.values.global.istioNamespace doesn't match spec.namespace", func() {
+			istio = &v1alpha1.Istio{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: istioName,
+				},
+				Spec: v1alpha1.IstioSpec{
+					Version:   defaultVersion,
+					Namespace: istioNamespace,
+					Values: &v1alpha1.Values{
+						Global: &v1alpha1.GlobalConfig{
+							IstioNamespace: "wrong-namespace",
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, istio)).To(Not(Succeed()))
+		})
+	})
+
 	Describe("basic operation", func() {
 		BeforeAll(func() {
 			Step("Creating the custom resource")

@@ -28,6 +28,7 @@ const (
 )
 
 // IstioRevisionSpec defines the desired state of IstioRevision
+// +kubebuilder:validation:XValidation:rule="self.values.global.istioNamespace == self.__namespace__",message="spec.values.global.istioNamespace must match spec.namespace"
 type IstioRevisionSpec struct {
 	// +sail:version
 	// Defines the version of Istio to install.
@@ -180,6 +181,7 @@ const (
 // Users shouldn't create IstioRevision objects directly. Instead, they should
 // create an Istio object and allow the Istio operator to create the underlying
 // IstioRevision object(s).
+// +kubebuilder:validation:XValidation:rule="self.metadata.name == 'default' ? (!has(self.spec.values.revision) || size(self.spec.values.revision) == 0) : self.spec.values.revision == self.metadata.name",message="spec.values.revision must match metadata.name"
 type IstioRevision struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
