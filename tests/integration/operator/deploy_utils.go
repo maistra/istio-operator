@@ -1,4 +1,18 @@
-package integration_operator
+// Copyright Istio Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package integrationoperator
 
 import (
 	. "github.com/onsi/ginkgo/v2"
@@ -13,9 +27,7 @@ const (
 	Undeploy
 )
 
-var (
-	istioYaml string
-)
+var istioYaml string
 
 // deployOperator deploys the operator to either an OpenShift cluster or a Kubernetes cluster based on the value of the 'ocp' variable.
 // The operator will be deployed in the namespace specified by the 'namespace' variable.
@@ -57,11 +69,11 @@ func undeployOperator() {
 }
 
 // deployIstioControlPlane deploys the Istio control plane with the specified version.
-// The control panel will be installed in the namespace specified by the 'control_plane_ns' variable.
+// The control panel will be installed in the namespace specified by the 'controlPlaneNamespace' variable.
 func deployIstioControlPlane(version string) {
 	GinkgoWriter.Println("Deploying Istio Control Plane for version:", version)
 
-	if err := createNamespaceIfNotExists(control_plane_ns); err != nil {
+	if err := createNamespaceIfNotExists(controlPlaneNamespace); err != nil {
 		GinkgoWriter.Println("Error creating namespace:", err)
 		Fail("Error creating namespace")
 	}
@@ -81,7 +93,6 @@ func undeployIstioControlPlane(version string) {
 	GinkgoWriter.Println("Undeploying Istio Control Plane for version:", version)
 
 	err := undeploy("istio", version)
-
 	if err != nil {
 		GinkgoWriter.Println("Error undeploying Istio control plane:", err)
 		Fail("Error undeploying Istio control plane")
