@@ -669,6 +669,11 @@ spec:
                                       certificate authority certificates to use in
                                       verifying a presented server certificate.'
                                     type: string
+                                  caCrl:
+                                    description: 'OPTIONAL: The path to the file containing
+                                      the certificate revocation list (CRL) to use
+                                      in verifying a presented server certificate.'
+                                    type: string
                                   clientCertificate:
                                     description: REQUIRED if mode is `MUTUAL`.
                                     type: string
@@ -726,6 +731,11 @@ spec:
                             caCertificates:
                               description: 'OPTIONAL: The path to the file containing
                                 certificate authority certificates to use in verifying
+                                a presented server certificate.'
+                              type: string
+                            caCrl:
+                              description: 'OPTIONAL: The path to the file containing
+                                the certificate revocation list (CRL) to use in verifying
                                 a presented server certificate.'
                               type: string
                             clientCertificate:
@@ -1376,6 +1386,11 @@ spec:
                                 certificate authority certificates to use in verifying
                                 a presented server certificate.'
                               type: string
+                            caCrl:
+                              description: 'OPTIONAL: The path to the file containing
+                                the certificate revocation list (CRL) to use in verifying
+                                a presented server certificate.'
+                              type: string
                             clientCertificate:
                               description: REQUIRED if mode is `MUTUAL`.
                               type: string
@@ -1433,6 +1448,11 @@ spec:
                         description: 'OPTIONAL: The path to the file containing certificate
                           authority certificates to use in verifying a presented server
                           certificate.'
+                        type: string
+                      caCrl:
+                        description: 'OPTIONAL: The path to the file containing the
+                          certificate revocation list (CRL) to use in verifying a
+                          presented server certificate.'
                         type: string
                       clientCertificate:
                         description: REQUIRED if mode is `MUTUAL`.
@@ -2159,6 +2179,11 @@ spec:
                                       certificate authority certificates to use in
                                       verifying a presented server certificate.'
                                     type: string
+                                  caCrl:
+                                    description: 'OPTIONAL: The path to the file containing
+                                      the certificate revocation list (CRL) to use
+                                      in verifying a presented server certificate.'
+                                    type: string
                                   clientCertificate:
                                     description: REQUIRED if mode is `MUTUAL`.
                                     type: string
@@ -2216,6 +2241,11 @@ spec:
                             caCertificates:
                               description: 'OPTIONAL: The path to the file containing
                                 certificate authority certificates to use in verifying
+                                a presented server certificate.'
+                              type: string
+                            caCrl:
+                              description: 'OPTIONAL: The path to the file containing
+                                the certificate revocation list (CRL) to use in verifying
                                 a presented server certificate.'
                               type: string
                             clientCertificate:
@@ -2866,6 +2896,11 @@ spec:
                                 certificate authority certificates to use in verifying
                                 a presented server certificate.'
                               type: string
+                            caCrl:
+                              description: 'OPTIONAL: The path to the file containing
+                                the certificate revocation list (CRL) to use in verifying
+                                a presented server certificate.'
+                              type: string
                             clientCertificate:
                               description: REQUIRED if mode is `MUTUAL`.
                               type: string
@@ -2923,6 +2958,11 @@ spec:
                         description: 'OPTIONAL: The path to the file containing certificate
                           authority certificates to use in verifying a presented server
                           certificate.'
+                        type: string
+                      caCrl:
+                        description: 'OPTIONAL: The path to the file containing the
+                          certificate revocation list (CRL) to use in verifying a
+                          presented server certificate.'
                         type: string
                       clientCertificate:
                         description: REQUIRED if mode is `MUTUAL`.
