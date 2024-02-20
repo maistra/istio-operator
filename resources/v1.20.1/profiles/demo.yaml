@@ -10,11 +10,6 @@ spec:
             memory: 40Mi
     pilot:
       autoscaleEnabled: false
-    gateways:
-      istio-egressgateway:
-        autoscaleEnabled: false
-      istio-ingressgateway:
-        autoscaleEnabled: false
     meshConfig:
       accessLogFile: /dev/stdout
       extensionProviders:

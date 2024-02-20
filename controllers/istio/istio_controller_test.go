@@ -16,7 +16,6 @@ package istio
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path"
@@ -29,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/kubectl/pkg/scheme"
 	v1alpha1 "maistra.io/istio-operator/api/v1alpha1"
 	"maistra.io/istio-operator/pkg/common"
@@ -607,7 +607,7 @@ func TestReconcileActiveRevision(t *testing.T) {
 	testCases := []struct {
 		name                 string
 		istioValues          v1alpha1.Values
-		revValues            *helm.HelmValues
+		revValues            *v1alpha1.Values
 		expectOwnerReference bool
 	}{
 		{
@@ -632,7 +632,11 @@ func TestReconcileActiveRevision(t *testing.T) {
 					AccessLogFile: "/dev/stdout",
 				},
 			},
-			revValues:            &helm.HelmValues{"key": "old-value"},
+			revValues: &v1alpha1.Values{
+				Pilot: &v1alpha1.PilotConfig{
+					Image: "old-image",
+				},
+			},
 			expectOwnerReference: false,
 		},
 	}
@@ -686,7 +690,7 @@ func TestReconcileActiveRevision(t *testing.T) {
 								},
 								Spec: v1alpha1.IstioRevisionSpec{
 									Version: version,
-									Values:  toJSON(*tc.revValues),
+									Values:  tc.revValues,
 								},
 							},
 						)
@@ -695,7 +699,7 @@ func TestReconcileActiveRevision(t *testing.T) {
 					cl := newFakeClientBuilder().WithObjects(initObjs...).Build()
 					reconciler := NewIstioReconciler(cl, scheme.Scheme, resourceDir, nil)
 
-					err := reconciler.reconcileActiveRevision(ctx, istio, tc.istioValues.ToHelmValues())
+					err := reconciler.reconcileActiveRevision(ctx, istio, &tc.istioValues)
 					if err != nil {
 						t.Errorf("Expected no error, but got: %v", err)
 					}
@@ -725,7 +729,7 @@ func TestReconcileActiveRevision(t *testing.T) {
 						t.Errorf("IstioRevision.spec.version doesn't match Istio.spec.version; expected %s, got %s", istio.Spec.Version, rev.Spec.Version)
 					}
 
-					if diff := cmp.Diff(tc.istioValues.ToHelmValues(), fromJSON(rev.Spec.Values)); diff != "" {
+					if diff := cmp.Diff(tc.istioValues.ToHelmValues(), rev.Spec.Values.ToHelmValues()); diff != "" {
 						t.Errorf("IstioRevision.spec.values don't match Istio.spec.values; diff (-expected, +actual):\n%v", diff)
 					}
 				})
@@ -1104,38 +1108,21 @@ spec:
 		t.Errorf("Expected no error, but got an error: %v", err)
 	}
 
-	expected := helm.HelmValues{
-		"pilot": map[string]any{
-			"hub":   "from-default-profile",
-			"tag":   "from-my-profile",
-			"image": "from-istio-spec-values",
+	expected := &v1alpha1.Values{
+		Pilot: &v1alpha1.PilotConfig{
+			Hub:   "from-default-profile",
+			Tag:   ptr.Of(intstr.FromString("from-my-profile")),
+			Image: "from-istio-spec-values",
 		},
-		"global": map[string]any{
-			"istioNamespace": istioNamespace, // this value is always added/overridden based on IstioRevision.spec.namespace
+		Global: &v1alpha1.GlobalConfig{
+			IstioNamespace: istioNamespace, // this value is always added/overridden based on IstioRevision.spec.namespace
 		},
-		"revision": objectMeta.Name,
+		Revision: objectMeta.Name,
 	}
 
 	if !reflect.DeepEqual(result, expected) {
-		t.Errorf("Result does not match the expected HelmValues.\nExpected: %v\nActual: %v", expected, result)
+		t.Errorf("Result does not match the expected Values.\nExpected: %v\nActual: %v", expected, result)
 	}
-}
-
-func toJSON(values helm.HelmValues) json.RawMessage {
-	jsonVals, err := json.Marshal(values)
-	if err != nil {
-		panic(err)
-	}
-	return jsonVals
-}
-
-func fromJSON(values json.RawMessage) helm.HelmValues {
-	helmValues := helm.HelmValues{}
-	err := json.Unmarshal(values, &helmValues)
-	if err != nil {
-		panic(err)
-	}
-	return helmValues
 }
 
 func TestGetValuesFromProfiles(t *testing.T) {
@@ -1346,8 +1333,8 @@ func TestApplyImageDigests(t *testing.T) {
 		name         string
 		config       common.OperatorConfig
 		inputIstio   *v1alpha1.Istio
-		inputValues  helm.HelmValues
-		expectValues helm.HelmValues
+		inputValues  *v1alpha1.Values
+		expectValues *v1alpha1.Values
 	}{
 		{
 			name: "no-config",
@@ -1359,14 +1346,14 @@ func TestApplyImageDigests(t *testing.T) {
 					Version: "v1.20.0",
 				},
 			},
-			inputValues: map[string]any{
-				"pilot": map[string]any{
-					"image": "istiod-test",
+			inputValues: &v1alpha1.Values{
+				Pilot: &v1alpha1.PilotConfig{
+					Image: "istiod-test",
 				},
 			},
-			expectValues: map[string]any{
-				"pilot": map[string]any{
-					"image": "istiod-test",
+			expectValues: &v1alpha1.Values{
+				Pilot: &v1alpha1.PilotConfig{
+					Image: "istiod-test",
 				},
 			},
 		},
@@ -1387,25 +1374,25 @@ func TestApplyImageDigests(t *testing.T) {
 					Version: "v1.20.0",
 				},
 			},
-			inputValues: helm.HelmValues{},
-			expectValues: map[string]any{
-				"pilot": map[string]any{
-					"image": "istiod-test",
+			inputValues: &v1alpha1.Values{},
+			expectValues: &v1alpha1.Values{
+				Pilot: &v1alpha1.PilotConfig{
+					Image: "istiod-test",
 				},
-				"global": map[string]any{
-					"proxy": map[string]any{
-						"image": "proxy-test",
+				Global: &v1alpha1.GlobalConfig{
+					Proxy: &v1alpha1.ProxyConfig{
+						Image: "proxy-test",
 					},
-					"proxy_init": map[string]any{
-						"image": "proxy-test",
+					ProxyInit: &v1alpha1.ProxyInitConfig{
+						Image: "proxy-test",
 					},
 				},
-				"istio-cni": map[string]any{
-					"image": "cni-test",
+				Cni: &v1alpha1.CNIConfig{
+					Image: "cni-test",
 				},
-				"ztunnel": map[string]any{
-					"image": "ztunnel-test",
-				},
+				// ZTunnel: &v1alpha1.ZTunnelConfig{
+				// 	Image: "ztunnel-test",
+				// },
 			},
 		},
 		{
@@ -1425,29 +1412,29 @@ func TestApplyImageDigests(t *testing.T) {
 					Version: "v1.20.0",
 				},
 			},
-			inputValues: map[string]any{
-				"pilot": map[string]any{
-					"image": "istiod-custom",
+			inputValues: &v1alpha1.Values{
+				Pilot: &v1alpha1.PilotConfig{
+					Image: "istiod-custom",
 				},
 			},
-			expectValues: map[string]any{
-				"pilot": map[string]any{
-					"image": "istiod-custom",
+			expectValues: &v1alpha1.Values{
+				Pilot: &v1alpha1.PilotConfig{
+					Image: "istiod-custom",
 				},
-				"global": map[string]any{
-					"proxy": map[string]any{
-						"image": "proxy-test",
+				Global: &v1alpha1.GlobalConfig{
+					Proxy: &v1alpha1.ProxyConfig{
+						Image: "proxy-test",
 					},
-					"proxy_init": map[string]any{
-						"image": "proxy-test",
+					ProxyInit: &v1alpha1.ProxyInitConfig{
+						Image: "proxy-test",
 					},
 				},
-				"istio-cni": map[string]any{
-					"image": "cni-test",
+				Cni: &v1alpha1.CNIConfig{
+					Image: "cni-test",
 				},
-				"ztunnel": map[string]any{
-					"image": "ztunnel-test",
-				},
+				// ZTunnel: &v1alpha1.ZTunnelConfig{
+				// 	Image: "ztunnel-test",
+				// },
 			},
 		},
 		{
@@ -1467,31 +1454,31 @@ func TestApplyImageDigests(t *testing.T) {
 					Version: "v1.20.0",
 				},
 			},
-			inputValues: map[string]any{
-				"pilot": map[string]any{
-					"hub": "docker.io/istio",
-					"tag": "1.20.1",
+			inputValues: &v1alpha1.Values{
+				Pilot: &v1alpha1.PilotConfig{
+					Hub: "docker.io/istio",
+					Tag: ptr.Of(intstr.FromString("1.20.1")),
 				},
 			},
-			expectValues: map[string]any{
-				"pilot": map[string]any{
-					"hub": "docker.io/istio",
-					"tag": "1.20.1",
+			expectValues: &v1alpha1.Values{
+				Pilot: &v1alpha1.PilotConfig{
+					Hub: "docker.io/istio",
+					Tag: ptr.Of(intstr.FromString("1.20.1")),
 				},
-				"global": map[string]any{
-					"proxy": map[string]any{
-						"image": "proxy-test",
+				Global: &v1alpha1.GlobalConfig{
+					Proxy: &v1alpha1.ProxyConfig{
+						Image: "proxy-test",
 					},
-					"proxy_init": map[string]any{
-						"image": "proxy-test",
+					ProxyInit: &v1alpha1.ProxyInitConfig{
+						Image: "proxy-test",
 					},
 				},
-				"istio-cni": map[string]any{
-					"image": "cni-test",
+				Cni: &v1alpha1.CNIConfig{
+					Image: "cni-test",
 				},
-				"ztunnel": map[string]any{
-					"image": "ztunnel-test",
-				},
+				// ZTunnel: &v1alpha1.ZTunnelConfig{
+				// 	Image: "ztunnel-test",
+				// },
 			},
 		},
 		{
@@ -1511,26 +1498,23 @@ func TestApplyImageDigests(t *testing.T) {
 					Version: "v1.20.1",
 				},
 			},
-			inputValues: map[string]any{
-				"pilot": map[string]any{
-					"hub": "docker.io/istio",
-					"tag": "1.20.2",
+			inputValues: &v1alpha1.Values{
+				Pilot: &v1alpha1.PilotConfig{
+					Hub: "docker.io/istio",
+					Tag: ptr.Of(intstr.FromString("1.20.2")),
 				},
 			},
-			expectValues: map[string]any{
-				"pilot": map[string]any{
-					"hub": "docker.io/istio",
-					"tag": "1.20.2",
+			expectValues: &v1alpha1.Values{
+				Pilot: &v1alpha1.PilotConfig{
+					Hub: "docker.io/istio",
+					Tag: ptr.Of(intstr.FromString("1.20.2")),
 				},
 			},
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := applyImageDigests(tc.inputIstio, tc.inputValues, tc.config)
-			if err != nil {
-				t.Error(err)
-			}
+			result := applyImageDigests(tc.inputIstio, tc.inputValues, tc.config)
 			if diff := cmp.Diff(tc.expectValues, result); diff != "" {
 				t.Errorf("unexpected merge result; diff (-expected, +actual):\n%v", diff)
 			}

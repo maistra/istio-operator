@@ -82,12 +82,18 @@ var _ = Describe("IstioRevision resource", Ordered, func() {
 			Spec: v1alpha1.IstioRevisionSpec{
 				Version:   defaultVersion,
 				Namespace: istioNamespace,
-				Values: []byte(`{
-						"global":{"istioNamespace":"` + istioNamespace + `"},
-						"revision":"` + revName + `",
-						"pilot":{"image":"` + pilotImage + `"},
-						"istio_cni":{"enabled":true}
-					}`),
+				Values: &v1alpha1.Values{
+					Global: &v1alpha1.GlobalConfig{
+						IstioNamespace: istioNamespace,
+					},
+					Revision: revName,
+					Pilot: &v1alpha1.PilotConfig{
+						Image: pilotImage,
+					},
+					IstioCni: &v1alpha1.CNIConfig{
+						Enabled: true,
+					},
+				},
 			},
 		}
 
@@ -228,11 +234,15 @@ var _ = Describe("IstioRevision resource", Ordered, func() {
 			Spec: v1alpha1.IstioRevisionSpec{
 				Version:   defaultVersion,
 				Namespace: istioNamespace,
-				Values: []byte(`{
-						"global":{"istioNamespace":"` + istioNamespace + `"},
-						"revision": "` + rev2Key.Name + `",
-						"pilot":{"image":"` + pilotImage + `"}
-					}`),
+				Values: &v1alpha1.Values{
+					Global: &v1alpha1.GlobalConfig{
+						IstioNamespace: istioNamespace,
+					},
+					Revision: rev2Key.Name,
+					Pilot: &v1alpha1.PilotConfig{
+						Image: pilotImage,
+					},
+				},
 			},
 		}
 		Expect(k8sClient.Create(ctx, rev2)).To(Succeed())

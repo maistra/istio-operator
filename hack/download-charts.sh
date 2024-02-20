@@ -107,7 +107,24 @@ function convertIstioProfiles() {
       | del(.spec.components)
       | del(.spec.meshConfig)
       | del(.spec.hub)
-      | del(.spec.tag)' "$profile"
+      | del(.spec.tag)
+      | del(.spec.values.global.defaultNodeSelector)
+      | del(.spec.values.global.defaultResources)
+      | del(.spec.values.global.imagePullPolicy)
+      | del(.spec.values.global.imagePullSecrets)
+      | del(.spec.values.global.priorityClassName)
+      | del(.spec.values.global.sds.token)
+      | del(.spec.values.meshConfig.defaultConfig.proxyMetadata)
+      | del(.spec.values.pilot.cpu)
+      | del(.spec.values.pilot.nodeSelector)
+      | del(.spec.values.pilot.replicaCount)
+      | del(.spec.values.telemetry.v2.metadataExchange)
+      | del(.spec.values.telemetry.v2.prometheus.wasmEnabled)
+      | del(.spec.values.telemetry.v2.stackdriver.configOverride)
+      | del(.spec.values.telemetry.v2.stackdriver.logging)
+      | del(.spec.values.telemetry.v2.stackdriver.monitoring)
+      | del(.spec.values.telemetry.v2.stackdriver.topology)
+      | del(.spec.values.gateways)' "$profile"
   done
 }
 

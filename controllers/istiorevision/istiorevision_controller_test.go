@@ -19,7 +19,6 @@ import (
 	"strings"
 	"testing"
 
-	"gopkg.in/yaml.v3"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -91,13 +90,13 @@ func TestDetermineReadyCondition(t *testing.T) {
 	testCases := []struct {
 		name          string
 		cniEnabled    bool
-		values        string
+		values        *v1.Values
 		clientObjects []client.Object
 		expected      v1.IstioRevisionCondition
 	}{
 		{
 			name:   "Istiod ready",
-			values: "",
+			values: nil,
 			clientObjects: []client.Object{
 				&appsv1.Deployment{
 					ObjectMeta: metav1.ObjectMeta{
@@ -118,7 +117,7 @@ func TestDetermineReadyCondition(t *testing.T) {
 		},
 		{
 			name:   "Istiod not ready",
-			values: "",
+			values: nil,
 			clientObjects: []client.Object{
 				&appsv1.Deployment{
 					ObjectMeta: metav1.ObjectMeta{
@@ -141,7 +140,7 @@ func TestDetermineReadyCondition(t *testing.T) {
 		},
 		{
 			name:   "Istiod scaled to zero",
-			values: "",
+			values: nil,
 			clientObjects: []client.Object{
 				&appsv1.Deployment{
 					ObjectMeta: metav1.ObjectMeta{
@@ -164,7 +163,7 @@ func TestDetermineReadyCondition(t *testing.T) {
 		},
 		{
 			name:          "Istiod not found",
-			values:        ``,
+			values:        nil,
 			clientObjects: []client.Object{},
 			expected: v1.IstioRevisionCondition{
 				Type:    v1.IstioRevisionConditionTypeReady,
@@ -175,10 +174,11 @@ func TestDetermineReadyCondition(t *testing.T) {
 		},
 		{
 			name: "Istiod and CNI ready",
-			values: `
-istio_cni:
-  enabled: true
-`,
+			values: &v1.Values{
+				IstioCni: &v1.CNIConfig{
+					Enabled: true,
+				},
+			},
 			clientObjects: []client.Object{
 				&appsv1.Deployment{
 					ObjectMeta: metav1.ObjectMeta{
@@ -209,10 +209,11 @@ istio_cni:
 		},
 		{
 			name: "CNI not ready",
-			values: `
-istio_cni:
-  enabled: true
-`,
+			values: &v1.Values{
+				IstioCni: &v1.CNIConfig{
+					Enabled: true,
+				},
+			},
 			clientObjects: []client.Object{
 				&appsv1.Deployment{
 					ObjectMeta: metav1.ObjectMeta{
@@ -245,10 +246,11 @@ istio_cni:
 		},
 		{
 			name: "CNI pods not scheduled",
-			values: `
-istio_cni:
-  enabled: true
-`,
+			values: &v1.Values{
+				IstioCni: &v1.CNIConfig{
+					Enabled: true,
+				},
+			},
 			clientObjects: []client.Object{
 				&appsv1.Deployment{
 					ObjectMeta: metav1.ObjectMeta{
@@ -281,10 +283,11 @@ istio_cni:
 		},
 		{
 			name: "CNI not found",
-			values: `
-istio_cni:
-  enabled: true
-`,
+			values: &v1.Values{
+				IstioCni: &v1.CNIConfig{
+					Enabled: true,
+				},
+			},
 			clientObjects: []client.Object{
 				&appsv1.Deployment{
 					ObjectMeta: metav1.ObjectMeta{
@@ -306,8 +309,10 @@ istio_cni:
 			},
 		},
 		{
-			name:   "Non-default revision",
-			values: "revision: my-revision",
+			name: "Non-default revision",
+			values: &v1.Values{
+				Revision: "my-revision",
+			},
 			clientObjects: []client.Object{
 				&appsv1.Deployment{
 					ObjectMeta: metav1.ObjectMeta{
@@ -334,23 +339,17 @@ istio_cni:
 
 			r := NewIstioRevisionReconciler(cl, scheme.Scheme, nil, operatorNamespace)
 
-			var values map[string]any
-			Must(t, yaml.Unmarshal([]byte(tt.values), &values))
-
 			rev := &v1.IstioRevision{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "my-istio",
 				},
 				Spec: v1.IstioRevisionSpec{
 					Namespace: "istio-system",
+					Values:    tt.values,
 				},
 			}
 
-			result, err := r.determineReadyCondition(context.TODO(), rev, values)
-			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
-			}
-
+			result := r.determineReadyCondition(context.TODO(), rev)
 			if result.Type != tt.expected.Type || result.Status != tt.expected.Status ||
 				result.Reason != tt.expected.Reason || result.Message != tt.expected.Message {
 				t.Errorf("Unexpected result.\nGot:\n    %+v\nexpected:\n    %+v", result, tt.expected)
@@ -508,7 +507,11 @@ func TestDetermineInUseCondition(t *testing.T) {
 					},
 				}
 				if tc.enableAllNamespaces {
-					rev.Spec.Values = []byte(`{"sidecarInjectorWebhook":{"enableNamespacesByDefault":true}}`)
+					rev.Spec.Values = &v1.Values{
+						SidecarInjectorWebhook: &v1.SidecarInjectorConfig{
+							EnableNamespacesByDefault: true,
+						},
+					}
 				}
 
 				namespace := "bookinfo"

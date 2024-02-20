@@ -17,11 +17,9 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"encoding/json"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"maistra.io/istio-operator/pkg/helm"
 )
 
 const IstioKind = "Istio"
@@ -65,22 +63,6 @@ type IstioSpec struct {
 	// Defines the values to be passed to the Helm charts when installing Istio.
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Helm Values"
 	Values *Values `json:"values,omitempty"`
-}
-
-func (s *IstioSpec) GetValues() helm.HelmValues {
-	return s.Values.ToHelmValues()
-}
-
-func (s *IstioSpec) SetValues(values helm.HelmValues) error {
-	jsonVals, err := json.Marshal(values)
-	if err != nil {
-		return err
-	}
-	err = json.Unmarshal(jsonVals, &s.Values)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 // IstioUpdateStrategy defines how the control plane should be updated when the version in
