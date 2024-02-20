@@ -86,6 +86,14 @@ type ResourceQuotas struct {
 	Pods    int64 `json:"pods,omitempty"`
 }
 
+// Configuration for CPU or memory target utilization for HorizontalPodAutoscaler target.
+type TargetUtilizationConfig struct {
+	// K8s utilization setting for HorizontalPodAutoscaler target.
+	//
+	// See https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/
+	TargetAverageUtilization int32 `json:"targetAverageUtilization,omitempty"`
+}
+
 // DefaultPodDisruptionBudgetConfig specifies the default pod disruption budget configuration.
 //
 // See https://kubernetes.io/docs/concepts/workloads/pods/disruptions/
@@ -102,10 +110,26 @@ type GlobalConfig struct {
 	// Controls whether the server-side validation is enabled.
 	ConfigValidation                bool     `json:"configValidation,omitempty"`
 	DefaultConfigVisibilitySettings []string `json:"defaultConfigVisibilitySettings,omitempty"`
+	// Default k8s node selector for all the Istio control plane components
+	//
+	// See https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
+	DefaultNodeSelector *k8sv1.NodeSelector `json:"defaultNodeSelector,omitempty"`
 	// Specifies the default pod disruption budget configuration.
 	DefaultPodDisruptionBudget *DefaultPodDisruptionBudgetConfig `json:"defaultPodDisruptionBudget,omitempty"`
+	// Default k8s resources settings for all Istio control plane components.
+	//
+	// See https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#resource-requests-and-limits-of-pod-and-container
+	//
+	// Deprecated: Marked as deprecated in pkg/apis/istio/v1alpha1/values_types.proto.
+	DefaultResources *k8sv1.ResourceRequirements `json:"defaultResources,omitempty"`
 	// Specifies the docker hub for Istio images.
 	Hub string `json:"hub,omitempty"`
+	// Specifies the image pull policy for the Istio images. one of Always, Never, IfNotPresent.
+	// Defaults to Always if :latest tag is specified, or IfNotPresent otherwise. Cannot be updated.
+	//
+	// More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
+	ImagePullPolicy  k8sv1.PullPolicy `json:"imagePullPolicy,omitempty"`
+	ImagePullSecrets []string         `json:"imagePullSecrets,omitempty"`
 	// Specifies the default namespace for the Istio control plane components.
 	IstioNamespace string `json:"istioNamespace,omitempty"`
 	LogAsJSON      bool   `json:"logAsJson,omitempty"`
@@ -156,6 +180,10 @@ type GlobalConfig struct {
 	// If set it to false, the controller watches all namespaces.
 	OneNamespace           bool `json:"oneNamespace,omitempty"`
 	OperatorManageWebhooks bool `json:"operatorManageWebhooks,omitempty"`
+	// Specifies the k8s priorityClassName for the istio control plane components.
+	//
+	// See https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/#priorityclass
+	PriorityClassName string `json:"priorityClassName,omitempty"`
 	// Specifies how proxies are configured within Istio.
 	Proxy *ProxyConfig `json:"proxy,omitempty"`
 	// Specifies the Configuration for proxy_init container which sets the pods' networking to intercept the inbound/outbound traffic.
@@ -251,6 +279,8 @@ type PilotConfig struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
 	AutoscaleBehavior map[string]string `json:"autoscaleBehavior,omitempty"`
+	// Number of replicas for the ingress gateway Deployment.
+	ReplicaCount uint32 `json:"replicaCount,omitempty"`
 	// Image name used for Pilot.
 	//
 	// This can be set either to image name if hub is also set, or can be set to the full hub:name string.
@@ -269,6 +299,14 @@ type PilotConfig struct {
 	Resources *k8sv1.ResourceRequirements `json:"resources,omitempty"`
 	// Namespace that the configuration management feature is installed into, if different from Pilot namespace.
 	ConfigNamespace string `json:"configNamespace,omitempty"`
+	// Target CPU utilization used in HorizontalPodAutoscaler.
+	//
+	// See https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/
+	CPU *TargetUtilizationConfig `json:"cpu,omitempty"`
+	// K8s node selector.
+	//
+	// See https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
+	NodeSelector *k8sv1.NodeSelector `json:"nodeSelector,omitempty"`
 	// Maximum duration that a sidecar can be connected to a pilot.
 	//
 	// This setting balances out load across pilot instances, but adds some resource overhead.

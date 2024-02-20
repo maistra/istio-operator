@@ -40,12 +40,16 @@ spec:
         tracer: "zipkin"
       proxy_init:
         image: proxyv2
+      # Specify image pull policy if default behavior isn't desired.
+      # Default behavior: latest images will be Always else IfNotPresent.
+      imagePullPolicy: ""
       operatorManageWebhooks: false
       tracer:
         lightstep: {}
         zipkin: {}
         datadog: {}
         stackdriver: {}
+      imagePullSecrets: []
       oneNamespace: false
       configValidation: true
       multiCluster:
@@ -53,8 +57,12 @@ spec:
         clusterName: ""
       omitSidecarInjectorConfigMap: false
       network: ""
+      defaultResources:
+        requests:
+          cpu: 10m
       defaultPodDisruptionBudget:
         enabled: true
+      priorityClassName: ""
       useMCP: false
       sds: {}
       sts:
@@ -68,9 +76,12 @@ spec:
       autoscaleEnabled: true
       autoscaleMin: 1
       autoscaleMax: 5
+      replicaCount: 1
       image: pilot
       traceSampling: 1.0
       env: {}
+      cpu:
+        targetAverageUtilization: 80
       keepaliveMaxServerConnectionAge: 30m
       deploymentLabels:
       podLabels: {}
