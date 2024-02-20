@@ -94,6 +94,8 @@ var _ = BeforeSuite(func() {
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
-	cancel()
+	if cancel != nil {
+		cancel()
+	}
 	Expect(testEnv.Stop()).To(Succeed())
 })
