@@ -135,6 +135,12 @@ func installCRDRole(ctx context.Context, cl client.Client) error {
 				},
 			},
 		}
+
+		if role.role == "view" {
+			crdRole.Rules[0].APIGroups = append(crdRole.Rules[0].APIGroups, "federation.maistra.io", "telemetry.istio.io")
+			crdRole.Rules[1].Resources = append(crdRole.Rules[1].Resources, "servicemeshcontrolplanes", "servicemeshmembers", "servicemeshmemberrolls")
+		}
+
 		existingRole := crdRole.DeepCopy()
 		if err := cl.Get(ctx, client.ObjectKey{Name: crdRole.Name}, existingRole); err == nil {
 			if !reflect.DeepEqual(existingRole.Rules, crdRole.Rules) {
