@@ -23,21 +23,21 @@ import (
 // Resource describes the source of configuration
 type Resource int32
 
-type AccessLogEncoding int32
+type MeshConfigAccessLogEncoding int32
 
 // Default Policy for upgrading http1.1 connections to http2.
-type H2UpgradePolicy int32
+type MeshConfigH2UpgradePolicy int32
 
 type OutboundTrafficPolicyMode int32
 
 // TraceContext selects the context propagation headers used for
 // distributed tracing.
-type ExtensionProviderOpenCensusAgentTracingProviderTraceContext int32
+type MeshConfigExtensionProviderOpenCensusAgentTracingProviderTraceContext int32
 
-type ProxyPathNormalizationNormalizationType int32
+type MeshConfigProxyPathNormalizationNormalizationType int32
 
 // TLS protocol versions.
-type TLSConfigTLSProtocol int32
+type MeshConfigTLSConfigTLSProtocol int32
 
 // MeshConfig defines mesh-wide settings for the Istio service mesh.
 type MeshConfig struct {
@@ -81,7 +81,7 @@ type MeshConfig struct {
 	AccessLogFormat string `json:"accessLogFormat,omitempty"`
 	// Encoding for the proxy access log (`TEXT` or `JSON`).
 	// Default value is `TEXT`.
-	AccessLogEncoding AccessLogEncoding `json:"accessLogEncoding,omitempty"`
+	AccessLogEncoding MeshConfigAccessLogEncoding `json:"accessLogEncoding,omitempty"`
 	// This flag enables Envoy's gRPC Access Log Service.
 	// See [Access Log Service](https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/access_loggers/grpc/v3/als.proto)
 	// for details about Envoy's gRPC Access Log Service API.
@@ -110,7 +110,7 @@ type MeshConfig struct {
 	// `OutboundTrafficPolicy` in the [Sidecar
 	// API](https://istio.io/docs/reference/config/networking/sidecar/#OutboundTrafficPolicy).
 	// Default mode is `ALLOW_ANY` which means outbound traffic to unknown destinations will be allowed.
-	OutboundTrafficPolicy *OutboundTrafficPolicy `json:"outboundTrafficPolicy,omitempty"`
+	OutboundTrafficPolicy *MeshConfigOutboundTrafficPolicy `json:"outboundTrafficPolicy,omitempty"`
 	// ConfigSource describes a source of configuration data for networking
 	// rules, and other Istio configuration artifacts. Multiple data sources
 	// can be configured for a single control plane.
@@ -144,7 +144,7 @@ type MeshConfig struct {
 	// are automatically added by Istiod.
 	// The CA certificate that signs the workload certificates is automatically added by Istio Agent.
 	// +kubebuilder:validation:MaxItems=100
-	CaCertificates []*CertificateData `json:"caCertificates,omitempty"`
+	CaCertificates []*MeshConfigCertificateData `json:"caCertificates,omitempty"`
 	// The default value for the ServiceEntry.export_to field and services
 	// imported through container registry integrations, e.g. this applies to
 	// Kubernetes Service resources. The value is a list of namespace names and
@@ -203,7 +203,7 @@ type MeshConfig struct {
 	// if sidecar is installed on all pods in the mesh, then this should be set to `UPGRADE`.
 	// If one or more services or namespaces do not have sidecar(s), then this should be set to `DO_NOT_UPGRADE`.
 	// It can be enabled by destination using the `destinationRule.trafficPolicy.connectionPool.http.h2UpgradePolicy` override.
-	H2UpgradePolicy H2UpgradePolicy `json:"h2UpgradePolicy,omitempty"`
+	H2UpgradePolicy MeshConfigH2UpgradePolicy `json:"h2UpgradePolicy,omitempty"`
 	// Name to be used while emitting statistics for inbound clusters. The same pattern is used while computing stat prefix for
 	// network filters like TCP and Redis.
 	// By default, Istio emits statistics with the pattern `inbound|<port>|<port-name>|<service-FQDN>`.
@@ -253,9 +253,9 @@ type MeshConfig struct {
 	// Defines a list of extension providers that extend Istio's functionality. For example, the AuthorizationPolicy
 	// can be used with an extension provider to delegate the authorization decision to a custom authorization system.
 	// +kubebuilder:validation:MaxItems=100
-	ExtensionProviders []*ExtensionProvider `json:"extensionProviders,omitempty"`
+	ExtensionProviders []*MeshConfigExtensionProvider `json:"extensionProviders,omitempty"`
 	// Specifies extension providers to use by default in Istio configuration resources.
-	DefaultProviders *DefaultProviders `json:"defaultProviders,omitempty"`
+	DefaultProviders *MeshConfigDefaultProviders `json:"defaultProviders,omitempty"`
 	// A list of Kubernetes selectors that specify the set of namespaces that Istio considers when
 	// computing configuration updates for sidecars. This can be used to reduce Istio's computational load
 	// by limiting the number of entities (including services, pods, and endpoints) that are watched and processed.
@@ -287,7 +287,7 @@ type MeshConfig struct {
 	// authorization policy match and enforcement in inbound direction (server proxy), and the URL
 	// path proxied to the upstream service.
 	// If not set, the NormalizationType.DEFAULT configuration will be used.
-	PathNormalization *ProxyPathNormalization `json:"pathNormalization,omitempty"`
+	PathNormalization *MeshConfigProxyPathNormalization `json:"pathNormalization,omitempty"`
 	// Configure the default HTTP retry policy.
 	// The default number of retry attempts is set at 2 for these errors:
 	//
@@ -316,11 +316,11 @@ type MeshConfig struct {
 	// Configuration of mTLS for traffic between workloads with ISTIO_MUTUAL TLS traffic.
 	//
 	// Note: Mesh mTLS does not respect ECDH curves.
-	MeshMTLS *TLSConfig `json:"meshMTLS,omitempty"`
+	MeshMTLS *MeshConfigTLSConfig `json:"meshMTLS,omitempty"`
 	// Configuration of TLS for all traffic except for ISTIO_MUTUAL mode.
 	// Currently, this supports configuration of ecdh_curves and cipher_suites only.
 	// For ISTIO_MUTUAL TLS settings, use meshMTLS configuration.
-	TLSDefaults *TLSConfig `json:"tlsDefaults,omitempty"`
+	TlsDefaults *MeshConfigTLSConfig `json:"tlsDefaults,omitempty"`
 }
 
 // ConfigSource describes information about a configuration store inside a
@@ -340,20 +340,20 @@ type ConfigSource struct {
 	SubscribedResources []Resource `json:"subscribedResources,omitempty"`
 }
 
-type OutboundTrafficPolicy struct {
+type MeshConfigOutboundTrafficPolicy struct {
 	Modetype OutboundTrafficPolicyMode `json:"mode,omitempty"`
 }
 
 // +kubebuilder:validation:XValidation:message="At most one of [pem spiffeBundleUrl] should be set",rule="[has(self.pem), has(self.spiffeBundleUrl)].exists_one(x,x)"
-type CertificateData struct {
+type MeshConfigCertificateData struct {
 	// The PEM data of the certificate.
-	Pem string `json:"pem,omitempty"` // oneof
+	Pem string `json:"pem,omitempty"`
 	// The SPIFFE bundle endpoint URL that complies to:
 	// https://github.com/spiffe/spiffe/blob/master/standards/SPIFFE_Trust_Domain_and_Bundle.md#the-spiffe-trust-domain-and-bundle
 	// The endpoint should support authentication based on Web PKI:
 	// https://github.com/spiffe/spiffe/blob/master/standards/SPIFFE_Trust_Domain_and_Bundle.md#521-web-pki
 	// The certificate is retrieved from the endpoint.
-	SpiffeBundleURL string `json:"spiffeBundleUrl,omitempty"` // oneof
+	SpiffeBundleUrl string `json:"spiffeBundleUrl,omitempty"`
 	// Optional. Specify the kubernetes signers (External CA) that use this trustAnchor
 	// when Istiod is acting as RA(registration authority)
 	// If set, they are used for these signers. Otherwise, this trustAnchor is used for all signers.
@@ -370,7 +370,7 @@ type CertificateData struct {
 	TrustDomains []string `json:"trustDomains,omitempty"`
 }
 
-type CA struct {
+type MeshConfigCA struct {
 	// REQUIRED. Address of the CA server implementing the Istio CA gRPC API.
 	// Can be IP address or a fully qualified DNS name with port
 	// Eg: custom-ca.default.svc.cluster.local:8932, 192.168.23.2:9000
@@ -394,34 +394,34 @@ type CA struct {
 
 // +kubebuilder:validation:XValidation:message="At most one of [envoyExtAuthzHttp envoyExtAuthzGrpc zipkin datadog stackdriver skywalking opentelemetry prometheus envoyFileAccessLog envoyHttpAls envoyTcpAls envoyOtelAls] should be set",rule="[has(self.envoyExtAuthzHttp), has(self.envoyExtAuthzGrpc), has(self.zipkin), has(self.datadog), has(self.stackdriver), has(self.skywalking), has(self.opentelemetry), has(self.prometheus), has(self.envoyFileAccessLog), has(self.envoyHttpAls), has(self.envoyTcpAls), has(self.envoyOtelAls)].exists_one(x,x)"
 // +kubebuilder:validation:MaxProperties=2
-type ExtensionProvider struct {
+type MeshConfigExtensionProvider struct {
 	// REQUIRED. A unique name identifying the extension provider.
 	// +kubebuilder:validation:Required
 	Name string `json:"name"`
 	// Configures an external authorizer that implements the Envoy ext_authz filter authorization check service using the HTTP API.
-	EnvoyExtAuthzHTTP *ExtensionProviderEnvoyExternalAuthorizationHTTPProvider `json:"envoyExtAuthzHttp,omitempty"` // oneof
+	EnvoyExtAuthzHttp *MeshConfigExtensionProviderEnvoyExternalAuthorizationHttpProvider `json:"envoyExtAuthzHttp,omitempty"`
 	// Configures an external authorizer that implements the Envoy ext_authz filter authorization check service using the gRPC API.
-	EnvoyExtAuthzGrpc *ExtensionProviderEnvoyExternalAuthorizationGrpcProvider `json:"envoyExtAuthzGrpc,omitempty"` // oneof
+	EnvoyExtAuthzGrpc *MeshConfigExtensionProviderEnvoyExternalAuthorizationGrpcProvider `json:"envoyExtAuthzGrpc,omitempty"`
 	// Configures a tracing provider that uses the Zipkin API.
-	Zipkin *ExtensionProviderZipkinTracingProvider `json:"zipkin,omitempty"` // oneof
+	Zipkin *MeshConfigExtensionProviderZipkinTracingProvider `json:"zipkin,omitempty"`
 	// Configures a Datadog tracing provider.
-	Datadog *ExtensionProviderDatadogTracingProvider `json:"datadog,omitempty"` // oneof
+	Datadog *MeshConfigExtensionProviderDatadogTracingProvider `json:"datadog,omitempty"`
 	// Configures a Stackdriver provider.
-	Stackdriver *ExtensionProviderStackdriverProvider `json:"stackdriver,omitempty"` // oneof
+	Stackdriver *MeshConfigExtensionProviderStackdriverProvider `json:"stackdriver,omitempty"`
 	// Configures a Apache SkyWalking provider.
-	Skywalking *ExtensionProviderSkyWalkingTracingProvider `json:"skywalking,omitempty"` // oneof
+	Skywalking *MeshConfigExtensionProviderSkyWalkingTracingProvider `json:"skywalking,omitempty"`
 	// Configures an OpenTelemetry tracing provider.
-	Opentelemetry *ExtensionProviderOpenTelemetryTracingProvider `json:"opentelemetry,omitempty"` // oneof
+	Opentelemetry *MeshConfigExtensionProviderOpenTelemetryTracingProvider `json:"opentelemetry,omitempty"`
 	// Configures a Prometheus metrics provider.
-	Prometheus *ExtensionProviderPrometheusMetricsProvider `json:"prometheus,omitempty"` // oneof
+	Prometheus *MeshConfigExtensionProviderPrometheusMetricsProvider `json:"prometheus,omitempty"`
 	// Configures an Envoy File Access Log provider.
-	EnvoyFileAccessLog *ExtensionProviderEnvoyFileAccessLogProvider `json:"envoyFileAccessLog,omitempty"` // oneof
+	EnvoyFileAccessLog *MeshConfigExtensionProviderEnvoyFileAccessLogProvider `json:"envoyFileAccessLog,omitempty"`
 	// Configures an Envoy Access Logging Service provider for HTTP traffic.
-	EnvoyHTTPAls *ExtensionProviderEnvoyHTTPGrpcV3LogProvider `json:"envoyHttpAls,omitempty"` // oneof
+	EnvoyHttpAls *MeshConfigExtensionProviderEnvoyHttpGrpcV3LogProvider `json:"envoyHttpAls,omitempty"`
 	// Configures an Envoy Access Logging Service provider for TCP traffic.
-	EnvoyTCPAls *ExtensionProviderEnvoyTCPGrpcV3LogProvider `json:"envoyTcpAls,omitempty"` // oneof
+	EnvoyTcpAls *MeshConfigExtensionProviderEnvoyTcpGrpcV3LogProvider `json:"envoyTcpAls,omitempty"`
 	// Configures an Envoy Open Telemetry Access Logging Service provider.
-	EnvoyOtelAls *ExtensionProviderEnvoyOpenTelemetryLogProvider `json:"envoyOtelAls,omitempty"` // oneof
+	EnvoyOtelAls *MeshConfigExtensionProviderEnvoyOpenTelemetryLogProvider `json:"envoyOtelAls,omitempty"`
 }
 
 // Holds the name references to the providers that will be used by default
@@ -429,7 +429,7 @@ type ExtensionProvider struct {
 //
 // These names must match a provider defined in `extension_providers` that is
 // one of the supported tracing providers.
-type DefaultProviders struct {
+type MeshConfigDefaultProviders struct {
 	// Name of the default provider(s) for tracing.
 	Tracing []string `json:"tracing,omitempty"`
 	// Name of the default provider(s) for metrics.
@@ -438,18 +438,18 @@ type DefaultProviders struct {
 	AccessLogging []string `json:"accessLogging,omitempty"`
 }
 
-type ProxyPathNormalization struct {
-	Normalization ProxyPathNormalizationNormalizationType `json:"normalization,omitempty"`
+type MeshConfigProxyPathNormalization struct {
+	Normalization MeshConfigProxyPathNormalizationNormalizationType `json:"normalization,omitempty"`
 }
 
-type TLSConfig struct {
+type MeshConfigTLSConfig struct {
 	// Optional: the minimum TLS protocol version. The default minimum
 	// TLS version will be TLS 1.2. As servers may not be Envoy and be
 	// set to TLS 1.2 (e.g., workloads using mTLS without sidecars), the
 	// minimum TLS version for clients may also be TLS 1.2.
 	// In the current Istio implementation, the maximum TLS protocol version
 	// is TLS 1.3.
-	MinProtocolVersion TLSConfigTLSProtocol `json:"minProtocolVersion,omitempty"`
+	MinProtocolVersion MeshConfigTLSConfigTLSProtocol `json:"minProtocolVersion,omitempty"`
 	// Optional: If specified, the TLS connection will only support the specified ECDH curves for the DH key exchange.
 	// If not specified, the default curves enforced by Envoy will be used. For details about the default curves, refer to
 	// [Ecdh Curves](https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/transport_sockets/tls/v3/common.proto).
@@ -468,7 +468,7 @@ type TLSConfig struct {
 }
 
 // Settings for the selected services.
-type ServiceSettingsSettings struct {
+type MeshConfigServiceSettingsSettings struct {
 	// If true, specifies that the client and service endpoints must reside in the same cluster.
 	// By default, in multi-cluster deployments, the Istio control plane assumes all service
 	// endpoints to be reachable from any client in any of the clusters which are part of the
@@ -489,7 +489,7 @@ type ServiceSettingsSettings struct {
 	ClusterLocal bool `json:"clusterLocal,omitempty"`
 }
 
-type ExtensionProviderEnvoyExternalAuthorizationRequestBody struct {
+type MeshConfigExtensionProviderEnvoyExternalAuthorizationRequestBody struct {
 	// Sets the maximum size of a message body that the ext-authz filter will hold in memory.
 	// If max_request_bytes is reached, and allow_partial_message is false, Envoy will return a 413 (Payload Too Large).
 	// Otherwise the request will be sent to the provider with a partial message.
@@ -508,7 +508,7 @@ type ExtensionProviderEnvoyExternalAuthorizationRequestBody struct {
 	PackAsBytes bool `json:"packAsBytes,omitempty"`
 }
 
-type ExtensionProviderEnvoyExternalAuthorizationHTTPProvider struct {
+type MeshConfigExtensionProviderEnvoyExternalAuthorizationHttpProvider struct {
 	// REQUIRED. Specifies the service that implements the Envoy ext_authz HTTP authorization service.
 	// The format is `[<Namespace>/]<Hostname>`. The specification of `<Namespace>` is required only when it is insufficient
 	// to unambiguously resolve a service in the service registry. The `<Hostname>` is a fully qualified host name of a
@@ -554,7 +554,7 @@ type ExtensionProviderEnvoyExternalAuthorizationHTTPProvider struct {
 	// Note that client request of the same key or headers specified in include_request_headers_in_check will be overridden.
 	IncludeAdditionalHeadersInCheck map[string]string `json:"includeAdditionalHeadersInCheck,omitempty"`
 	// If set, the client request body will be included in the authorization request sent to the authorization service.
-	IncludeRequestBodyInCheck *ExtensionProviderEnvoyExternalAuthorizationRequestBody `json:"includeRequestBodyInCheck,omitempty"`
+	IncludeRequestBodyInCheck *MeshConfigExtensionProviderEnvoyExternalAuthorizationRequestBody `json:"includeRequestBodyInCheck,omitempty"`
 	// List of headers from the authorization service that should be added or overridden in the original request and
 	// forwarded to the upstream when the authorization check result is allowed (HTTP code 200).
 	// If not specified, the original request will not be modified and forwarded to backend as-is.
@@ -596,7 +596,7 @@ type ExtensionProviderEnvoyExternalAuthorizationHTTPProvider struct {
 	HeadersToDownstreamOnAllow []string `json:"headersToDownstreamOnAllow,omitempty"`
 }
 
-type ExtensionProviderEnvoyExternalAuthorizationGrpcProvider struct {
+type MeshConfigExtensionProviderEnvoyExternalAuthorizationGrpcProvider struct {
 	// REQUIRED. Specifies the service that implements the Envoy ext_authz gRPC authorization service.
 	// The format is `[<Namespace>/]<Hostname>`. The specification of `<Namespace>` is required only when it is insufficient
 	// to unambiguously resolve a service in the service registry. The `<Hostname>` is a fully qualified host name of a
@@ -620,12 +620,12 @@ type ExtensionProviderEnvoyExternalAuthorizationGrpcProvider struct {
 	// The default status is "403" (HTTP Forbidden).
 	StatusOnError string `json:"statusOnError,omitempty"`
 	// If set, the client request body will be included in the authorization request sent to the authorization service.
-	IncludeRequestBodyInCheck *ExtensionProviderEnvoyExternalAuthorizationRequestBody `json:"includeRequestBodyInCheck,omitempty"`
+	IncludeRequestBodyInCheck *MeshConfigExtensionProviderEnvoyExternalAuthorizationRequestBody `json:"includeRequestBodyInCheck,omitempty"`
 }
 
 // Defines configuration for a Zipkin tracer.
 
-type ExtensionProviderZipkinTracingProvider struct {
+type MeshConfigExtensionProviderZipkinTracingProvider struct {
 	// REQUIRED. Specifies the service that the Zipkin API.
 	// The format is `[<Namespace>/]<Hostname>`. The specification of `<Namespace>` is required only when it is insufficient
 	// to unambiguously resolve a service in the service registry. The `<Hostname>` is a fully qualified host name of a
@@ -649,7 +649,7 @@ type ExtensionProviderZipkinTracingProvider struct {
 // Note: Lightstep has moved to OpenTelemetry-based integrations. Istio 1.15+
 // will generate OpenTelemetry-compatible configuration when using this option.
 
-type ExtensionProviderLightstepTracingProvider struct {
+type MeshConfigExtensionProviderLightstepTracingProvider struct {
 	// REQUIRED. Specifies the service for the Lightstep collector.
 	// The format is `[<Namespace>/]<Hostname>`. The specification of `<Namespace>` is required only when it is insufficient
 	// to unambiguously resolve a service in the service registry. The `<Hostname>` is a fully qualified host name of a
@@ -670,7 +670,7 @@ type ExtensionProviderLightstepTracingProvider struct {
 
 // Defines configuration for a Datadog tracer.
 
-type ExtensionProviderDatadogTracingProvider struct {
+type MeshConfigExtensionProviderDatadogTracingProvider struct {
 	// REQUIRED. Specifies the service for the Datadog agent.
 	// The format is `[<Namespace>/]<Hostname>`. The specification of `<Namespace>` is required only when it is insufficient
 	// to unambiguously resolve a service in the service registry. The `<Hostname>` is a fully qualified host name of a
@@ -689,7 +689,7 @@ type ExtensionProviderDatadogTracingProvider struct {
 
 // Defines configuration for a SkyWalking tracer.
 
-type ExtensionProviderSkyWalkingTracingProvider struct {
+type MeshConfigExtensionProviderSkyWalkingTracingProvider struct {
 	// REQUIRED. Specifies the service for the SkyWalking receiver.
 	// The format is `[<Namespace>/]<Hostname>`. The specification of `<Namespace>` is required only when it is insufficient
 	// to unambiguously resolve a service in the service registry. The `<Hostname>` is a fully qualified host name of a
@@ -711,12 +711,12 @@ type ExtensionProviderSkyWalkingTracingProvider struct {
 // alongside any OpenCensus provider configuration. This is due to a limitation in the implementation of OpenCensus
 // driver in Envoy.
 
-type ExtensionProviderStackdriverProvider struct {
+type MeshConfigExtensionProviderStackdriverProvider struct {
 	// Optional. Controls the overall path length allowed in a reported span.
 	// NOTE: currently only controls max length of the path tag.
 	MaxTagLength uint32 `json:"maxTagLength,omitempty"`
 	// Optional. Controls Stackdriver logging behavior.
-	Logging *ExtensionProviderStackdriverProviderLogging `json:"logging,omitempty"`
+	Logging *MeshConfigExtensionProviderStackdriverProviderLogging `json:"logging,omitempty"`
 }
 
 // Defines configuration for an OpenCensus tracer writing to an OpenCensus backend.
@@ -730,7 +730,7 @@ type ExtensionProviderStackdriverProvider struct {
 // NOTE: Stackdriver tracing uses OpenCensus configuration under the hood and, as a result, cannot be used
 // alongside OpenCensus provider configuration.
 
-type ExtensionProviderOpenCensusAgentTracingProvider struct {
+type MeshConfigExtensionProviderOpenCensusAgentTracingProvider struct {
 	// REQUIRED. Specifies the service for the OpenCensusAgent.
 	// The format is `[<Namespace>/]<Hostname>`. The specification of `<Namespace>` is required only when it is insufficient
 	// to unambiguously resolve a service in the service registry. The `<Hostname>` is a fully qualified host name of a
@@ -746,29 +746,29 @@ type ExtensionProviderOpenCensusAgentTracingProvider struct {
 	// tracing. Default is `["W3C_TRACE_CONTEXT"]`. If multiple values are specified,
 	// the proxy will attempt to read each header for each request and will
 	// write all headers.
-	Context []ExtensionProviderOpenCensusAgentTracingProviderTraceContext `json:"context,omitempty"`
+	Context []MeshConfigExtensionProviderOpenCensusAgentTracingProviderTraceContext `json:"context,omitempty"`
 	// Optional. Controls the overall path length allowed in a reported span.
 	// NOTE: currently only controls max length of the path tag.
 	MaxTagLength uint32 `json:"maxTagLength,omitempty"`
 }
 
-type ExtensionProviderPrometheusMetricsProvider struct{}
+type MeshConfigExtensionProviderPrometheusMetricsProvider struct{}
 
 // Defines configuration for Envoy-based access logging that writes to
 // local files (and/or standard streams).
-type ExtensionProviderEnvoyFileAccessLogProvider struct {
+type MeshConfigExtensionProviderEnvoyFileAccessLogProvider struct {
 	// Path to a local file to write the access log entries.
 	// This may be used to write to streams, via `/dev/stderr` and `/dev/stdout`
 	// If unspecified, defaults to `/dev/stdout`.
 	Path string `json:"path,omitempty"`
 	// Optional. Allows overriding of the default access log format.
-	LogFormat *ExtensionProviderEnvoyFileAccessLogProviderLogFormat `json:"logFormat,omitempty"`
+	LogFormat *MeshConfigExtensionProviderEnvoyFileAccessLogProviderLogFormat `json:"logFormat,omitempty"`
 }
 
 // Defines configuration for an Envoy [Access Logging Service](https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/access_loggers/grpc/v3/als.proto#grpc-access-log-service-als)
 // integration for HTTP traffic.
 
-type ExtensionProviderEnvoyHTTPGrpcV3LogProvider struct {
+type MeshConfigExtensionProviderEnvoyHttpGrpcV3LogProvider struct {
 	// REQUIRED. Specifies the service that implements the Envoy ALS gRPC authorization service.
 	// The format is `[<Namespace>/]<Hostname>`. The specification of `<Namespace>` is required only when it is insufficient
 	// to unambiguously resolve a service in the service registry. The `<Hostname>` is a fully qualified host name of a
@@ -798,7 +798,7 @@ type ExtensionProviderEnvoyHTTPGrpcV3LogProvider struct {
 // Defines configuration for an Envoy [Access Logging Service](https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/access_loggers/grpc/v3/als.proto#grpc-access-log-service-als)
 // integration for TCP traffic.
 
-type ExtensionProviderEnvoyTCPGrpcV3LogProvider struct {
+type MeshConfigExtensionProviderEnvoyTcpGrpcV3LogProvider struct {
 	// REQUIRED. Specifies the service that implements the Envoy ALS gRPC authorization service.
 	// The format is `[<Namespace>/]<Hostname>`. The specification of `<Namespace>` is required only when it is insufficient
 	// to unambiguously resolve a service in the service registry. The `<Hostname>` is a fully qualified host name of a
@@ -821,7 +821,7 @@ type ExtensionProviderEnvoyTCPGrpcV3LogProvider struct {
 
 // Defines configuration for an Envoy [OpenTelemetry (gRPC) Access Log](https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/access_loggers/open_telemetry/v3/logs_service.proto)
 
-type ExtensionProviderEnvoyOpenTelemetryLogProvider struct {
+type MeshConfigExtensionProviderEnvoyOpenTelemetryLogProvider struct {
 	// REQUIRED. Specifies the service that implements the Envoy ALS gRPC authorization service.
 	// The format is `[<Namespace>/]<Hostname>`. The specification of `<Namespace>` is required only when it is insufficient
 	// to unambiguously resolve a service in the service registry. The `<Hostname>` is a fully qualified host name of a
@@ -839,12 +839,12 @@ type ExtensionProviderEnvoyOpenTelemetryLogProvider struct {
 	LogName string `json:"logName,omitempty"`
 	// Optional. Format for the proxy access log
 	// Empty value results in proxy's default access log format, following Envoy access logging formatting.
-	LogFormat *ExtensionProviderEnvoyOpenTelemetryLogProviderLogFormat `json:"logFormat,omitempty"`
+	LogFormat *MeshConfigExtensionProviderEnvoyOpenTelemetryLogProviderLogFormat `json:"logFormat,omitempty"`
 }
 
 // Defines configuration for an OpenTelemetry tracing backend. Istio 1.16.1 or higher is needed.
 
-type ExtensionProviderOpenTelemetryTracingProvider struct {
+type MeshConfigExtensionProviderOpenTelemetryTracingProvider struct {
 	// REQUIRED. Specifies the OpenTelemetry endpoint that will receive OTLP traces.
 	// The format is `[<Namespace>/]<Hostname>`. The specification of `<Namespace>` is required only when it is insufficient
 	// to unambiguously resolve a service in the service registry. The `<Hostname>` is a fully qualified host name of a
@@ -861,7 +861,7 @@ type ExtensionProviderOpenTelemetryTracingProvider struct {
 	MaxTagLength uint32 `json:"maxTagLength,omitempty"`
 }
 
-type ExtensionProviderStackdriverProviderLogging struct {
+type MeshConfigExtensionProviderStackdriverProviderLogging struct {
 	// Collection of tag names and tag expressions to include in the log
 	// entry. Conflicts are resolved by the tag name by overriding previously
 	// supplied values.
@@ -875,7 +875,7 @@ type ExtensionProviderStackdriverProviderLogging struct {
 }
 
 // +kubebuilder:validation:XValidation:message="At most one of [text labels] should be set",rule="[has(self.text), has(self.labels)].exists_one(x,x)"
-type ExtensionProviderEnvoyFileAccessLogProviderLogFormat struct {
+type MeshConfigExtensionProviderEnvoyFileAccessLogProviderLogFormat struct {
 	// Textual format for the envoy access logs. Envoy [command operators](https://www.envoyproxy.io/docs/envoy/latest/configuration/observability/access_log/usage#command-operators) may be
 	// used in the format. The [format string documentation](https://www.envoyproxy.io/docs/envoy/latest/configuration/observability/access_log/usage#config-access-log-format-strings)
 	// provides more information.
@@ -883,7 +883,7 @@ type ExtensionProviderEnvoyFileAccessLogProviderLogFormat struct {
 	// NOTE: Istio will insert a newline ('\n') on all formats (if missing).
 	//
 	// Example: `text: "%LOCAL_REPLY_BODY%:%RESPONSE_CODE%:path=%REQ(:path)%"`
-	Text string `json:"text,omitempty"` // oneof
+	Text string `json:"text,omitempty"`
 	// JSON structured format for the envoy access logs. Envoy [command operators](https://www.envoyproxy.io/docs/envoy/latest/configuration/observability/access_log/usage#command-operators)
 	// can be used as values for fields within the Struct. Values are rendered
 	// as strings, numbers, or boolean values, as appropriate
@@ -899,10 +899,10 @@ type ExtensionProviderEnvoyFileAccessLogProviderLogFormat struct {
 	//	message: "%LOCAL_REPLY_BODY%"
 	//
 	// ```
-	Labels map[string]string `json:"labels,omitempty"` // oneof
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
-type ExtensionProviderEnvoyOpenTelemetryLogProviderLogFormat struct {
+type MeshConfigExtensionProviderEnvoyOpenTelemetryLogProviderLogFormat struct {
 	// Textual format for the envoy access logs. Envoy [command operators](https://www.envoyproxy.io/docs/envoy/latest/configuration/observability/access_log/usage#command-operators) may be
 	// used in the format. The [format string documentation](https://www.envoyproxy.io/docs/envoy/latest/configuration/observability/access_log/usage#config-access-log-format-strings)
 	// provides more information.
