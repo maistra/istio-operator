@@ -41,7 +41,7 @@ func getEnvOrDefault(key, defaultValue string) string {
 		return defaultValue
 	}
 
-	GinkgoWriter.Println("Env variable %s is set to %s\n", key, value)
+	GinkgoWriter.Printf("Env variable %s is set to %s\n", key, value)
 
 	return value
 }

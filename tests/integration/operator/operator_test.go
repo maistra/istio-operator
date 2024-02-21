@@ -51,7 +51,7 @@ var _ = Describe("Operator", func() {
 
 			It("for every istio version in version.yaml file", func() {
 				for _, version := range istioVersions {
-					fmt.Print("Deploying Istio Control Plane for version: ", version)
+					fmt.Print("\nDeploying Istio Control Plane for version: ", version)
 					deployIstioControlPlane(version)
 
 					Expect(istioControlPlaneIsInstalledAndRunning(version)).To(Equal(true))
