@@ -28,6 +28,11 @@ defaults:
     # Set to `type: RuntimeDefault` to use the default profile if available.
     seccompProfile: {}
 
+    # keep in sync with settings used when installing the Istio CNI chart
+    cni:
+      enabled: false
+      chained: true
+
     # Additional container arguments
     extraContainerArgs: []
 
@@ -64,8 +69,6 @@ defaults:
     # the default MCP is assumed.
     configSource:
       subscribedResources: []
-
-    plugins: []
 
     # The following is used to limit how long a sidecar can be connected
     # to a pilot. It balances out load across pilot instances at the cost of
@@ -216,7 +219,7 @@ defaults:
     # Dev builds from prow are on gcr.io
     hub: gcr.io/istio-testing
     # Default tag for Istio images.
-    tag: 1.22-alpha.ffed2074bd92a84b9bd87577e41226c3cfac1a9b
+    tag: 1.22-alpha.9519be203a8b64d82e096e0c82af2b1a17b8f15f
     # Variant of the image to use.
     # Currently supported are: [debug, distroless]
     variant: ""
@@ -486,8 +489,3 @@ defaults:
   base:
     # For istioctl usage to disable istio config crds in base
     enableIstioConfigCRDs: true
-
-    #  keep in sync with settings used when installing the Istio CNI chart
-  istio_cni:
-    enabled: false
-    chained: true
