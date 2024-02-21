@@ -304,7 +304,7 @@ gen-manifests: controller-gen ## Generate WebhookConfiguration and CustomResourc
 
 .PHONY: gen-code
 gen-code: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
-	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+	$(CONTROLLER_GEN) object:headerFile="common/scripts/copyright-banner-go.txt" paths="./..."
 
 .PHONY: gen-charts
 gen-charts: ## Pull charts from maistra/istio repository
