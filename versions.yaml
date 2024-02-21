@@ -57,13 +57,13 @@ versions:
   - name: latest
     repo: https://github.com/istio/istio
     branch: master
-    commit: ffed2074bd92a84b9bd87577e41226c3cfac1a9b
+    commit: 8bfb4f950022c7c4553e71a6c867b7e1a6506fcd
     charts:
-      - https://storage.googleapis.com/istio-build/dev/1.22-alpha.ffed2074bd92a84b9bd87577e41226c3cfac1a9b/helm/base-1.22-alpha.ffed2074bd92a84b9bd87577e41226c3cfac1a9b.tgz
-      - https://storage.googleapis.com/istio-build/dev/1.22-alpha.ffed2074bd92a84b9bd87577e41226c3cfac1a9b/helm/cni-1.22-alpha.ffed2074bd92a84b9bd87577e41226c3cfac1a9b.tgz
-      - https://storage.googleapis.com/istio-build/dev/1.22-alpha.ffed2074bd92a84b9bd87577e41226c3cfac1a9b/helm/gateway-1.22-alpha.ffed2074bd92a84b9bd87577e41226c3cfac1a9b.tgz
-      - https://storage.googleapis.com/istio-build/dev/1.22-alpha.ffed2074bd92a84b9bd87577e41226c3cfac1a9b/helm/istiod-1.22-alpha.ffed2074bd92a84b9bd87577e41226c3cfac1a9b.tgz
-      - https://storage.googleapis.com/istio-build/dev/1.22-alpha.ffed2074bd92a84b9bd87577e41226c3cfac1a9b/helm/ztunnel-1.22-alpha.ffed2074bd92a84b9bd87577e41226c3cfac1a9b.tgz
+      - https://storage.googleapis.com/istio-build/dev/1.22-alpha.8bfb4f950022c7c4553e71a6c867b7e1a6506fcd/helm/base-1.22-alpha.8bfb4f950022c7c4553e71a6c867b7e1a6506fcd.tgz
+      - https://storage.googleapis.com/istio-build/dev/1.22-alpha.8bfb4f950022c7c4553e71a6c867b7e1a6506fcd/helm/cni-1.22-alpha.8bfb4f950022c7c4553e71a6c867b7e1a6506fcd.tgz
+      - https://storage.googleapis.com/istio-build/dev/1.22-alpha.8bfb4f950022c7c4553e71a6c867b7e1a6506fcd/helm/gateway-1.22-alpha.8bfb4f950022c7c4553e71a6c867b7e1a6506fcd.tgz
+      - https://storage.googleapis.com/istio-build/dev/1.22-alpha.8bfb4f950022c7c4553e71a6c867b7e1a6506fcd/helm/istiod-1.22-alpha.8bfb4f950022c7c4553e71a6c867b7e1a6506fcd.tgz
+      - https://storage.googleapis.com/istio-build/dev/1.22-alpha.8bfb4f950022c7c4553e71a6c867b7e1a6506fcd/helm/ztunnel-1.22-alpha.8bfb4f950022c7c4553e71a6c867b7e1a6506fcd.tgz
   # Temporary PoC that uses a branch in our fork of istio/istio
   - name: gwAPIControllerMode
     repo: https://github.com/maistra/istio
