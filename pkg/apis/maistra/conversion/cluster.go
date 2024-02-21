@@ -406,8 +406,9 @@ func populateClusterConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 			} else if err != nil {
 				return err
 			}
+			ingressGateway := make(map[string]interface{})
 			if ingressEnabled, ok, err := multiClusterOverrides.GetFieldNoCopy("ingressEnabled"); ok {
-				if ingressGateway, ok, err := v1.NewHelmValues(gateways).GetMap("istio-ingressgateway"); ok && len(ingressGateway) > 0 {
+				if ingressEnabled == nil || !ok || len(ingressGateway) == 0 {
 					if ingressEnabled == nil {
 						delete(ingressGateway, "enabled")
 					} else {
@@ -419,22 +420,22 @@ func populateClusterConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 					} else {
 						gateways["istio-ingressgateway"] = ingressGateway
 					}
-					updateGateways = true
+					updateGateways = false
 				} else if err != nil {
 					return nil
 				}
 			} else if err != nil {
 				return nil
 			}
-			if egressGateway, ok, err := v1.NewHelmValues(gateways).GetMap("istio-egressgateway"); ok && len(egressGateway) > 0 {
-				updateEgress := false
-				if egressEnabled, ok, err := multiClusterOverrides.GetFieldNoCopy("egressEnabled"); ok {
+			egressGateway := make(map[string]interface{})
+			if egressEnabled, ok, err := multiClusterOverrides.GetFieldNoCopy("egressEnabled"); ok {
+				if egressEnabled == nil || !ok || len(egressGateway) == 0 {
 					if egressEnabled == nil {
 						delete(egressGateway, "enabled")
 					} else {
 						egressGateway["enabled"] = egressEnabled
 					}
-					updateEgress = true
+					updateGateways = false
 				} else if err != nil {
 					return nil
 				}
@@ -442,7 +443,7 @@ func populateClusterConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 					if requestedNetworkView, ok, err := v1.NewHelmValues(egressGateway).GetAndRemoveString("env.ISTIO_META_REQUESTED_NETWORK_VIEW"); ok {
 						newRequestedNetworkView := externalRequestedNetworkRegex.ReplaceAllString(requestedNetworkView, "$1")
 						if newRequestedNetworkView != requestedNetworkView && newRequestedNetworkView != "" {
-							updateEgress = true
+							updateGateways = true
 							if err := setHelmStringValue(egressGateway, "env.ISTIO_META_REQUESTED_NETWORK_VIEW", newRequestedNetworkView); err != nil {
 								return err
 							}
@@ -450,7 +451,7 @@ func populateClusterConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 						// cleanup for to avoid extraneous empty ClusterEgress
 						if env, ok, err := v1.NewHelmValues(egressGateway).GetMap("env"); ok && len(env) == 0 {
 							delete(egressGateway, "env")
-							updateEgress = true
+							updateGateways = true
 						} else if err != nil {
 							return err
 						}
@@ -460,7 +461,7 @@ func populateClusterConfig(in *v1.HelmValues, out *v2.ControlPlaneSpec) error {
 				} else if err != nil {
 					return err
 				}
-				if updateEgress {
+				if updateGateways {
 					if shouldDeleteGatewayValues(egressGateway) {
 						// only element should be name
 						delete(gateways, "istio-egressgateway")
