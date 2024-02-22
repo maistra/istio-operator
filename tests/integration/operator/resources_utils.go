@@ -25,7 +25,9 @@ import (
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
-	"gopkg.in/yaml.v2"
+
+	"maistra.io/istio-operator/api/v1alpha1"
+	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -535,13 +537,20 @@ func readAndReplaceVersionInManifest(version string) (string, error) {
 		return "", err
 	}
 
-	// Replace version
-	var istio Istio
+	// Unmarshal YAML into custom Istio struct
+	var istio v1alpha1.Istio
 	if err := yaml.Unmarshal(istioManifest, &istio); err != nil {
 		return "", err
 	}
-	istio.Spec.Version = version
-	yaml, err := yaml.Marshal(&istio)
 
-	return string(yaml), err
+	// Modify version
+	istio.Spec.Version = version
+
+	// Marshal custom Istio struct back to YAML
+	yamlBytes, err := yaml.Marshal(&istio)
+	if err != nil {
+		return "", err
+	}
+
+	return string(yamlBytes), nil
 }
