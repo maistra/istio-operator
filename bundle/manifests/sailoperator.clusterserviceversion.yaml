@@ -23,7 +23,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/istio-operator:3.0-latest
-    createdAt: "2024-02-22T03:06:21Z"
+    createdAt: "2024-02-23T03:05:03Z"
     description: Experimental operator for installing Istio service mesh
     features.operators.openshift.io/cnf: "false"
     features.operators.openshift.io/cni: "true"
@@ -233,7 +233,7 @@ spec:
     - v1.20.1
     - v1.19.7
     - v1.19.6
-    - latest (55f12a68)
+    - latest (58b485d3)
     - gwAPIControllerMode
 
     [See this page](https://github.com/maistra/istio-operator/blob/maistra-3.0/bundle/README.md) for instructions on how to use it.
