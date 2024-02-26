@@ -36,7 +36,7 @@ or
 $ make BUILD_WITH_CONTAINER=0 test.integration.ocp
 ```
 
-## Defaults settings for the test
+## Settings for integration test execution
 
 The defaults settings define the behavior of the test run. The following are the default settings for the test run and they are changed by running the make target for KinD or OCP:
 
