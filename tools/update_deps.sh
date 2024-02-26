@@ -31,10 +31,10 @@ function getLatestVersion() {
 # Update common files
 make update-common
 
-# Update go dependencies
+# Update go dependencies (skipped until cachito supports 1.22, see https://issues.redhat.com/browse/OSSM-5988)
 export GO111MODULE=on
-go get -u "istio.io/istio@${UPDATE_BRANCH}"
-go get -u "istio.io/client-go@${UPDATE_BRANCH}"
+# go get -u "istio.io/istio@${UPDATE_BRANCH}"
+# go get -u "istio.io/client-go@${UPDATE_BRANCH}"
 go mod tidy
 
 # Update operator-sdk
