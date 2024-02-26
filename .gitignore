@@ -13,7 +13,7 @@ Dockerfile.cross
 *.test
 
 # Test results
-test-results.xml
+report.xml
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out

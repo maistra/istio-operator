@@ -16,73 +16,115 @@ package integrationoperator
 
 import (
 	"fmt"
+	"path/filepath"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Operator", func() {
-	BeforeEach(func() {
-		// Add there code to run before each test if needed
-	})
+var _ = Describe("Operator", Ordered, func() {
+	SetDefaultEventuallyTimeout(60 * time.Second)
+	SetDefaultEventuallyPollingInterval(time.Second)
 
-	When("a fresh cluster exist", func() {
-		It("the operator can be installed", func() {
-			By("using the helm chart with default values")
-			GinkgoWriter.Println("Deploying Operator using default helm charts located in /chart folder")
-
-			// This is only for downstream testing, because the operator will be installed previously in CI pipeline
+	Describe("operator installation", func() {
+		// TODO: we  need to support testing both types of deployment for the operator, helm and olm via subscription.
+		// Discuss with the team if we should add a flag to the test to enable the olm deployment and don't do that deployment in different step
+		When("helm manifest are applied", func() {
 			if skipDeploy == "true" {
 				Skip("Skipping the deployment of the operator and the tests")
 			} else {
-				deployOperator()
+				Eventually(deployOperator).Should(Succeed())
 			}
 
-			Expect(operatorIsRunning()).To(Equal(true))
-		})
-	})
-
-	When("the operator is installed", func() {
-		Context("a control plane can be installed and uninstalled", func() {
-			istioVersions, err := getIstioVersions("/work/versions.yaml")
-			if err != nil {
-				Fail(fmt.Sprintf("Error getting istio versions from version.yaml file: %v", err))
-			}
-
-			It("for every istio version in version.yaml file", func() {
-				for _, version := range istioVersions {
-					fmt.Print("\nDeploying Istio Control Plane for version: ", version)
-					deployIstioControlPlane(version)
-
-					Expect(istioControlPlaneIsInstalledAndRunning(version)).To(Equal(true))
-					Expect(checkOnlyIstioIsDeployed(controlPlaneNamespace)).To(Equal(true))
-
-					if ocp == "true" {
-						// CNI Daemon is deployed only in OCP clusters
-						Expect(cniDaemonIsDeployed(namespace)).To(Equal(true))
-					} else {
-						Expect(cniDaemonIsDeployed(namespace)).To(Equal(false))
-					}
-
-					undeployIstioControlPlane(version)
-
-					Expect(checkNamespaceEmpty(controlPlaneNamespace)).To(Equal(true))
-
-					// Delete the namespace and check if deleted to be able to install the next version
-					// TODO: check if this can be moved to a after each test
-					Expect(deleteAndCheckNamespaceIsDeleted()).To(Equal(true))
-				}
+			It("the operator is running", func() {
+				Eventually(getOperatorState).Should(Equal("Running"))
 			})
 		})
 	})
 
-	When("the operator is installed", func() {
-		It("can be uninstalled", func() {
-			GinkgoWriter.Println("Un-Deploying Operator by using helm templates generated")
+	Describe("installation and unistallation of the istio control plane", func() {
+		baseDir := filepath.Dir(filepath.Dir(filepath.Dir(wd)))
+		istioVersions, err := getIstioVersions(filepath.Join(baseDir, "versions.yaml"))
+		if err != nil {
+			Fail(fmt.Sprintf("Error getting istio versions from version.yaml file: %v", err))
+		}
 
-			undeployOperator()
+		for _, version := range istioVersions {
+			Context(fmt.Sprintf("for supported version %s", version), func() {
+				When(fmt.Sprintf("the istio control plane is installed with version %s", version), func() {
+					BeforeAll(func() {
+						Eventually(createNamespaceIfNotExists).WithArguments(controlPlaneNamespace).Should(Succeed())
+						Eventually(deployIstioControlPlane).WithArguments(version).Should(Succeed())
 
-			Expect(operatorIsRunning()).To(Equal(false))
+						DeferCleanup(func() {
+							Eventually(deleteNamespace).WithArguments(controlPlaneNamespace).Should(Succeed())
+							Eventually(namespaceIsDeleted).WithArguments(controlPlaneNamespace).Should(Equal(true))
+						})
+					})
+
+					It("istio resource is ready and running", func() {
+						Eventually(waitForIstioCondition).WithArguments(command, istioName, "Reconciled").Should(Succeed())
+						Eventually(waitForIstioCondition).WithArguments(command, istioName, "Ready").Should(Succeed())
+
+						istiodPodName, err := getPodNameFromLabel(controlPlaneNamespace, "app=istiod")
+						if err != nil {
+							Fail("Error getting pod name from deployment")
+						}
+
+						Eventually(getPodPhase).WithArguments(controlPlaneNamespace, istiodPodName).Should(Equal("Running"))
+					})
+
+					It("the istio resource version match the installed version", func() {
+						Expect(getInstalledIstioVersion()).Should(Equal(version))
+					})
+
+					It("istio resource stopped reconciling", func() {
+						Eventually(checkIstioStoppedReconciling).WithTimeout(120 * time.Second).Should(Succeed())
+					})
+
+					It("only istiod is deployed", func() {
+						Expect(checkOnlyIstioIsDeployed(controlPlaneNamespace)).To(Equal(true))
+					})
+
+					It("the cni deployment daemon behavior is the expected", func() {
+						if ocp == "true" {
+							Eventually(cniDaemonIsDeployed).WithArguments(namespace).Should(Equal(true))
+
+							podName, err := getPodNameFromLabel(namespace, "k8s-app=istio-cni-node")
+							if err != nil {
+								Fail("Error getting pod name from deployment")
+							}
+							Eventually(getPodPhase).WithArguments(namespace, podName).Should(Equal("Running"))
+
+						} else {
+							Eventually(cniDaemonIsDeployed).WithArguments(namespace).Should(Equal(false))
+						}
+					})
+
+					When("the istio control plane is uninstalled", func() {
+						BeforeEach(func() {
+							Eventually(undeployIstioControlPlane).WithArguments(version).Should(Succeed())
+						})
+
+						It("the istio control plane is uninstalled", func() {
+							Eventually(namespaceEmpty).WithArguments(controlPlaneNamespace).Should(Equal(true))
+						})
+					})
+				})
+			})
+		}
+	})
+
+	Describe("operator uninstallation", func() {
+		When("is deleted the operator manifest from the cluster", func() {
+			BeforeEach(func() {
+				Eventually(undeployOperator).Should(Succeed())
+			})
+
+			It("the operator it's deleted", func() {
+				Eventually(podExist).WithArguments(namespace, "control-plane=istio-operator").Should(Equal(false))
+			})
 		})
 	})
 })

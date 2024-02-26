@@ -47,3 +47,29 @@ The following environment variables define the behavior of the test run:
 * NAMESPACE=istio-operator - The namespace where the operator will be deployed and the test will run.
 * CONTROL_PLANE_NS=istio-system - The namespace where the control plane will be deployed.
 * DEPLOYMENT_NAME=istio-operator - The name of the operator deployment.
+
+## Get test definitions for the integration test
+
+The integration test suite is defined in the `tests/integration/operator` directory. If you want to check the test definition without running the test, you can use the following make target:
+
+```
+$ make test.integration.describe
+```
+
+When you run this target, the test definitions will be printed to the console with format `indent`. For example:
+    
+```
+Name,Text,Start,End,Spec,Focused,Pending,Labels
+Describe,Operator,702,2757,false,false,false,""
+    BeforeEach,,733,810,false,false,false,""
+    When,a fresh cluster exist,813,1344,false,false,false,""
+        It,the operator can be installed,854,1340,true,false,false,""
+            By,using the helm chart with default values,902,948,false,false,false,""
+    When,the operator is installed,1347,2509,false,false,false,""
+        Context,a control plane can be installed and uninstalled,1392,2505,false,false,false,""
+            It,for every istio version in version.yaml file,1640,2500,true,false,false,""
+    When,the operator is installed,2512,2754,false,false,false,""
+        It,can be uninstalled,2557,2750,true,false,false,""
+```
+
+This can be used to show the actual coverage of the test suite.

@@ -27,6 +27,7 @@ check_arguments() {
 parse_flags() {
   SKIP_BUILD=false
   SKIP_DEPLOY=false
+  DESCRIBE=false
   while [ $# -gt 0 ]; do
     case "$1" in
       --ocp)
@@ -45,12 +46,22 @@ parse_flags() {
         shift
         SKIP_DEPLOY=true
         ;;
+      --describe)
+        shift
+        DESCRIBE=true
+        ;;
       *)
         echo "Invalid flag: $1"
         exit 1
         ;;
     esac
   done
+
+  if [ "${DESCRIBE}" == "true" ]; then
+    WD=$(dirname "$0")
+    go run github.com/onsi/ginkgo/v2/ginkgo outline -format indent "${WD}"/operator/operator_test.go 
+    exit 0
+  fi
 
   if [ "${OCP}" == "true" ]; then
     echo "Running on OCP"
@@ -182,4 +193,4 @@ if [ "${OCP}" == "true" ]; then
 fi
 
 # Run the go test passing the env variables defined that are going to be used in the operator tests
-IMAGE="${HUB}/${IMAGE_BASE}:${TAG}" SKIP_DEPLOY="${SKIP_DEPLOY}" OCP="${OCP}" ISTIO_MANIFEST="${ISTIO_MANIFEST}" NAMESPACE="${NAMESPACE}" CONTROL_PLANE_NS="${CONTROL_PLANE_NS}" DEPLOYMENT_NAME="${DEPLOYMENT_NAME}" ISTIO_NAME="${ISTIO_NAME}" COMMAND="${COMMAND}" go test -count=1 -v -timeout 30m "${WD}"/operator/... | tee /dev/stderr | go-junit-report > test-results.xml
+IMAGE="${HUB}/${IMAGE_BASE}:${TAG}" SKIP_DEPLOY="${SKIP_DEPLOY}" OCP="${OCP}" ISTIO_MANIFEST="${ISTIO_MANIFEST}" NAMESPACE="${NAMESPACE}" CONTROL_PLANE_NS="${CONTROL_PLANE_NS}" DEPLOYMENT_NAME="${DEPLOYMENT_NAME}" ISTIO_NAME="${ISTIO_NAME}" COMMAND="${COMMAND}" go run github.com/onsi/ginkgo/v2/ginkgo -v --timeout 30m --junit-report=report.xml "${WD}"/operator/...

@@ -145,7 +145,7 @@ export
 ##@ Testing
 
 .PHONY: test
-test: envtest ## Run tests. Workaround to avoid the exexcution of the integration tests in folder tests/integration/operator
+test: envtest ## Run unit tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test `go list ./... |grep -v tests/integration/operator` -coverprofile cover.out
 
 .PHONY: test.scorecard ## Runs the operator scorecard test. Needs a valid k8s cluster as pointed by the KUBECONFIG variable
@@ -159,6 +159,10 @@ test.integration.ocp:
 .PHONY: test.integration.kind
 test.integration.kind:
 	${SOURCE_DIR}/tests/integration/integ-suite-kind.sh
+
+.PHONY: test.integration.describe
+test.integration.describe:
+	${SOURCE_DIR}/tests/integration/common-operator-integ-suite.sh --describe
 
 ##@ Build
 

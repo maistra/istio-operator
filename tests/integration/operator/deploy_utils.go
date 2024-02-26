@@ -31,8 +31,10 @@ var istioYaml string
 
 // deployOperator deploys the operator to either an OpenShift cluster or a Kubernetes cluster based on the value of the 'ocp' variable.
 // The operator will be deployed in the namespace specified by the 'namespace' variable.
-func deployOperator() {
+func deployOperator() error {
 	var err error
+
+	GinkgoWriter.Println("Deploying Operator using default helm charts located in /chart folder")
 
 	if ocp == "true" {
 		GinkgoWriter.Println("Deploying to OpenShift cluster")
@@ -44,14 +46,16 @@ func deployOperator() {
 
 	if err != nil {
 		GinkgoWriter.Println("Error deploying operator:", err)
-		Fail("Error deploying operator")
+		return err
 	}
+
+	return nil
 }
 
 // undeployOperator is a function that undeploys the operator from either an OpenShift cluster or a Kubernetes cluster.
 // If the 'ocp' variable is set to "true", the operator will be undeployed from the OpenShift cluster.
 // Otherwise, it will be undeployed from the Kubernetes cluster.
-func undeployOperator() {
+func undeployOperator() error {
 	var err error
 
 	if ocp == "true" {
@@ -64,20 +68,15 @@ func undeployOperator() {
 
 	if err != nil {
 		GinkgoWriter.Println("Error undeploying operator:", err)
-		Fail("Error undeploying operator")
+		return err
 	}
+
+	return nil
 }
 
 // deployIstioControlPlane deploys the Istio control plane with the specified version.
 // The control panel will be installed in the namespace specified by the 'controlPlaneNamespace' variable.
-func deployIstioControlPlane(version string) {
-	GinkgoWriter.Println("Deploying Istio Control Plane for version:", version)
-
-	if err := createNamespaceIfNotExists(controlPlaneNamespace); err != nil {
-		GinkgoWriter.Println("Error creating namespace:", err)
-		Fail("Error creating namespace")
-	}
-
+func deployIstioControlPlane(version string) error {
 	// Deploy Istio control plane
 	err := deploy("istio", version)
 	if err != nil {
@@ -86,19 +85,21 @@ func deployIstioControlPlane(version string) {
 	}
 
 	GinkgoWriter.Println("Istio control plane deployed successfully")
+	return nil
 }
 
 // undeployIstioControlPlane undeploys the Istio Control Plane for a specific version.
-func undeployIstioControlPlane(version string) {
+func undeployIstioControlPlane(version string) error {
 	GinkgoWriter.Println("Undeploying Istio Control Plane for version:", version)
 
 	err := undeploy("istio", version)
 	if err != nil {
 		GinkgoWriter.Println("Error undeploying Istio control plane:", err)
-		Fail("Error undeploying Istio control plane")
+		return err
 	}
 
 	GinkgoWriter.Println("Istio control plane undeployed successfully")
+	return nil
 }
 
 // deploy deploys the specified platform.
@@ -137,10 +138,8 @@ func processDeploy(platform string, action Action, version string) error {
 		var yamlString string
 		if platform == "istio" {
 			// Deploy Istio control plane
-			GinkgoWriter.Println("Deploying Istio Control Plane for version: ", version)
 			yamlString, err = readAndReplaceVersionInManifest(version)
 			istioYaml = yamlString
-			GinkgoWriter.Println("Deploying Istio Control Plane using the following manifest: ", yamlString)
 			if err != nil {
 				GinkgoWriter.Println("Error updating Istio manifest:", err)
 				return err
@@ -160,7 +159,6 @@ func processDeploy(platform string, action Action, version string) error {
 
 	} else if action == Undeploy {
 		if platform == "istio" {
-			GinkgoWriter.Println("Undeploying Istio Control Plane for version: ", version)
 			if err := deleteFromYamlString(istioYaml); err != nil {
 				GinkgoWriter.Println("Error deleting Istio manifest:", err)
 				return err

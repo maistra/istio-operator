@@ -16,7 +16,6 @@ package integrationoperator
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -25,14 +24,9 @@ import (
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
-
+	. "github.com/onsi/gomega"
 	"maistra.io/istio-operator/api/v1alpha1"
 	"sigs.k8s.io/yaml"
-)
-
-const (
-	maxRetries = 10
-	retryDelay = 5 * time.Second
 )
 
 type Version struct {
@@ -54,11 +48,10 @@ func getYamlFromHelmTemplate(namespace string, image string, args []string) ([]b
 
 	baseDir := filepath.Dir(filepath.Dir(filepath.Dir(wd)))
 	GinkgoWriter.Println("The base working directory is: ", baseDir)
-
 	cmd.Dir = baseDir
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		GinkgoWriter.Printf("Error running Helm template: %s", err)
+		GinkgoWriter.Printf("Error running Helm template: %s\n", err)
 		return nil, err
 	}
 
@@ -99,53 +92,46 @@ func processYamlString(output string, action Action) error {
 
 		cmd.Stdin = bytes.NewBufferString(doc)
 
-		for i := 0; i < maxRetries; i++ {
-			// Create a new instance of exec.Cmd for each retry
-			cmdRetry := exec.Command(cmd.Args[0], cmd.Args[1:]...)
-			cmdRetry.Stdin = cmd.Stdin
-
-			if err := cmdRetry.Run(); err != nil {
-				GinkgoWriter.Printf("Error running kubectl apply/delete: %s", err)
-				if i < maxRetries-1 {
-					GinkgoWriter.Printf("Retrying after %v...", retryDelay)
-					time.Sleep(retryDelay)
-				} else {
-					return err
-				}
-			} else {
-				break
+		if output, err := cmd.CombinedOutput(); err != nil {
+			// Workaround for when the Eventually fails and retry the deletion of the entire yaml string again
+			if strings.Contains(string(output), "not found") {
+				continue
 			}
-		}
 
+			GinkgoWriter.Printf("Error running kubectl command: %v\n", err)
+			GinkgoWriter.Printf("Output: %s\n", output)
+			return err
+		}
 	}
 	return nil
 }
 
-// Check if the operator is running.
-// It checks if the istio-operator pod is running and the istio-operator deployment is available in 'namespace' defined from the env var.
-func operatorIsRunning() bool {
-	GinkgoWriter.Printf("Check Operator is Running, POD: NAMESPACE: \"%s\"   POD NAME: \"%s\"", namespace, deploymentName)
+// Check the current state of the operator.
+// It checks if the istio-operator exist, the current statue and if the deployment is available.
+func getOperatorState() (string, error) {
+	GinkgoWriter.Printf("Check Operator state, POD: NAMESPACE: \"%s\"   POD NAME: \"%s\"\n", namespace, deploymentName)
+
+	err := checkDeploymentAvailable(namespace, deploymentName)
+	if err != nil {
+		GinkgoWriter.Printf("Error checking deployment available: %v\n", err)
+		return "", err
+	}
 
 	podName, err := getPodNameFromLabel(namespace, "control-plane=istio-operator")
 	if err != nil {
-		GinkgoWriter.Printf("Error getting pod name from deployment: %v", err)
-		return false
+		GinkgoWriter.Printf("Error getting pod name from deployment: %v\n", err)
+		return "", err
 	}
+	GinkgoWriter.Printf("Pod name: %s\n", podName)
+	Expect(podName).To(ContainSubstring(deploymentName))
 
-	GinkgoWriter.Printf("Pod name: %s", podName)
-	err = checkPodRunning(namespace, podName)
+	podPhase, err := getPodPhase(namespace, podName)
 	if err != nil {
-		GinkgoWriter.Printf("Error checking pod running: %v\n", err)
-		return false
+		GinkgoWriter.Printf("Error checking pod phase: %v\n", err)
+		return podPhase, err
 	}
 
-	err = checkDeploymentAvailable(namespace, deploymentName)
-	if err != nil {
-		GinkgoWriter.Printf("Error checking deployment available: %v\n", err)
-		return false
-	}
-
-	return true
+	return podPhase, nil
 }
 
 // istioControlPlaneIsInstalledAndRunning checks if the Istio control plane is installed and running.
@@ -154,89 +140,46 @@ func operatorIsRunning() bool {
 // Finally, it checks if the installed Istio version matches the expected version.
 // Returns:
 // - bool: true if the Istio control plane is installed and running, false otherwise.
-func istioControlPlaneIsInstalledAndRunning(version string) bool {
-	err := waitForIstioCondition(command, istioName, "Reconciled")
-	if err != nil {
-		GinkgoWriter.Printf("Error waiting for Istio to be reconciled: %v", err)
-		return false
-	}
+// func istioControlPlaneIsRunning(version string) bool {
+// 	checkIstioLogs()
 
-	GinkgoWriter.Println("Istio control plane reconciled successfully")
+// 	// Check that the istio version installed is the expected one
 
-	err = waitForIstioCondition(command, istioName, "Ready")
-	if err != nil {
-		GinkgoWriter.Printf("Error waiting for Istio to be ready: %v", err)
-		return false
-	}
+// 	return true
+// }
 
-	GinkgoWriter.Println("Istio ready successfully")
-
-	podName, err := getPodNameFromLabel(controlPlaneNamespace, "app=istiod")
-	if err != nil {
-		GinkgoWriter.Printf("Error getting pod name from deployment: %v", err)
-		Fail("Error getting pod name from deployment")
-	}
-
-	for i := 0; i < maxRetries; i++ {
-		err := checkPodRunning(controlPlaneNamespace, podName)
-		if err != nil {
-			GinkgoWriter.Printf("Error checking pod running: %v\n", err)
-			if i < maxRetries-1 {
-				GinkgoWriter.Printf("Retrying after %v...", retryDelay)
-				time.Sleep(retryDelay)
-			} else {
-				return false
-			}
-		} else {
-			// If the pod is running, break the loop
-			break
-		}
-	}
-	// Sleep 60s to settle down the control plane
-	time.Sleep(60 * time.Second)
-
-	checkIstioLogs()
-
-	// Check that the istio version installed is the expected one
-	verifyInstalledIstioVersion(version)
-
-	return true
-}
-
-// Verify the installed Istio version match the provided version
-// If the installed version does not match the expected version, it fails the test
-func verifyInstalledIstioVersion(version string) {
+// Get the installed Istio
+// Returns:
+// - string: The installed Istio version.
+func getInstalledIstioVersion() string {
 	cmd := exec.Command(command, "get", "istio", istioName, "-n", controlPlaneNamespace, "-o", "jsonpath={.spec.version}")
-	istioVersion, err := cmd.CombinedOutput()
+	istioVersion, err := cmd.Output()
 	if err != nil {
-		GinkgoWriter.Printf("Error getting istio version: %v, output: %s", err, istioVersion)
-		Fail("Error getting istio version")
+		GinkgoWriter.Printf("Error getting istio version: %v, output: %s\n", err, istioVersion)
+		return ""
 	}
-	GinkgoWriter.Printf("Istio version installed in the namespace %s: %s\n", controlPlaneNamespace, string(istioVersion))
+	istioVersionStr := strings.TrimSpace(string(istioVersion))
+	GinkgoWriter.Printf("Istio version installed in the namespace %s: %s\n", controlPlaneNamespace, istioVersionStr)
 
-	if strings.TrimSpace(string(istioVersion)) != version {
-		GinkgoWriter.Printf("Expected istio version %s, but got %s\n", version, string(istioVersion))
-		Fail("Expected istio version does not match the installed version")
-	}
+	return istioVersionStr
 }
 
 // Check if the istio-operator has stopped reconciling the resource
-func checkIstioLogs() {
-	GinkgoWriter.Println("Check that the operator has stopped reconciling the resource (waiting 30s)")
+func checkIstioStoppedReconciling() error {
 	last30secondsOfLog, err := captureLast30SecondsOfLog()
 	if err != nil {
-		GinkgoWriter.Printf("Error capturing last 30 seconds of log: %v", err)
-		Fail("Error capturing last 30 seconds of log")
+		GinkgoWriter.Printf("Error capturing last 30 seconds of log: %v\n", err)
+		return err
 	}
 
 	if strings.Contains(last30secondsOfLog, "Reconciliation done") {
-		GinkgoWriter.Println("Expected istio-operator to stop reconciling the resource, but it didn't:")
-		GinkgoWriter.Println(last30secondsOfLog)
-		GinkgoWriter.Printf("Note: The above log was captured at %s", time.Now().Format(time.RFC3339))
-		Fail("Expected istio-operator to stop reconciling the resource, but it didn't")
+		GinkgoWriter.Println("Expected istio-operator to stop reconciling the resource, but it didn't")
+		GinkgoWriter.Printf("Log was captured at %s\n", time.Now().Format(time.RFC3339))
+		return fmt.Errorf("expected istio-operator to stop reconciling the resource, but it didn't")
 	}
 
 	GinkgoWriter.Println("Reconciliation done successfully")
+	return nil
 }
 
 // waitForIstioCondition waits for a specific condition to be true for an Istio resource.
@@ -248,6 +191,8 @@ func waitForIstioCondition(command, istioName, condition string) error {
 	if err != nil {
 		return fmt.Errorf("error executing command: %v, output: %s", err, output)
 	}
+
+	GinkgoWriter.Println(fmt.Sprintf("Istio %s is %s", istioName, condition))
 	return nil
 }
 
@@ -269,46 +214,21 @@ func captureLast30SecondsOfLog() (string, error) {
 	return strings.TrimSpace(stdout.String()), nil
 }
 
-// Check if the pod is running
-// checkPodRunning checks the status of a pod in a given namespace.
-// It retrieves the current phase of the pod and waits for it to be in the "Running" state.
-// If the pod is not running after 12 attempts, it returns an error.
+// getPodPhase
+// It retrieves the current phase of a pod in the specified namespace.
 // Returns:
+// - status: The current phase of the pod.
 // - error: An error if the pod is not running.
-func checkPodRunning(ns, podName string) error {
-	// Get and print the current phase of the pod
-	status := exec.Command(command, "get", "pod", podName, "-n", ns, "-o", "jsonpath={.status.phase}")
-	podStatus, err := status.CombinedOutput()
+func getPodPhase(ns, podName string) (string, error) {
+	cmd := exec.Command(command, "get", "pod", podName, "-n", ns, "-o", "jsonpath={.status.phase}")
+	podPhase, err := cmd.CombinedOutput()
 	if err != nil {
-		Fail(fmt.Sprintf("error getting pod status: %v, output: %s", err, string(podStatus)))
-		return fmt.Errorf("error getting pod status: %v, output: %s", err, string(podStatus))
-	}
-	GinkgoWriter.Printf("Istio pod status: %s", string(podStatus))
-
-	for i := 0; i < maxRetries; i++ {
-		if strings.Contains(string(podStatus), "Running") {
-			GinkgoWriter.Println("Istio pod is running")
-			break
-		}
-		GinkgoWriter.Println("Waiting for the pod to be running...")
-		time.Sleep(retryDelay)
-
-		// Run the command again to check pod status
-		status := exec.Command(command, "get", "pod", podName, "-n", ns, "-o", "jsonpath={.status.phase}")
-		podStatus, err = status.CombinedOutput()
-		if err != nil {
-			Fail(fmt.Sprintf("error getting pod status: %v, output: %s", err, string(podStatus)))
-			return fmt.Errorf("error getting pod status: %v, output: %s", err, string(podStatus))
-		}
-
-		GinkgoWriter.Printf("Istio pod current status: %s\n", string(podStatus))
+		return string(podPhase), fmt.Errorf("error getting pod status: %v, output: %s", err, string(podPhase))
 	}
 
-	if !strings.Contains(string(podStatus), "Running") {
-		return fmt.Errorf("istio pod is not running")
-	}
+	GinkgoWriter.Printf("Current pod %s status: %s\n", podName, string(podPhase))
 
-	return nil
+	return string(podPhase), nil
 }
 
 // Check deployment is available
@@ -318,7 +238,7 @@ func checkPodRunning(ns, podName string) error {
 // Returns:
 // - An error if the deployment is not available within the timeout, otherwise nil.
 func checkDeploymentAvailable(ns, deploymentName string) error {
-	GinkgoWriter.Printf("Check Deployment Available: NAMESPACE: \"%s\"   DEPLOYMENT NAME: \"%s\"", ns, deploymentName)
+	GinkgoWriter.Printf("Check Deployment Available: NAMESPACE: \"%s\"   DEPLOYMENT NAME: \"%s\"\n", ns, deploymentName)
 
 	waitDeploymentCommand := exec.Command(command, "wait", "deployment", deploymentName, "-n", ns, "--for", "condition=Available=True", "--timeout", timeout)
 
@@ -327,6 +247,7 @@ func checkDeploymentAvailable(ns, deploymentName string) error {
 		return fmt.Errorf("error waiting for deployment: %v, output: %s", err, waitOutput)
 	}
 
+	GinkgoWriter.Println(fmt.Sprintf("Deployment %s is available", deploymentName))
 	return nil
 }
 
@@ -334,25 +255,18 @@ func checkDeploymentAvailable(ns, deploymentName string) error {
 // checkOnlyIstioIsDeployed checks if only the Istio deployment is present in the specified namespace.
 // It returns true if only the Istio deployment is found, otherwise false.
 func checkOnlyIstioIsDeployed(ns string) bool {
-	GinkgoWriter.Printf("Check that only istio resources are deployed in the namespace %s", ns)
+	GinkgoWriter.Printf("Check that only istio resources are deployed in the namespace %s\n", ns)
 
-	deployments := exec.Command(command, "get", "deployments", "-n", ns, "-o", "jsonpath={.items[*].metadata.name}")
-	deploymentsOutput, err := deployments.CombinedOutput()
+	deploymentsCmd := exec.Command(command, "get", "deployments", "-n", ns, "-o", "jsonpath={.items[*].metadata.name}")
+	deploymentsOutput, err := deploymentsCmd.Output()
 	if err != nil {
 		Fail(fmt.Sprintf("error getting deployments: %v, output: %s", err, deploymentsOutput))
 	}
-	GinkgoWriter.Printf("Deployments in the namespace: %s", string(deploymentsOutput))
 
-	deploymentsList := strings.Split(string(deploymentsOutput), " ")
+	deploymentsList := strings.Fields(string(deploymentsOutput))
 
-	// Check if the last element is an empty string and remove it
-	if deploymentsList[len(deploymentsList)-1] == "" {
-		deploymentsList = deploymentsList[:len(deploymentsList)-1]
-	}
-
-	// Check that only the istio deployment is present
-	if len(deploymentsList) != 1 {
-		GinkgoWriter.Printf("Expected only 1 deployment, but got %d", len(deploymentsList))
+	if len(deploymentsList) != 1 || deploymentsList[0] != "istiod" {
+		GinkgoWriter.Printf("Expected only 1 deployment with name 'istiod', but got %d deployments\n", len(deploymentsList))
 		return false
 	}
 
@@ -368,73 +282,58 @@ func createNamespaceIfNotExists(namespace string) error {
 	return nil
 }
 
-// checkNamespaceEmpty checks if the specified namespace is empty by verifying if there are any resources present in the namespace.
-// It prints the deployments in the namespace and returns true if the namespace is empty, otherwise returns false.
-func checkNamespaceEmpty(ns string) bool {
-	GinkgoWriter.Printf("Check that the namespace %s is empty after the undeploy", ns)
+// namespaceEmpty checks if the specified namespace is empty by verifying if there are any resources present in the namespace.
+// Returns:
+// - true if the namespace is empty, false otherwise.
+func namespaceEmpty(ns string) bool {
+	GinkgoWriter.Printf("Check that the namespace %s is empty after the undeploy\n", ns)
 
-	// We need to wait for the namespace to be empty because the undeploy process is not immediate
-	if err := waitForNamespaceEmpty(ns); err != nil {
-		GinkgoWriter.Println("Error waiting for namespace to be empty:", err)
-		return false
+	cmd := exec.Command(command, "get", "all", "-n", ns)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		Fail(fmt.Sprintf("error getting all resources in namespace: %v, output: %s", err, output))
 	}
 
-	GinkgoWriter.Printf("Namespace %s is empty", controlPlaneNamespace)
-	return true
-}
-
-// waitForNamespaceEmpty waits for the specified namespace to be empty by checking if there are any resources present in the namespace.
-func waitForNamespaceEmpty(ns string) error {
-	for i := 0; i < maxRetries; i++ {
-		cmd := exec.Command(command, "get", "all", "-n", ns)
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			return err
-		}
-
-		if strings.Contains(string(output), "No resources found in") {
-			return nil
-		}
-
-		GinkgoWriter.Println("Namespace is not empty, waiting 10 seconds to check again")
-		time.Sleep(retryDelay)
+	if strings.Contains(string(output), "No resources found in") {
+		return true
 	}
-	return errors.New("namespace still not empty after waiting")
+
+	GinkgoWriter.Println("Resources in the namespace: ", ns)
+	GinkgoWriter.Println(string(output))
+	return false
 }
 
-// namespaceIsDeleted delete the namespace and checks if the namespace is deleted.
-// It attempts to delete the namespace and verifies if it still exists.
-// If the namespace is deleted, it returns true. Otherwise, it returns false.
-func deleteAndCheckNamespaceIsDeleted() bool {
-	GinkgoWriter.Printf("Delete namespace: %s", controlPlaneNamespace)
+func deleteNamespace(ns string) error {
+	GinkgoWriter.Printf("Delete namespace: %s\n", controlPlaneNamespace)
 
 	cmd := exec.Command(command, "delete", "namespace", controlPlaneNamespace)
 	if err := cmd.Run(); err != nil {
-		GinkgoWriter.Println("Error deleting namespace:", err)
+		return err
 	}
 
-	for i := 0; i < maxRetries; i++ {
-		cmd := exec.Command(command, "get", "namespace", controlPlaneNamespace)
-		if err := cmd.Run(); err == nil {
-			GinkgoWriter.Println("Namespace still exists. Attempting to delete it again.... attempt number ", i)
-		} else {
-			GinkgoWriter.Println("Namespace deleted")
-			return true
-		}
+	return nil
+}
 
-		// Show all resources in the namespace
-		cmd = exec.Command(command, "get", "all", "-n", controlPlaneNamespace)
+// namespaceIsDeleted checks if the specified namespace is deleted or exist
+// If the namespace is deleted, it returns true. Otherwise, it returns false.
+func namespaceIsDeleted(ns string) bool {
+	cmd := exec.Command(command, "get", "namespace", ns)
+	if err := cmd.Run(); err == nil {
+		GinkgoWriter.Println("Namespace still exists...")
+
+		// Show all resources in the namespace for debugging purposes
+		cmd = exec.Command(command, "get", "all", "-n", ns)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			GinkgoWriter.Println("Error getting all resources in namespace:", err)
 		}
-		GinkgoWriter.Println("Resources in the namespace: ", controlPlaneNamespace)
+		GinkgoWriter.Println("Resources in the namespace: ", ns)
 		GinkgoWriter.Println(string(output))
-
-		time.Sleep(retryDelay)
+		return false
 	}
 
-	return false
+	GinkgoWriter.Println("Namespace deleted")
+	return true
 }
 
 // Check if the CNI Daemon is deployed
@@ -442,40 +341,52 @@ func deleteAndCheckNamespaceIsDeleted() bool {
 // It returns true if the CNI Daemon is deployed, false otherwise.
 func cniDaemonIsDeployed(ns string) bool {
 	if ocp == "true" {
-		// Check that the CNI Daemon is deployed when ocp is true
-		for i := 0; i < maxRetries; i++ {
-			cmd := exec.Command(command, "rollout", "status", "ds/istio-cni-node", "-n", ns)
-			if err := cmd.Run(); err != nil {
-				GinkgoWriter.Println("Error checking istio cni:", err)
-				GinkgoWriter.Println("Daemonset istio-cni-node is not deployed, retrying in 10 seconds")
-				time.Sleep(retryDelay)
-			} else {
-				GinkgoWriter.Println("CNI Daemon is deployed")
-				return true
-			}
-		}
-	} else {
-		// On kind cluster the cni daemon is not deployed
-		cmd := exec.Command(command, "get", "daemonset", "-n", ns)
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			GinkgoWriter.Println("Error getting daemonset:", err)
-			GinkgoWriter.Println(string(output))
+		cmd := exec.Command(command, "rollout", "status", "ds/istio-cni-node", "-n", ns)
+		if err := cmd.Run(); err != nil {
+			GinkgoWriter.Println("Error checking istio cni:", err)
 			return false
 		}
-
-		if strings.Contains(string(output), "cni") {
-			GinkgoWriter.Println("Daemonset istio-cni-node is deployed")
-			GinkgoWriter.Println(string(output))
-			return true
-		}
-
-		GinkgoWriter.Println("Daemonset istio-cni-node is not deployed")
-		return false
-
+		GinkgoWriter.Println("CNI Daemon is deployed")
+		return true
 	}
 
-	// We reach this point means the CNI Daemon is not deployed after the retries when ocp is true
+	// On kind cluster the cni daemon is not deployed
+	cmd := exec.Command(command, "get", "daemonset", "-n", ns)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		GinkgoWriter.Println("Error getting daemonset:", err)
+		GinkgoWriter.Println(string(output))
+		return false
+	}
+
+	if strings.Contains(string(output), "cni") {
+		GinkgoWriter.Println("Daemonset istio-cni-node is deployed")
+		GinkgoWriter.Println(string(output))
+		return true
+	}
+
+	GinkgoWriter.Println("Daemonset istio-cni-node is not deployed")
+	return false
+}
+
+// podExist checks that the pod exists in the namespace based in the given label
+// It return nil error if the pod exists, otherwise it returns an error
+func podExist(ns, label string) bool {
+	podName, err := getPodNameFromLabel(ns, label)
+	if err != nil {
+		if strings.Contains(err.Error(), "array index out of bounds") {
+			GinkgoWriter.Printf("Pod %s does not exist\n", podName)
+			return false
+		}
+		GinkgoWriter.Printf("Error getting pod name: %v\n", err)
+		return false
+	}
+
+	if strings.Contains(podName, "istio-operator") {
+		GinkgoWriter.Printf("Pod %s exists\n", podName)
+		return true
+	}
+
 	return false
 }
 

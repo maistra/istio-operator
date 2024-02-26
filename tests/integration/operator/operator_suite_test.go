@@ -31,9 +31,9 @@ func setup() {
 	GinkgoWriter.Println("************ Running Setup ************")
 	if ocp == "true" {
 		GinkgoWriter.Println("Running on OCP cluster")
-		GinkgoWriter.Printf("Absolute Path: %s", wd)
+		GinkgoWriter.Printf("Absolute Path: %s\n", wd)
 	} else {
 		GinkgoWriter.Println("Running on Kubernetes")
-		GinkgoWriter.Printf("Absolute Path: %s", wd)
+		GinkgoWriter.Printf("Absolute Path: %s\n", wd)
 	}
 }
