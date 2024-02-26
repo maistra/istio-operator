@@ -22,7 +22,7 @@ $ make test.integration.kind
 
 Both targets will run setup first by using `integ-suite-ocp.sh` and `integ-suite-kind.sh` scripts respectively, and then run the integration tests using the `common-operator-integ-suite` script setting different flags for OCP and KinD.
 
-Note: By default, the test runs inside a container because the env var `BUILD_WITH_CONTAINER` default value is 1. Take into count that to be able to run the integration tests in a container, you need to have the `Docker` or `podman` installed in your machine. To select the container cli you will need to set the `CONTAINER_CLI` env var to `docker` or `podman` in the `make` command also, the default value is `docker`.
+Note: By default, the test runs inside a container because the env var `BUILD_WITH_CONTAINER` default value is 1. Take into account that to be able to run the integration tests in a container, you need to have `docker` or `podman` installed in your machine. To select the container cli you will also need to set the `CONTAINER_CLI` env var to `docker` or `podman` in the `make` command, the default value is `docker`.
 
 ## Running the test locally
 
