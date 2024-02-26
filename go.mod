@@ -1,8 +1,8 @@
 module maistra.io/istio-operator
 
-go 1.22
+go 1.21
 
-toolchain go1.22.0
+toolchain go1.21.0
 
 // Client-go does not handle different versions of mergo due to some breaking changes - use the matching version
 // This replacement is aligned with istio/istio's go.mod
@@ -18,9 +18,9 @@ require (
 	github.com/pkg/errors v0.9.1
 	gomodules.xyz/jsonpatch/v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
-	helm.sh/helm/v3 v3.14.2
-	istio.io/client-go v1.19.0-alpha.1.0.20240224002631-9aecf55c4c49
-	istio.io/istio v0.0.0-20240225034836-171a216dd6eb
+	helm.sh/helm/v3 v3.14.1
+	istio.io/client-go v1.19.0-alpha.1.0.20240221195622-02d58308125a
+	istio.io/istio v0.0.0-20240221233722-55f12a68b4f9
 	k8s.io/api v0.29.2
 	k8s.io/apimachinery v0.29.2
 	k8s.io/cli-runtime v0.29.1
