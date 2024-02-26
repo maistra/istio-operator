@@ -38,7 +38,7 @@ $ make BUILD_WITH_CONTAINER=0 test.integration.ocp
 
 ## Settings for integration test execution
 
-The defaults settings define the behavior of the test run. The following are the default settings for the test run and they are changed by running the make target for KinD or OCP:
+The following environment variables define the behavior of the test run:
 
 * SKIP_BUILD=false - If set to true, the test will skip the build process and the default operator image will be used to deploy the opereator and run the test. The default operator image is `quay.io/maistra-dev/istio-operator:latest`.
 * IMAGE=quay.io/maistra-dev/istio-operator:latest - The operator image to be used to deploy the operator and run the test. This is useful when you want to test a specific operator image.
