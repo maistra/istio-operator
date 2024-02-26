@@ -77,7 +77,7 @@ var _ = Describe("Operator", func() {
 	})
 
 	When("the operator is installed", func() {
-		It("can be unistalled", func() {
+		It("can be uninstalled", func() {
 			GinkgoWriter.Println("Un-Deploying Operator by using helm templates generated")
 
 			undeployOperator()
