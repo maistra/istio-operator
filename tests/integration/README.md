@@ -40,7 +40,7 @@ $ make BUILD_WITH_CONTAINER=0 test.integration.ocp
 
 The following environment variables define the behavior of the test run:
 
-* SKIP_BUILD=false - If set to true, the test will skip the build process and the default operator image will be used to deploy the opereator and run the test. The default operator image is `quay.io/maistra-dev/istio-operator:latest`.
+* SKIP_BUILD=false - If set to true, the test will skip the build process and an existing operator image will be used to deploy the operator and run the test. The operator image that is going to be used is defined by the `IMAGE` variable.
 * IMAGE=quay.io/maistra-dev/istio-operator:latest - The operator image to be used to deploy the operator and run the test. This is useful when you want to test a specific operator image.
 * SKIP_DEPLOY=false - If set to true, the test will skip the deployment of the operator. This is useful when the operator is already deployed in the cluster and you want to run the test only.
 * OCP=false - If set to true, the test will set specific setup for OCP clusters and use `oc` command as default command. If set to false, the test will run in KinD cluster and use `kubectl` as command to interact with the cluster.
