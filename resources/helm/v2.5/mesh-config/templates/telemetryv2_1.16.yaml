@@ -54,18 +54,10 @@ spec:
                     {{- end }}
                 vm_config:
                   vm_id: stats_outbound
-                  {{- if .Values.telemetry.v2.prometheus.wasmEnabled }}
-                  runtime: envoy.wasm.runtime.v8
-                  allow_precompiled: true
-                  code:
-                    local:
-                      filename: /etc/istio/extensions/stats-filter.compiled.wasm
-                  {{- else }}
                   runtime: envoy.wasm.runtime.null
                   code:
                     local:
                       inline_string: envoy.wasm.stats
-                  {{- end }}
     - applyTo: HTTP_FILTER
       match:
         context: SIDECAR_INBOUND
@@ -101,18 +93,10 @@ spec:
                     {{- end }}
                 vm_config:
                   vm_id: stats_inbound
-                  {{- if .Values.telemetry.v2.prometheus.wasmEnabled }}
-                  runtime: envoy.wasm.runtime.v8
-                  allow_precompiled: true
-                  code:
-                    local:
-                      filename: /etc/istio/extensions/stats-filter.compiled.wasm
-                  {{- else }}
                   runtime: envoy.wasm.runtime.null
                   code:
                     local:
                       inline_string: envoy.wasm.stats
-                  {{- end }}
     - applyTo: HTTP_FILTER
       match:
         context: GATEWAY
@@ -148,18 +132,10 @@ spec:
                     {{- end }}
                 vm_config:
                   vm_id: stats_outbound
-                  {{- if .Values.telemetry.v2.prometheus.wasmEnabled }}
-                  runtime: envoy.wasm.runtime.v8
-                  allow_precompiled: true
-                  code:
-                    local:
-                      filename: /etc/istio/extensions/stats-filter.compiled.wasm
-                  {{- else }}
                   runtime: envoy.wasm.runtime.null
                   code:
                     local:
                       inline_string: envoy.wasm.stats
-                  {{- end }}
 ---
 # Note: tcp stats filter is wasm enabled only in sidecars.
 apiVersion: networking.istio.io/v1alpha3
@@ -209,18 +185,10 @@ spec:
                     {{- end }}
                 vm_config:
                   vm_id: tcp_stats_inbound
-                  {{- if .Values.telemetry.v2.prometheus.wasmEnabled }}
-                  runtime: envoy.wasm.runtime.v8
-                  allow_precompiled: true
-                  code:
-                    local:
-                      filename: /etc/istio/extensions/stats-filter.compiled.wasm
-                  {{- else }}
                   runtime: envoy.wasm.runtime.null
                   code:
                     local:
                       inline_string: "envoy.wasm.stats"
-                  {{- end }}
     - applyTo: NETWORK_FILTER
       match:
         context: SIDECAR_OUTBOUND
@@ -253,18 +221,10 @@ spec:
                     {{- end }}
                 vm_config:
                   vm_id: tcp_stats_outbound
-                  {{- if .Values.telemetry.v2.prometheus.wasmEnabled }}
-                  runtime: envoy.wasm.runtime.v8
-                  allow_precompiled: true
-                  code:
-                    local:
-                      filename: /etc/istio/extensions/stats-filter.compiled.wasm
-                  {{- else }}
                   runtime: envoy.wasm.runtime.null
                   code:
                     local:
                       inline_string: "envoy.wasm.stats"
-                  {{- end }}
     - applyTo: NETWORK_FILTER
       match:
         context: GATEWAY
@@ -297,18 +257,10 @@ spec:
                     {{- end }}
                 vm_config:
                   vm_id: tcp_stats_outbound
-                  {{- if .Values.telemetry.v2.prometheus.wasmEnabled }}
-                  runtime: envoy.wasm.runtime.v8
-                  allow_precompiled: true
-                  code:
-                    local:
-                      filename: /etc/istio/extensions/stats-filter.compiled.wasm
-                  {{- else }}
                   runtime: envoy.wasm.runtime.null
                   code:
                     local:
                       inline_string: "envoy.wasm.stats"
-                  {{- end }}
 ---
 {{- end }}
 {{/*TODO: this is broken, we do not handle the split quite right! */}}
