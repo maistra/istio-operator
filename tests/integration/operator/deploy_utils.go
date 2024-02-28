@@ -15,7 +15,16 @@
 package integrationoperator
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
 	. "github.com/onsi/ginkgo/v2"
+	"maistra.io/istio-operator/api/v1alpha1"
+	"maistra.io/istio-operator/pkg/util/tests/helm"
+	"maistra.io/istio-operator/pkg/util/tests/kubectl"
+	"sigs.k8s.io/yaml"
 )
 
 type Action int
@@ -27,26 +36,27 @@ const (
 	Undeploy
 )
 
-var istioYaml string
-
 // deployOperator deploys the operator to either an OpenShift cluster or a Kubernetes cluster based on the value of the 'ocp' variable.
 // The operator will be deployed in the namespace specified by the 'namespace' variable.
 func deployOperator() error {
-	var err error
-
-	GinkgoWriter.Println("Deploying Operator using default helm charts located in /chart folder")
-
+	extraArg := ""
 	if ocp == "true" {
-		GinkgoWriter.Println("Deploying to OpenShift cluster")
-		err = deploy("openshift", "")
-	} else {
-		GinkgoWriter.Println("Deploying to Kubernetes cluster")
-		err = deploy("kind", "")
+		extraArg = "--set=platform=openshift"
+	}
+	baseDir := filepath.Dir(filepath.Dir(filepath.Dir(wd)))
+	output, err := helm.Template("chart", fmt.Sprintf("%s/chart", baseDir), namespace, "--include-crds", fmt.Sprintf("--set=image=%s", image), extraArg)
+	if err != nil {
+		return err
 	}
 
-	if err != nil {
-		GinkgoWriter.Println("Error deploying operator:", err)
-		return err
+	yamlDocs := strings.Split(output, "---")
+	for _, doc := range yamlDocs {
+		if strings.Contains(doc, "apiVersion") {
+			err := kubectl.ApplyString(doc)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
@@ -56,132 +66,133 @@ func deployOperator() error {
 // If the 'ocp' variable is set to "true", the operator will be undeployed from the OpenShift cluster.
 // Otherwise, it will be undeployed from the Kubernetes cluster.
 func undeployOperator() error {
-	var err error
-
+	extraArg := ""
 	if ocp == "true" {
-		GinkgoWriter.Println("Un-Deploying from OpenShift cluster")
-		err = undeploy("openshift", "")
-	} else {
-		GinkgoWriter.Println("Un-Deploying from Kubernetes cluster")
-		err = undeploy("kind", "")
+		extraArg = "--set=platform=openshift"
+	}
+	baseDir := filepath.Dir(filepath.Dir(filepath.Dir(wd)))
+	output, err := helm.Template("chart", fmt.Sprintf("%s/chart", baseDir), namespace, "--include-crds", fmt.Sprintf("--set=image=%s", image), extraArg)
+	if err != nil {
+		return err
 	}
 
-	if err != nil {
-		GinkgoWriter.Println("Error undeploying operator:", err)
-		return err
+	yamlDocs := strings.Split(output, "---")
+	for _, doc := range yamlDocs {
+		if strings.Contains(doc, "apiVersion") {
+			err := kubectl.DeleteFromYamlString(doc)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
 }
 
-// deployIstioControlPlane deploys the Istio control plane with the specified version.
+// createIstioCR create the istio CR for the specified version.
 // The control panel will be installed in the namespace specified by the 'controlPlaneNamespace' variable.
-func deployIstioControlPlane(version string) error {
-	// Deploy Istio control plane
-	err := deploy("istio", version)
+// TODO: the controlPlaneNamespace variable is not been replaced in the source file, by default is set to istio-system.
+func createIstioCR(version string) error {
+	yamlString, err := readAndReplaceVersionInManifest(version)
 	if err != nil {
-		GinkgoWriter.Println("Error deploying Istio control plane:", err)
-		Fail("Error deploying Istio control plane")
+		GinkgoWriter.Println("Error updating Istio manifest:", err)
+		return err
 	}
 
-	GinkgoWriter.Println("Istio control plane deployed successfully")
-	return nil
-}
-
-// undeployIstioControlPlane undeploys the Istio Control Plane for a specific version.
-func undeployIstioControlPlane(version string) error {
-	GinkgoWriter.Println("Undeploying Istio Control Plane for version:", version)
-
-	err := undeploy("istio", version)
+	err = kubectl.ApplyString(yamlString)
 	if err != nil {
-		GinkgoWriter.Println("Error undeploying Istio control plane:", err)
+		GinkgoWriter.Println("Error installing resources")
 		return err
 	}
 
-	GinkgoWriter.Println("Istio control plane undeployed successfully")
+	GinkgoWriter.Println("Istio resource installed successfully")
 	return nil
 }
 
-// deploy deploys the specified platform.
-// It calls processDeploy function with the given platform and Deploy constant.
-// If an error occurs during the deployment process, it returns the error.
-// Otherwise, it returns nil.
-func deploy(platform, version string) error {
-	if err := processDeploy(platform, Deploy, version); err != nil {
-		return err
-	}
-	return nil
-}
-
-// undeploy undeploys the specified platform.
-// It calls the processDeploy function with the Undeploy action for the given platform.
-// If an error occurs during the undeploy process, it is returned.
-func undeploy(platform, version string) error {
-	if err := processDeploy(platform, Undeploy, version); err != nil {
-		return err
-	}
-	return nil
-}
-
-// processDeploy processes the deployment of a platform based on the given action.
-// It takes a platform string and an action Action as parameters.
-func processDeploy(platform string, action Action, version string) error {
-	var output []byte
-	var err error
-
-	var params []string
-	if platform == "openshift" {
-		params = append(params, "--set=platform=openshift")
-	}
-
-	if action == Deploy {
-		var yamlString string
-		if platform == "istio" {
-			// Deploy Istio control plane
-			yamlString, err = readAndReplaceVersionInManifest(version)
-			istioYaml = yamlString
-			if err != nil {
-				GinkgoWriter.Println("Error updating Istio manifest:", err)
-				return err
-			}
-		} else {
-			// Get YAML from Helm template for the istio operator
-			GinkgoWriter.Println("Deploying Operator using default helm charts located in /chart folder")
-			output, err = getYamlFromHelmTemplate(namespace, image, params)
-			if err != nil {
-				return err
-			}
-			yamlString = string(output)
-		}
-
-		// Apply the YAML
-		err = applyFromYamlString(yamlString)
-
-	} else if action == Undeploy {
-		if platform == "istio" {
-			if err := deleteFromYamlString(istioYaml); err != nil {
-				GinkgoWriter.Println("Error deleting Istio manifest:", err)
-				return err
-			}
-
-			return nil
-		}
-
-		GinkgoWriter.Println("Un-Deploying Operator by using helm templates generated")
-		// Get YAML from Helm template for the istio operator
-		output, err = getYamlFromHelmTemplate(namespace, image, params)
-		if err != nil {
-			return err
-		}
-
-		yamlString := string(output)
-		// Delete the YAML
-		err = deleteFromYamlString(yamlString)
-	}
-
+// deleteIstioCR delete the istio CR for the specified version.
+func deleteIstioCR(version string) error {
+	yamlString, err := readAndReplaceVersionInManifest(version)
 	if err != nil {
+		GinkgoWriter.Println("Error updating Istio manifest:", err)
 		return err
 	}
 
+	err = kubectl.DeleteFromYamlString(yamlString)
+	if err != nil {
+		GinkgoWriter.Println("Error deleting Istio resources")
+		return err
+	}
+
+	GinkgoWriter.Println("Istio resources deleted successfully")
 	return nil
+}
+
+func readAndReplaceVersionInManifest(version string) (string, error) {
+	// Read Istio manifest
+	baseDir := filepath.Dir(filepath.Dir(filepath.Dir(wd)))
+	istioManifest, err := os.ReadFile(filepath.Join(baseDir, istioManifest))
+	if err != nil {
+		return "", err
+	}
+
+	// Unmarshal YAML into custom Istio struct
+	var istio v1alpha1.Istio
+	if err := yaml.Unmarshal(istioManifest, &istio); err != nil {
+		return "", err
+	}
+
+	// Modify version
+	istio.Spec.Version = version
+
+	// Marshal custom Istio struct back to YAML
+	yamlBytes, err := yaml.Marshal(&istio)
+	if err != nil {
+		return "", err
+	}
+
+	return string(yamlBytes), nil
+}
+
+// Get the istio versions from the versions.yaml file
+// It takes a filename string as a parameter and returns a slice of strings.
+// Returns the list of istio versions
+func getIstioVersions(filename string) []string {
+	type Version struct {
+		Name string `yaml:"name"`
+	}
+
+	type IstioVersion struct {
+		Versions []Version `yaml:"versions"`
+	}
+
+	GinkgoWriter.Println("Getting the istio versions")
+
+	yamlFile, err := os.ReadFile(filename)
+	if err != nil {
+		GinkgoWriter.Println("Error reading the versions.yaml file")
+		Fail("Error reading the versions.yaml file")
+	}
+
+	var config IstioVersion
+	err = yaml.Unmarshal(yamlFile, &config)
+	if err != nil {
+		GinkgoWriter.Println("Error unmarshalling the versions.yaml file")
+		Fail("Error unmarshalling the versions.yaml file")
+	}
+
+	var versionList []string
+	for _, v := range config.Versions {
+		versionList = append(versionList, v.Name)
+	}
+
+	if len(versionList) == 0 {
+		Fail("No istio versions found in the versions.yaml file")
+	}
+
+	GinkgoWriter.Println("Istio versions in yaml file:")
+	for _, name := range versionList {
+		GinkgoWriter.Println(name)
+	}
+
+	return versionList
 }

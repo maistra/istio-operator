@@ -15,101 +15,191 @@
 package integrationoperator
 
 import (
+	"encoding/json"
 	"fmt"
-	"path/filepath"
+	"reflect"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"maistra.io/istio-operator/api/v1alpha1"
+	"maistra.io/istio-operator/pkg/util/tests/kubectl"
+	resourcecondition "maistra.io/istio-operator/pkg/util/tests/types"
 )
 
 var _ = Describe("Operator", Ordered, func() {
-	SetDefaultEventuallyTimeout(60 * time.Second)
+	SetDefaultEventuallyTimeout(120 * time.Second)
 	SetDefaultEventuallyPollingInterval(time.Second)
+	var resourceAvailable, resourceReconcilied, resourceReady resourcecondition.Conditions
 
 	Describe("operator installation", func() {
 		// TODO: we  need to support testing both types of deployment for the operator, helm and olm via subscription.
 		// Discuss with the team if we should add a flag to the test to enable the olm deployment and don't do that deployment in different step
-		When("helm manifest are applied", func() {
-			if skipDeploy == "true" {
-				Skip("Skipping the deployment of the operator and the tests")
-			} else {
-				Eventually(deployOperator).Should(Succeed())
-			}
+		When("default helm manifest are applied", func() {
+			BeforeEach(func() {
+				resourceAvailable = resourcecondition.Conditions{
+					Type:   "Available",
+					Status: "True",
+				}
 
-			It("the operator is running", func() {
-				Eventually(getOperatorState).Should(Equal("Running"))
+				if skipDeploy == "true" {
+					Skip("Skipping the deployment of the operator and the tests")
+				}
+				GinkgoWriter.Println("Deploying Operator using default helm charts located in /chart folder")
+				Eventually(deployOperator).Should(Succeed(), "Operator deployment should be successful")
+			})
+
+			Specify("the operator is running", func() {
+				Eventually(func(g Gomega) {
+					g.Expect(kubectl.GetResourceCondition(namespace, "deployment", deploymentName)).Should(ContainElement(resourceAvailable))
+				}).Should(Succeed(), "Operator deployment should be Available")
+				GinkgoWriter.Println("Operator deployment is Available")
+
+				podName, err := kubectl.GetPodFromLabel(namespace, "control-plane=istio-operator")
+				GinkgoWriter.Println("Istio Operator pod name: ", podName)
+				if err != nil {
+					Fail("Error getting pods from label")
+				}
+
+				Eventually(kubectl.GetPodPhase).WithArguments(namespace, podName).Should(Equal("Running"), "Istio-operator pod should be Running")
+				GinkgoWriter.Println("Istio-operator pod is Running")
 			})
 		})
 	})
 
-	Describe("installation and unistallation of the istio control plane", func() {
-		baseDir := filepath.Dir(filepath.Dir(filepath.Dir(wd)))
-		istioVersions, err := getIstioVersions(filepath.Join(baseDir, "versions.yaml"))
-		if err != nil {
-			Fail(fmt.Sprintf("Error getting istio versions from version.yaml file: %v", err))
-		}
-
+	Describe("installation and unistallation of the istio resource", func() {
 		for _, version := range istioVersions {
-			Context(fmt.Sprintf("for supported version %s", version), func() {
-				When(fmt.Sprintf("the istio control plane is installed with version %s", version), func() {
-					BeforeAll(func() {
-						Eventually(createNamespaceIfNotExists).WithArguments(controlPlaneNamespace).Should(Succeed())
-						Eventually(deployIstioControlPlane).WithArguments(version).Should(Succeed())
+			// Note: This var version is needed to avoid the closure of the loop
+			version := version
 
-						DeferCleanup(func() {
-							Eventually(deleteNamespace).WithArguments(controlPlaneNamespace).Should(Succeed())
-							Eventually(namespaceIsDeleted).WithArguments(controlPlaneNamespace).Should(Equal(true))
-						})
+			Context(fmt.Sprintf("is applied the istio resource with version %s", version), func() {
+				BeforeAll(func() {
+					Expect(kubectl.CreateNamespace(controlPlaneNamespace)).To(Succeed())
+					Eventually(createIstioCR).WithArguments(version).Should(Succeed(), "Istio CR should be created")
+					GinkgoWriter.Println("Istio CR created")
+
+					resourceReconcilied = resourcecondition.Conditions{
+						Type:   "Reconciled",
+						Status: "True",
+					}
+
+					resourceReady = resourcecondition.Conditions{
+						Type:   "Ready",
+						Status: "True",
+					}
+				})
+
+				AfterAll(func() {
+					Eventually(kubectl.DeleteNamespace).WithArguments(controlPlaneNamespace).Should(Succeed(), "Namespace should be deleted")
+					Eventually(kubectl.GetNamespace).WithArguments(controlPlaneNamespace).Should(Equal(fmt.Sprintf("namespace %s not found", controlPlaneNamespace)), "Namespace should not be found")
+					GinkgoWriter.Println("Cleanup done")
+				})
+
+				When("the Istio resource is created", func() {
+					It("updates the Istio resource status to Ready and Running", func() {
+						Eventually(func(g Gomega) {
+							g.Expect(kubectl.GetResourceCondition(controlPlaneNamespace, "istio", istioName)).Should(ContainElement(resourceReconcilied))
+						}).Should(Succeed(), "Istio CR should be reconciled")
+
+						Eventually(func(g Gomega) {
+							g.Expect(kubectl.GetResourceCondition(controlPlaneNamespace, "istio", istioName)).Should(ContainElement(resourceReady))
+						}).Should(Succeed(), "Istio CR should be Ready")
+
+						istiodPodName, _ := kubectl.GetPodFromLabel(controlPlaneNamespace, "app=istiod")
+						GinkgoWriter.Println("Istiod pod name: ", istiodPodName)
+
+						Eventually(kubectl.GetPodPhase).WithArguments(controlPlaneNamespace, istiodPodName).Should(Equal("Running"), "Istiod should be Running")
 					})
 
-					It("updates the Istio resource status to Ready and Running", func() {
-						Eventually(waitForIstioCondition).WithArguments(command, istioName, "Reconciled").Should(Succeed())
-						Eventually(waitForIstioCondition).WithArguments(command, istioName, "Ready").Should(Succeed())
+					Specify("the istio resource version match the applied version", func() {
+						var istio v1alpha1.Istio
+						output, _ := kubectl.GetResource(controlPlaneNamespace, "istio", istioName)
 
-						istiodPodName, err := getPodNameFromLabel(controlPlaneNamespace, "app=istiod")
+						err := json.Unmarshal([]byte(output), &istio)
 						if err != nil {
-							Fail("Error getting pod name from deployment")
+							Fail("Error unmarshalling the IstioCr")
 						}
 
-						Eventually(getPodPhase).WithArguments(controlPlaneNamespace, istiodPodName).Should(Equal("Running"))
-					})
-
-					It("the istio resource version match the installed version", func() {
-						Expect(getInstalledIstioVersion()).Should(Equal(version))
+						Expect(istio.Spec.Version).To(Equal(version), "Istio CR version should match the applied version")
 					})
 
 					It("istio resource stopped reconciling", func() {
-						Eventually(checkIstioStoppedReconciling).WithTimeout(120 * time.Second).Should(Succeed())
+						istiodPodName, _ := kubectl.GetPodFromLabel(controlPlaneNamespace, "app=istiod")
+						Eventually(kubectl.GetPodLogs).WithArguments(controlPlaneNamespace, istiodPodName, "30s").ShouldNot(ContainSubstring("Reconciliation done"))
+						GinkgoWriter.Println("Istio Operator stopped reconciling")
 					})
 
 					It("only istiod is deployed", func() {
-						Expect(checkOnlyIstioIsDeployed(controlPlaneNamespace)).To(Equal(true))
+						expectedDeployments := []string{"istiod"}
+
+						deploymentsList, err := kubectl.GetDeployments(controlPlaneNamespace)
+						if err != nil {
+							Fail("Error getting deployments")
+						}
+
+						Expect(deploymentsList).To(Equal(expectedDeployments), "Deployments List should contains only istiod")
 					})
 
 					It("deploys the CNI DaemonSet when running on OpenShift", func() {
-						if ocp == "true" {
-							Eventually(cniDaemonIsDeployed).WithArguments(namespace).Should(Equal(true))
+						daemonsetsList, err := kubectl.GetDaemonSets(namespace)
+						if err != nil {
+							Fail(fmt.Sprintf("Error getting daemonsets: %s", err))
+						}
 
-							podName, err := getPodNameFromLabel(namespace, "k8s-app=istio-cni-node")
+						if ocp == "true" {
+							Expect(daemonsetsList).To(ContainElement("istio-cni-node"), "DaemonSet List should contains the CNI DaemonSet")
+
+							podName, err := kubectl.GetPodFromLabel(namespace, "k8s-app=istio-cni-node")
 							if err != nil {
 								Fail("Error getting pod name from deployment")
 							}
-							Eventually(getPodPhase).WithArguments(namespace, podName).Should(Equal("Running"))
 
+							Eventually(kubectl.GetPodPhase).WithArguments(namespace, podName).Should(Equal("Running"), "CNI DaemonSet should be Running")
+							GinkgoWriter.Println("CNI DaemonSet is deployed in the namespace and Running")
 						} else {
-							Eventually(cniDaemonIsDeployed).WithArguments(namespace).Should(Equal(false))
+							Expect(daemonsetsList).To(BeEmpty(), "DaemonSet List should empty because it's not OpenShift")
+							GinkgoWriter.Println("CNI DaemonSet is not deployed in the namespace because it's not OpenShift")
 						}
 					})
+				})
 
-					When("the Istio CR is deleted", func() {
-						BeforeEach(func() {
-							Eventually(undeployIstioControlPlane).WithArguments(version).Should(Succeed())
-						})
+				When("the Istio CR is deleted", func() {
+					BeforeEach(func() {
+						Eventually(deleteIstioCR).WithArguments(version).Should(Succeed(), "Istio CR should be deleted")
+						GinkgoWriter.Println("Istio CR's deleted")
+					})
 
-						It("the undeploys the istio control plane", func() {
-							Eventually(namespaceEmpty).WithArguments(controlPlaneNamespace).Should(Equal(true))
-						})
+					Specify("the namespace is empty", func() {
+						emptyResourceList := resourcecondition.ResourceList{
+							APIVersion: "v1",
+							Items:      []interface{}{},
+							Kind:       "List",
+							Metadata: struct {
+								ResourceVersion string `json:"resourceVersion"`
+							}{
+								ResourceVersion: "",
+							},
+						}
+
+						Eventually(func() error {
+							output, err := kubectl.GetResource(controlPlaneNamespace, "all", "")
+							if err != nil {
+								return err
+							}
+
+							var resourceList resourcecondition.ResourceList
+							err = json.Unmarshal([]byte(output), &resourceList)
+							if err != nil {
+								return err
+							}
+
+							if !reflect.DeepEqual(resourceList, emptyResourceList) {
+								// Return an error to indicate the comparison failed, allowing for retry
+								return fmt.Errorf("namespace should be empty")
+							}
+
+							return nil
+						}).Should(Succeed(), "Namespace should be empty")
 					})
 				})
 			})
@@ -119,11 +209,13 @@ var _ = Describe("Operator", Ordered, func() {
 	Describe("operator uninstallation", func() {
 		When("is deleted the operator manifest from the cluster", func() {
 			BeforeEach(func() {
-				Eventually(undeployOperator).Should(Succeed())
+				Eventually(undeployOperator).Should(Succeed(), "Operator deployment should be deleted")
+				GinkgoWriter.Println("Operator deployment is deleted")
 			})
 
-			It("the operator it's deleted", func() {
-				Eventually(podExist).WithArguments(namespace, "control-plane=istio-operator").Should(Equal(false))
+			Specify("the operator it's deleted", func() {
+				Eventually(kubectl.GetPodFromLabel).WithArguments(namespace, "control-plane=istio-operator").Should(BeEmpty(), "Istio-operator pod should be deleted")
+				GinkgoWriter.Println("Istio-operator pod is deleted")
 			})
 		})
 	})

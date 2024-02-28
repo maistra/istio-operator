@@ -17,13 +17,10 @@ package integrationoperator
 import (
 	"os"
 
-	. "github.com/onsi/ginkgo/v2"
+	g "github.com/onsi/ginkgo/v2"
 )
 
-const timeout = "180s"
-
 var (
-	command               = getEnvOrDefault("COMMAND", "kubectl")
 	ocp                   = getEnvOrDefault("OCP", "false")
 	skipDeploy            = getEnvOrDefault("SKIP_DEPLOY", "false")
 	image                 = getEnvOrDefault("IMAGE", "quay.io/maistra-dev/istio-operator:latest")
@@ -41,7 +38,7 @@ func getEnvOrDefault(key, defaultValue string) string {
 		return defaultValue
 	}
 
-	GinkgoWriter.Printf("Env variable %s is set to %s\n", key, value)
+	g.GinkgoWriter.Printf("Env variable %s is set to %s\n", key, value)
 
 	return value
 }

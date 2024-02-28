@@ -15,11 +15,14 @@
 package integrationoperator
 
 import (
+	"path/filepath"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+var istioVersions []string
 
 func TestInstall(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -29,6 +32,10 @@ func TestInstall(t *testing.T) {
 
 func setup() {
 	GinkgoWriter.Println("************ Running Setup ************")
+
+	baseDir := filepath.Dir(filepath.Dir(filepath.Dir(wd)))
+	istioVersions = getIstioVersions(filepath.Join(baseDir, "versions.yaml"))
+
 	if ocp == "true" {
 		GinkgoWriter.Println("Running on OCP cluster")
 		GinkgoWriter.Printf("Absolute Path: %s\n", wd)
