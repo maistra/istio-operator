@@ -87,7 +87,7 @@ var _ = Describe("Operator", Ordered, func() {
 						Expect(checkOnlyIstioIsDeployed(controlPlaneNamespace)).To(Equal(true))
 					})
 
-					It("the cni deployment daemon behavior is the expected", func() {
+					It("deploys the CNI DaemonSet when running on OpenShift", func() {
 						if ocp == "true" {
 							Eventually(cniDaemonIsDeployed).WithArguments(namespace).Should(Equal(true))
 
