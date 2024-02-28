@@ -1,4 +1,4 @@
-outputFile: api/v1alpha1/values_types.go
+outputFile: api/v1alpha1/values_types.gen.go
 headerFile: common/scripts/copyright-banner-go.txt
 package: v1alpha1
 
@@ -19,6 +19,11 @@ globalTransformations:
   - istio.io/api/type/v1beta1
   - istio.io/api/networking/v1alpha3
   - istio.io/api/networking/v1beta1
+  addImports:
+    metav1: k8s.io/apimachinery/pkg/apis/meta/v1
+    k8sv1: k8s.io/api/core/v1
+    autoscalingv2: k8s.io/api/autoscaling/v2
+    intstr: k8s.io/apimachinery/pkg/util/intstr
   removeFields:
   - "*.state"         # protobuf-specific field
   - "*.sizeCache"     # protobuf-specific field
@@ -35,11 +40,6 @@ globalTransformations:
 inputFiles:
 - path: /tmp/values_types.pb.go
   transformations:
-    addImports:
-      metav1: k8s.io/apimachinery/pkg/apis/meta/v1
-      k8sv1: k8s.io/api/core/v1
-      autoscalingv2: k8s.io/api/autoscaling/v2
-      intstr: k8s.io/apimachinery/pkg/util/intstr
     removeTypes:
     - EgressGatewayConfig
     - IngressGatewayConfig
@@ -92,3 +92,62 @@ inputFiles:
       SidecarInjectorConfig.AlwaysInjectSelector: "[]metav1.LabelSelector"
       SidecarInjectorConfig.InjectedAnnotations: "map[string]string"
       SidecarInjectorConfig.Templates: "map[string]string"
+
+- path: /tmp/config.pb.go
+  transformations:
+    renameImports:
+      v1: metav1
+    replaceFieldTypes:
+      MeshConfig_ExtensionProvider_EnvoyFileAccessLogProvider_LogFormat_Labels.Labels: "map[string]string"
+      MeshConfig_ExtensionProvider_EnvoyOpenTelemetryLogProvider_LogFormat.Labels: "map[string]string"
+      MeshConfig.DefaultConfig: "*MeshConfigProxyConfig"
+      MeshConfig.TcpKeepalive: "*ConnectionPoolSettingsTCPSettingsTcpKeepalive"
+      MeshConfig.LocalityLbSetting: "*LocalityLoadBalancerSetting"
+      MeshConfig.DefaultHttpRetryPolicy: "*HTTPRetry"
+      ConfigSource.TlsSettings: "*ClientTLSSettings"
+      MeshConfig_CA.TlsSettings: "*ClientTLSSettings"
+    addTags:
+      MeshConfig.ExtensionProviders: "// +kubebuilder:validation:MaxItems=1000"  # to prevent CEL cost overruns
+
+- path: /tmp/network.pb.go
+
+- path: /tmp/proxy.pb.go
+  transformations:
+    renameTypes:
+      ProxyConfig: MeshConfigProxyConfig
+    replaceFieldTypes:
+      RemoteService.TcpKeepalive: "*ConnectionPoolSettingsTCPSettingsTcpKeepalive"
+      RemoteService.TlsSettings: "*ClientTLSSettings"
+      Tracing.TlsSettings: "*ClientTLSSettings"
+      ProxyConfig.ReadinessProbe: "*k8sv1.Probe"
+      ProxyConfig.Image: "*ProxyImage"
+
+- path: /tmp/proxy_config.pb.go
+  transformations:
+    removeTypes:
+    - '*'
+    preserveTypes:
+    - ProxyImage
+    replaceFieldTypes:
+      ProxyConfig.Selector: "*WorkloadSelector"
+
+- path: /tmp/selector.pb.go
+
+- path: /tmp/destination_rule.pb.go
+  transformations:
+    removeTypes:
+    - '*'
+    preserveTypes:
+    - ConnectionPoolSettings_TCPSettings_TcpKeepalive
+    - LocalityLoadBalancerSetting
+    - LocalityLoadBalancerSetting_Distribute
+    - LocalityLoadBalancerSetting_Failover
+    - ClientTLSSettings
+    - ClientTLSSettings_TLSmode
+
+- path: /tmp/virtual_service.pb.go
+  transformations:
+    removeTypes:
+    - '*'
+    preserveTypes:
+    - HTTPRetry

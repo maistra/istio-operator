@@ -309,18 +309,14 @@ API_REPO_BASE=https://raw.githubusercontent.com/istio/api/ccd5cd40965ccba232d1f7
 gen-api: ## Generate API types from upstream files
 	# TODO: should we get these files from the local filesystem by inspecting go.mod?
 	curl -o /tmp/values_types.pb.go $(ISTIO_REPO_BASE)/operator/pkg/apis/istio/v1alpha1/values_types.pb.go
-	go run hack/api_transformer/main.go hack/api_transformer/values_types.transform.yaml
-
 	curl -o /tmp/config.pb.go $(API_REPO_BASE)/mesh/v1alpha1/config.pb.go
-	go run hack/api_transformer/main.go hack/api_transformer/meshconfig_types.transform.yaml
-
 	curl -o /tmp/network.pb.go $(API_REPO_BASE)/mesh/v1alpha1/network.pb.go
 	curl -o /tmp/proxy.pb.go $(API_REPO_BASE)/mesh/v1alpha1/proxy.pb.go
 	curl -o /tmp/proxy_config.pb.go $(API_REPO_BASE)/networking/v1beta1/proxy_config.pb.go
 	curl -o /tmp/selector.pb.go $(API_REPO_BASE)/type/v1beta1/selector.pb.go
 	curl -o /tmp/destination_rule.pb.go $(API_REPO_BASE)/networking/v1alpha3/destination_rule.pb.go
 	curl -o /tmp/virtual_service.pb.go $(API_REPO_BASE)/networking/v1alpha3/virtual_service.pb.go
-	go run hack/api_transformer/main.go hack/api_transformer/meshconfig_deps_types.transform.yaml
+	go run hack/api_transformer/main.go hack/api_transformer/transform.yaml
 
 .PHONY: gen-code
 gen-code: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.

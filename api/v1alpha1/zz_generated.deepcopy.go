@@ -20,8 +20,8 @@ package v1alpha1
 
 import (
 	"k8s.io/api/autoscaling/v2"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -116,7 +116,7 @@ func (in *CNIConfig) DeepCopyInto(out *CNIConfig) {
 	}
 	if in.Affinity != nil {
 		in, out := &in.Affinity, &out.Affinity
-		*out = new(corev1.Affinity)
+		*out = new(v1.Affinity)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.PodAnnotations != nil {
@@ -143,7 +143,7 @@ func (in *CNIConfig) DeepCopyInto(out *CNIConfig) {
 	}
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
-		*out = new(corev1.ResourceRequirements)
+		*out = new(v1.ResourceRequirements)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.Privileged != nil {
@@ -153,7 +153,7 @@ func (in *CNIConfig) DeepCopyInto(out *CNIConfig) {
 	}
 	if in.SeccompProfile != nil {
 		in, out := &in.SeccompProfile, &out.SeccompProfile
-		*out = new(corev1.SeccompProfile)
+		*out = new(v1.SeccompProfile)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.Ambient != nil {
@@ -303,12 +303,12 @@ func (in *ConnectionPoolSettingsTCPSettingsTcpKeepalive) DeepCopyInto(out *Conne
 	*out = *in
 	if in.Time != nil {
 		in, out := &in.Time, &out.Time
-		*out = new(v1.Duration)
+		*out = new(metav1.Duration)
 		**out = **in
 	}
 	if in.Interval != nil {
 		in, out := &in.Interval, &out.Interval
-		*out = new(v1.Duration)
+		*out = new(metav1.Duration)
 		**out = **in
 	}
 }
@@ -368,7 +368,7 @@ func (in *GlobalConfig) DeepCopyInto(out *GlobalConfig) {
 	}
 	if in.DefaultNodeSelector != nil {
 		in, out := &in.DefaultNodeSelector, &out.DefaultNodeSelector
-		*out = new(corev1.NodeSelector)
+		*out = new(v1.NodeSelector)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.DefaultPodDisruptionBudget != nil {
@@ -378,19 +378,19 @@ func (in *GlobalConfig) DeepCopyInto(out *GlobalConfig) {
 	}
 	if in.DefaultResources != nil {
 		in, out := &in.DefaultResources, &out.DefaultResources
-		*out = new(corev1.ResourceRequirements)
+		*out = new(v1.ResourceRequirements)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.DefaultTolerations != nil {
 		in, out := &in.DefaultTolerations, &out.DefaultTolerations
-		*out = make([]corev1.Toleration, len(*in))
+		*out = make([]v1.Toleration, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	if in.ImagePullPolicy != nil {
 		in, out := &in.ImagePullPolicy, &out.ImagePullPolicy
-		*out = new(corev1.PullPolicy)
+		*out = new(v1.PullPolicy)
 		**out = **in
 	}
 	if in.ImagePullSecrets != nil {
@@ -537,7 +537,7 @@ func (in *HTTPRetry) DeepCopyInto(out *HTTPRetry) {
 	*out = *in
 	if in.PerTryTimeout != nil {
 		in, out := &in.PerTryTimeout, &out.PerTryTimeout
-		*out = new(v1.Duration)
+		*out = new(metav1.Duration)
 		**out = **in
 	}
 	if in.RetryRemoteLocalities != nil {
@@ -941,12 +941,12 @@ func (in *MeshConfig) DeepCopyInto(out *MeshConfig) {
 	*out = *in
 	if in.ConnectTimeout != nil {
 		in, out := &in.ConnectTimeout, &out.ConnectTimeout
-		*out = new(v1.Duration)
+		*out = new(metav1.Duration)
 		**out = **in
 	}
 	if in.ProtocolDetectionTimeout != nil {
 		in, out := &in.ProtocolDetectionTimeout, &out.ProtocolDetectionTimeout
-		*out = new(v1.Duration)
+		*out = new(metav1.Duration)
 		**out = **in
 	}
 	if in.TcpKeepalive != nil {
@@ -1023,7 +1023,7 @@ func (in *MeshConfig) DeepCopyInto(out *MeshConfig) {
 	}
 	if in.DnsRefreshRate != nil {
 		in, out := &in.DnsRefreshRate, &out.DnsRefreshRate
-		*out = new(v1.Duration)
+		*out = new(metav1.Duration)
 		**out = **in
 	}
 	if in.Certificates != nil {
@@ -1081,11 +1081,11 @@ func (in *MeshConfig) DeepCopyInto(out *MeshConfig) {
 	}
 	if in.DiscoverySelectors != nil {
 		in, out := &in.DiscoverySelectors, &out.DiscoverySelectors
-		*out = make([]*v1.LabelSelector, len(*in))
+		*out = make([]*metav1.LabelSelector, len(*in))
 		for i := range *in {
 			if (*in)[i] != nil {
 				in, out := &(*in)[i], &(*out)[i]
-				*out = new(v1.LabelSelector)
+				*out = new(metav1.LabelSelector)
 				(*in).DeepCopyInto(*out)
 			}
 		}
@@ -1132,7 +1132,7 @@ func (in *MeshConfigCA) DeepCopyInto(out *MeshConfigCA) {
 	}
 	if in.RequestTimeout != nil {
 		in, out := &in.RequestTimeout, &out.RequestTimeout
-		*out = new(v1.Duration)
+		*out = new(metav1.Duration)
 		**out = **in
 	}
 }
@@ -1307,7 +1307,7 @@ func (in *MeshConfigExtensionProviderEnvoyExternalAuthorizationGrpcProvider) Dee
 	*out = *in
 	if in.Timeout != nil {
 		in, out := &in.Timeout, &out.Timeout
-		*out = new(v1.Duration)
+		*out = new(metav1.Duration)
 		**out = **in
 	}
 	if in.IncludeRequestBodyInCheck != nil {
@@ -1332,7 +1332,7 @@ func (in *MeshConfigExtensionProviderEnvoyExternalAuthorizationHttpProvider) Dee
 	*out = *in
 	if in.Timeout != nil {
 		in, out := &in.Timeout, &out.Timeout
-		*out = new(v1.Duration)
+		*out = new(metav1.Duration)
 		**out = **in
 	}
 	if in.IncludeHeadersInCheck != nil {
@@ -1558,7 +1558,7 @@ func (in *MeshConfigExtensionProviderHttpService) DeepCopyInto(out *MeshConfigEx
 	*out = *in
 	if in.Timeout != nil {
 		in, out := &in.Timeout, &out.Timeout
-		*out = new(v1.Duration)
+		*out = new(metav1.Duration)
 		**out = **in
 	}
 	if in.Headers != nil {
@@ -1836,12 +1836,12 @@ func (in *MeshConfigProxyConfig) DeepCopyInto(out *MeshConfigProxyConfig) {
 	*out = *in
 	if in.DrainDuration != nil {
 		in, out := &in.DrainDuration, &out.DrainDuration
-		*out = new(v1.Duration)
+		*out = new(metav1.Duration)
 		**out = **in
 	}
 	if in.DiscoveryRefreshDelay != nil {
 		in, out := &in.DiscoveryRefreshDelay, &out.DiscoveryRefreshDelay
-		*out = new(v1.Duration)
+		*out = new(metav1.Duration)
 		**out = **in
 	}
 	if in.Concurrency != nil {
@@ -1895,12 +1895,12 @@ func (in *MeshConfigProxyConfig) DeepCopyInto(out *MeshConfigProxyConfig) {
 	}
 	if in.TerminationDrainDuration != nil {
 		in, out := &in.TerminationDrainDuration, &out.TerminationDrainDuration
-		*out = new(v1.Duration)
+		*out = new(metav1.Duration)
 		**out = **in
 	}
 	if in.ReadinessProbe != nil {
 		in, out := &in.ReadinessProbe, &out.ReadinessProbe
-		*out = new(corev1.Probe)
+		*out = new(v1.Probe)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.ProxyStatsMatcher != nil {
@@ -2183,7 +2183,7 @@ func (in *PilotConfig) DeepCopyInto(out *PilotConfig) {
 	}
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
-		*out = new(corev1.ResourceRequirements)
+		*out = new(v1.ResourceRequirements)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.Cpu != nil {
@@ -2193,12 +2193,12 @@ func (in *PilotConfig) DeepCopyInto(out *PilotConfig) {
 	}
 	if in.NodeSelector != nil {
 		in, out := &in.NodeSelector, &out.NodeSelector
-		*out = new(corev1.NodeSelector)
+		*out = new(v1.NodeSelector)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.KeepaliveMaxServerConnectionAge != nil {
 		in, out := &in.KeepaliveMaxServerConnectionAge, &out.KeepaliveMaxServerConnectionAge
-		*out = new(v1.Duration)
+		*out = new(metav1.Duration)
 		**out = **in
 	}
 	if in.DeploymentLabels != nil {
@@ -2234,7 +2234,7 @@ func (in *PilotConfig) DeepCopyInto(out *PilotConfig) {
 	}
 	if in.Affinity != nil {
 		in, out := &in.Affinity, &out.Affinity
-		*out = new(corev1.Affinity)
+		*out = new(v1.Affinity)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.RollingMaxSurge != nil {
@@ -2249,7 +2249,7 @@ func (in *PilotConfig) DeepCopyInto(out *PilotConfig) {
 	}
 	if in.Tolerations != nil {
 		in, out := &in.Tolerations, &out.Tolerations
-		*out = make([]corev1.Toleration, len(*in))
+		*out = make([]v1.Toleration, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -2290,12 +2290,12 @@ func (in *PilotConfig) DeepCopyInto(out *PilotConfig) {
 	}
 	if in.SeccompProfile != nil {
 		in, out := &in.SeccompProfile, &out.SeccompProfile
-		*out = new(corev1.SeccompProfile)
+		*out = new(v1.SeccompProfile)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.TopologySpreadConstraints != nil {
 		in, out := &in.TopologySpreadConstraints, &out.TopologySpreadConstraints
-		*out = make([]corev1.TopologySpreadConstraint, len(*in))
+		*out = make([]v1.TopologySpreadConstraint, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -2307,14 +2307,14 @@ func (in *PilotConfig) DeepCopyInto(out *PilotConfig) {
 	}
 	if in.VolumeMounts != nil {
 		in, out := &in.VolumeMounts, &out.VolumeMounts
-		*out = make([]corev1.VolumeMount, len(*in))
+		*out = make([]v1.VolumeMount, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	if in.Volumes != nil {
 		in, out := &in.Volumes, &out.Volumes
-		*out = make([]corev1.Volume, len(*in))
+		*out = make([]v1.Volume, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -2461,7 +2461,7 @@ func (in *PrivateKeyProviderCryptoMb) DeepCopyInto(out *PrivateKeyProviderCrypto
 	*out = *in
 	if in.PollDelay != nil {
 		in, out := &in.PollDelay, &out.PollDelay
-		*out = new(v1.Duration)
+		*out = new(metav1.Duration)
 		**out = **in
 	}
 	if in.Fallback != nil {
@@ -2486,7 +2486,7 @@ func (in *PrivateKeyProviderQAT) DeepCopyInto(out *PrivateKeyProviderQAT) {
 	*out = *in
 	if in.PollDelay != nil {
 		in, out := &in.PollDelay, &out.PollDelay
-		*out = new(v1.Duration)
+		*out = new(metav1.Duration)
 		**out = **in
 	}
 	if in.Fallback != nil {
@@ -2526,12 +2526,12 @@ func (in *ProxyConfig) DeepCopyInto(out *ProxyConfig) {
 	}
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
-		*out = new(corev1.ResourceRequirements)
+		*out = new(v1.ResourceRequirements)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.Lifecycle != nil {
 		in, out := &in.Lifecycle, &out.Lifecycle
-		*out = new(corev1.Lifecycle)
+		*out = new(v1.Lifecycle)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.HoldApplicationUntilProxyStarts != nil {
@@ -2736,7 +2736,7 @@ func (in *ProxyInitConfig) DeepCopyInto(out *ProxyInitConfig) {
 	*out = *in
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
-		*out = new(corev1.ResourceRequirements)
+		*out = new(v1.ResourceRequirements)
 		(*in).DeepCopyInto(*out)
 	}
 }
@@ -2916,14 +2916,14 @@ func (in *SidecarInjectorConfig) DeepCopyInto(out *SidecarInjectorConfig) {
 	}
 	if in.NeverInjectSelector != nil {
 		in, out := &in.NeverInjectSelector, &out.NeverInjectSelector
-		*out = make([]v1.LabelSelector, len(*in))
+		*out = make([]metav1.LabelSelector, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	if in.AlwaysInjectSelector != nil {
 		in, out := &in.AlwaysInjectSelector, &out.AlwaysInjectSelector
-		*out = make([]v1.LabelSelector, len(*in))
+		*out = make([]metav1.LabelSelector, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
