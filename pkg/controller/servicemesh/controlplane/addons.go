@@ -115,16 +115,20 @@ func (r *controlPlaneInstanceReconciler) patchKiali(ctx context.Context, grafana
 	}
 
 	// istio
-	if err := updatedKiali.Spec.SetField("external_services.istio.config_map_name", fmt.Sprintf("istio-%s", r.Instance.Name)); err != nil {
+	configMapName := fmt.Sprintf("istio-%s", r.Instance.Name)
+	if err := updatedKiali.Spec.SetField("external_services.istio.config_map_name", configMapName); err != nil {
 		return common.RequeueWithError(errorOnSettingValueInKialiCR("external_services.istio.config_map_name", err))
 	}
-	if err := updatedKiali.Spec.SetField("external_services.istio.url_service_version", fmt.Sprintf("http://istiod-%s.%s:15014/version", r.Instance.Name, r.Instance.Namespace)); err != nil {
+	urlServiceAccount := fmt.Sprintf("http://istiod-%s.%s:15014/version", r.Instance.Name, r.Instance.Namespace)
+	if err := updatedKiali.Spec.SetField("external_services.istio.url_service_version", urlServiceAccount); err != nil {
 		return common.RequeueWithError(errorOnSettingValueInKialiCR("external_services.istio.url_service_version", err))
 	}
-	if err := updatedKiali.Spec.SetField("external_services.istio.istiod_deployment_name", fmt.Sprintf("istiod-%s", r.Instance.Name)); err != nil {
+	deploymentName := fmt.Sprintf("istiod-%s", r.Instance.Name)
+	if err := updatedKiali.Spec.SetField("external_services.istio.istiod_deployment_name", deploymentName); err != nil {
 		return common.RequeueWithError(errorOnSettingValueInKialiCR("external_services.istio.istiod_deployment_name", err))
 	}
-	if err := updatedKiali.Spec.SetField("external_services.istio.istio_sidecar_injector_config_map_name", fmt.Sprintf("istio-sidecar-injector-%s", r.Instance.Name)); err != nil {
+	sidecarInjectorName := fmt.Sprintf("istio-sidecar-injector-%s", r.Instance.Name)
+	if err := updatedKiali.Spec.SetField("external_services.istio.istio_sidecar_injector_config_map_name", sidecarInjectorName); err != nil {
 		return common.RequeueWithError(errorOnSettingValueInKialiCR("external_services.istio.istio_sidecar_injector_config_map_name", err))
 	}
 
