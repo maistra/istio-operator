@@ -107,7 +107,7 @@ var _ = Describe("Operator", Ordered, func() {
 							Eventually(undeployIstioControlPlane).WithArguments(version).Should(Succeed())
 						})
 
-						It("the istio control plane is uninstalled", func() {
+						It("the undeploys the istio control plane", func() {
 							Eventually(namespaceEmpty).WithArguments(controlPlaneNamespace).Should(Equal(true))
 						})
 					})
