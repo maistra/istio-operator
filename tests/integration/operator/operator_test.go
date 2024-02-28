@@ -63,7 +63,7 @@ var _ = Describe("Operator", Ordered, func() {
 						})
 					})
 
-					It("istio resource is ready and running", func() {
+					It("updates the Istio resource status to Ready and Running", func() {
 						Eventually(waitForIstioCondition).WithArguments(command, istioName, "Reconciled").Should(Succeed())
 						Eventually(waitForIstioCondition).WithArguments(command, istioName, "Ready").Should(Succeed())
 
