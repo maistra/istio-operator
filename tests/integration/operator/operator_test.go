@@ -102,7 +102,7 @@ var _ = Describe("Operator", Ordered, func() {
 						}
 					})
 
-					When("the istio control plane is uninstalled", func() {
+					When("the Istio CR is deleted", func() {
 						BeforeEach(func() {
 							Eventually(undeployIstioControlPlane).WithArguments(version).Should(Succeed())
 						})
