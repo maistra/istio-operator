@@ -219,7 +219,7 @@ defaults:
     # Dev builds from prow are on gcr.io
     hub: gcr.io/istio-testing
     # Default tag for Istio images.
-    tag: 1.22-alpha.d27e3e16415b62994ff5ec3318197f3bcfe1c419
+    tag: 1.22-alpha.cca6484d31375dc7309ff7849b3ad5c541411533
     # Variant of the image to use.
     # Currently supported are: [debug, distroless]
     variant: ""
@@ -383,10 +383,6 @@ defaults:
 
     # Configure a remote cluster as the config cluster for an external istiod.
     configCluster: false
-
-    # Configure the policy for validating JWT.
-    # Currently, two options are supported: "third-party-jwt" and "first-party-jwt".
-    jwtPolicy: "third-party-jwt"
 
     # Mesh ID means Mesh Identifier. It should be unique within the scope where
     # meshes will interact with each other, but it is not required to be
