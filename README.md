@@ -2,6 +2,8 @@
 |--------------------------------------------------------|
 | Issues for OpenShift Service Mesh are tracked in Red Hat Jira. Please head to the [OSSM Jira project](https://issues.redhat.com/browse/OSSM) in order to browse or open an issue |
 
+test
+
 # Maistra Istio Operator
 
 This project is an operator that can be used to manage the installation of an [Istio](https://istio.io) control plane.
