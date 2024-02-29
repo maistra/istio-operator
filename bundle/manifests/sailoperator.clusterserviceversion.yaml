@@ -23,7 +23,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/istio-operator:3.0-latest
-    createdAt: "2024-02-29T03:55:54Z"
+    createdAt: "2024-02-29T13:33:05Z"
     description: Experimental operator for installing Istio service mesh
     features.operators.openshift.io/cnf: "false"
     features.operators.openshift.io/cni: "true"
@@ -124,18 +124,14 @@ spec:
       name: istiorevisions.operator.istio.io
       specDescriptors:
       - description: 'Defines the version of Istio to install. Must be one of: v1.20.3,
-          v1.20.2, v1.20.1, v1.19.7, v1.19.6, latest, gwAPIControllerMode.'
+          v1.19.7, latest.'
         displayName: Istio Version
         path: version
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:General
         - urn:alm:descriptor:com.tectonic.ui:select:v1.20.3
-        - urn:alm:descriptor:com.tectonic.ui:select:v1.20.2
-        - urn:alm:descriptor:com.tectonic.ui:select:v1.20.1
         - urn:alm:descriptor:com.tectonic.ui:select:v1.19.7
-        - urn:alm:descriptor:com.tectonic.ui:select:v1.19.6
         - urn:alm:descriptor:com.tectonic.ui:select:latest
-        - urn:alm:descriptor:com.tectonic.ui:select:gwAPIControllerMode
       - description: Namespace to which the Istio components should be installed.
         displayName: Namespace
         path: namespace
@@ -171,18 +167,14 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:select:InPlace
         - urn:alm:descriptor:com.tectonic.ui:select:RevisionBased
       - description: 'Defines the version of Istio to install. Must be one of: v1.20.3,
-          v1.20.2, v1.20.1, v1.19.7, v1.19.6, latest, gwAPIControllerMode.'
+          v1.19.7, latest.'
         displayName: Istio Version
         path: version
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:General
         - urn:alm:descriptor:com.tectonic.ui:select:v1.20.3
-        - urn:alm:descriptor:com.tectonic.ui:select:v1.20.2
-        - urn:alm:descriptor:com.tectonic.ui:select:v1.20.1
         - urn:alm:descriptor:com.tectonic.ui:select:v1.19.7
-        - urn:alm:descriptor:com.tectonic.ui:select:v1.19.6
         - urn:alm:descriptor:com.tectonic.ui:select:latest
-        - urn:alm:descriptor:com.tectonic.ui:select:gwAPIControllerMode
       - description: Defines how many seconds the operator should wait before removing
           a non-active revision after all the workloads have stopped using it. You
           may want to set this value on the order of minutes. The minimum and the
@@ -229,12 +221,8 @@ spec:
     This version of the operator supports the following Istio versions:
 
     - v1.20.3
-    - v1.20.2
-    - v1.20.1
     - v1.19.7
-    - v1.19.6
     - latest (bcd8cdca)
-    - gwAPIControllerMode
 
     [See this page](https://github.com/maistra/istio-operator/blob/maistra-3.0/bundle/README.md) for instructions on how to use it.
   displayName: Sail Operator
