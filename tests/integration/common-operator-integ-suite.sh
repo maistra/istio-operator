@@ -200,10 +200,34 @@ main_test() {
     sed -e "s/version:.*/version: ${ver}/g" "${ISTIO_MANIFEST}" | ${COMMAND} apply -f -
 
     echo "Wait for Istio to be Reconciled"
-    ${COMMAND} wait "istio/${ISTIO_NAME}" --for condition=Reconciled=True --timeout=${TIMEOUT}
+    if ! ${COMMAND} wait "istio/${ISTIO_NAME}" --for condition=Reconciled=True --timeout=${TIMEOUT}; then
+      logFailure "Operator failed to reconcile Istio CR"
+      echo
+      echo "Istio operator:"
+      ${COMMAND} describe "deploy/${DEPLOYMENT_NAME}" -n "${NAMESPACE}"
+      echo
+      echo "Pods:"
+      ${COMMAND} get pods -n "${NAMESPACE}" -o wide
+      echo
+      echo "Operator logs:"
+      ${COMMAND} logs deploy/istio-operator -n "${CONTROL_PLANE_NS}"
+      exit 1
+    fi
 
     echo "Wait for Istio to be Ready"
-    ${COMMAND} wait "istio/${ISTIO_NAME}" --for condition=Ready=True --timeout=${TIMEOUT}
+    if ! ${COMMAND} wait "istio/${ISTIO_NAME}" --for condition=Ready=True --timeout=${TIMEOUT}; then
+      logFailure "Istio CR failed to become ready"
+      echo
+      echo "Istio resource:"
+      ${COMMAND} describe "istio/${ISTIO_NAME}"
+      echo
+      echo "Pods:"
+      ${COMMAND} get pods -n "${CONTROL_PLANE_NS}" -o wide
+      echo
+      echo "Istiod logs:"
+      ${COMMAND} logs deploy/istiod -n "${CONTROL_PLANE_NS}"
+      exit 1
+    fi
 
     echo "Give the operator 30s to settle down"
     sleep 30
