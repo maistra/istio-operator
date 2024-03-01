@@ -114,6 +114,24 @@ func (r *controlPlaneInstanceReconciler) patchKiali(ctx context.Context, grafana
 		}
 	}
 
+	// istio
+	configMapName := fmt.Sprintf("istio-%s", r.Instance.Name)
+	if err := updatedKiali.Spec.SetField("external_services.istio.config_map_name", configMapName); err != nil {
+		return common.RequeueWithError(errorOnSettingValueInKialiCR("external_services.istio.config_map_name", err))
+	}
+	urlServiceAccount := fmt.Sprintf("http://istiod-%s.%s:15014/version", r.Instance.Name, r.Instance.Namespace)
+	if err := updatedKiali.Spec.SetField("external_services.istio.url_service_version", urlServiceAccount); err != nil {
+		return common.RequeueWithError(errorOnSettingValueInKialiCR("external_services.istio.url_service_version", err))
+	}
+	deploymentName := fmt.Sprintf("istiod-%s", r.Instance.Name)
+	if err := updatedKiali.Spec.SetField("external_services.istio.istiod_deployment_name", deploymentName); err != nil {
+		return common.RequeueWithError(errorOnSettingValueInKialiCR("external_services.istio.istiod_deployment_name", err))
+	}
+	sidecarInjectorName := fmt.Sprintf("istio-sidecar-injector-%s", r.Instance.Name)
+	if err := updatedKiali.Spec.SetField("external_services.istio.istio_sidecar_injector_config_map_name", sidecarInjectorName); err != nil {
+		return common.RequeueWithError(errorOnSettingValueInKialiCR("external_services.istio.istio_sidecar_injector_config_map_name", err))
+	}
+
 	// FUTURE: add support for synchronizing kiali version with control plane version
 
 	if err := r.Client.Patch(ctx, updatedKiali, client.Merge); err != nil {
