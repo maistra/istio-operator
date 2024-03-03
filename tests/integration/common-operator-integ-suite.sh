@@ -210,7 +210,7 @@ main_test() {
       ${COMMAND} get pods -n "${NAMESPACE}" -o wide
       echo
       echo "Operator logs:"
-      ${COMMAND} logs deploy/istio-operator -n "${CONTROL_PLANE_NS}"
+      ${COMMAND} logs deploy/istio-operator -n "${NAMESPACE}"
       exit 1
     fi
 
