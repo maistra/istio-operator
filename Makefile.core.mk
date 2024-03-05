@@ -12,8 +12,6 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 
--include Makefile.overrides
-
 # VERSION defines the project version for the bundle.
 # Update this value when you upgrade the version of your project.
 # To re-generate a bundle for another specific version without changing the standard setup, you can:
@@ -518,4 +516,7 @@ format: format-go tidy-go ## Auto-format all code. This should be run before sen
 
 .SILENT: helm $(HELM) $(LOCALBIN) deploy-yaml
 
-include common/Makefile.common.mk
+COMMON_IMPORTS = lint-scripts lint-copyright-banner lint-go lint-yaml lint-helm format-go tidy-go check-clean-repo
+.PHONY: $(COMMON_IMPORTS)
+$(COMMON_IMPORTS):
+	@$(MAKE) --no-print-directory -f common/Makefile.common.mk $@
