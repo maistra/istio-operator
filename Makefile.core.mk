@@ -516,7 +516,7 @@ format: format-go tidy-go ## Auto-format all code. This should be run before sen
 
 .SILENT: helm $(HELM) $(LOCALBIN) deploy-yaml
 
-COMMON_IMPORTS = lint-scripts lint-copyright-banner lint-go lint-yaml lint-helm format-go tidy-go check-clean-repo
+COMMON_IMPORTS = lint-all lint-scripts lint-copyright-banner lint-go lint-yaml lint-helm format-go tidy-go check-clean-repo update-common
 .PHONY: $(COMMON_IMPORTS)
 $(COMMON_IMPORTS):
 	@$(MAKE) --no-print-directory -f common/Makefile.common.mk $@
