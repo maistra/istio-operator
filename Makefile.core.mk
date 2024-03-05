@@ -143,11 +143,11 @@ export
 ##@ Testing
 
 .PHONY: test
-test: envtest ## Run tests.
+test: envtest ## Run unit tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test ./... -coverprofile cover.out
 
 .PHONY: test.scorecard
-test.scorecard: operator-sdk ## Run the operator scorecard test against an existing cluster.
+test.scorecard: operator-sdk ## Run the operator scorecard test.
 	OPERATOR_SDK=$(OPERATOR_SDK) ${SOURCE_DIR}/tests/scorecard-test.sh
 
 .PHONY: test.integration.ocp
@@ -290,7 +290,7 @@ deploy-example-openshift: ## Deploy an example Istio resource to an existing OCP
 	kubectl apply -n istio-system -f chart/samples/istio-sample-openshift.yaml
 
 .PHONY: deploy-example-kubernetes
-deploy-example-kubernetes: ## Deploy an example Istio resource on an ecisting cluster.
+deploy-example-kubernetes: ## Deploy an example Istio resource on an existing cluster.
 	kubectl create ns istio-system || echo "namespace istio-system already exists"
 	kubectl apply -n istio-system -f chart/samples/istio-sample-kubernetes.yaml
 
