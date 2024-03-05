@@ -31,10 +31,10 @@ function getLatestVersion() {
 # Update common files
 make update-common
 
-# Update go dependencies
+# Update go dependencies (skipped until cachito supports 1.22, see https://issues.redhat.com/browse/OSSM-5988)
 export GO111MODULE=on
-go get -u "istio.io/istio@${UPDATE_BRANCH}"
-go get -u "istio.io/client-go@${UPDATE_BRANCH}"
+# go get -u "istio.io/istio@${UPDATE_BRANCH}"
+# go get -u "istio.io/client-go@${UPDATE_BRANCH}"
 go mod tidy
 
 # Update operator-sdk
@@ -56,7 +56,10 @@ sed -i "s|OPM_VERSION ?= .*|OPM_VERSION ?= ${OPM_LATEST_VERSION}|" "${ROOTDIR}/M
 
 # Update kube-rbac-proxy
 RBAC_PROXY_LATEST_VERSION=$(getLatestVersion brancz/kube-rbac-proxy | cut -d/ -f1)
-sed -i "s|gcr.io/kubebuilder/kube-rbac-proxy:.*|gcr.io/kubebuilder/kube-rbac-proxy:${RBAC_PROXY_LATEST_VERSION}|" "${ROOTDIR}/chart/templates/deployment.yaml"
+# Only update it if the newer image is available in the registry
+if docker manifest inspect "gcr.io/kubebuilder/kube-rbac-proxy:${RBAC_PROXY_LATEST_VERSION}" >/dev/null 2>/dev/null; then
+  sed -i "s|gcr.io/kubebuilder/kube-rbac-proxy:.*|gcr.io/kubebuilder/kube-rbac-proxy:${RBAC_PROXY_LATEST_VERSION}|" "${ROOTDIR}/chart/templates/deployment.yaml"
+fi
 
 # Regenerate files
 make update-istio gen

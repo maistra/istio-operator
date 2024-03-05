@@ -16,11 +16,9 @@ csv:
 
     This version of the operator supports the following Istio versions:
 
-    - v1.20.2
-    - v1.20.1
-    - v1.19.6
-    - latest (ffed2074)
-    - gwAPIControllerMode
+    - v1.20.3
+    - v1.19.7
+    - latest (bd5f4f05)
 
     [See this page](https://github.com/maistra/istio-operator/blob/maistra-3.0/bundle/README.md) for instructions on how to use it.
   support: Community based

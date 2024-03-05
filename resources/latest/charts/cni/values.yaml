@@ -40,11 +40,6 @@ defaults:
     # Some k8s flavors (e.g. OpenShift) do not support the chain approach, set to false if this is the case
     chained: true
 
-    # Allow the istio-cni container to run in privileged mode, needed for some platforms (e.g. OpenShift) or features (repairPods)
-    # Note that even if this is false, the `istio-cni` container *requires* root privileges on the node to function,
-    # and setting this to false does not change that, nor will it run the container as non-root or make it "un-privileged".
-    privileged: true
-
     # Custom configuration happens based on the CNI provider.
     # Possible values: "default", "multus"
     provider: "default"
@@ -76,7 +71,7 @@ defaults:
       deletePods: false
       # repairPods will dynamically repair any broken pod by setting up the pod networking configuration even after it has started.
       # Note the pod will be crashlooping, so this may take a few minutes to become fully functional based on when the retry occurs.
-      # This requires no RBAC privilege, but does require `securityContext.privileged`.
+      # This requires no RBAC privilege, but does require `securityContext.privileged/CAP_SYS_ADMIN`.
       repairPods: true
 
       initContainerName: "istio-validation"
@@ -116,7 +111,7 @@ defaults:
     hub: gcr.io/istio-testing
 
     # Default tag for Istio images.
-    tag: 1.22-alpha.ffed2074bd92a84b9bd87577e41226c3cfac1a9b
+    tag: 1.22-alpha.bd5f4f05b95fdc5fe371bdf4760948aa4c07399d
 
     # Variant of the image to use.
     # Currently supported are: [debug, distroless]

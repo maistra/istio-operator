@@ -1,18 +1,16 @@
-/*
-Copyright 2023.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+// Copyright Istio Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package istiorevision
 
@@ -241,7 +239,8 @@ func isCNIEnabled(values *v1alpha1.Values) bool {
 		return true
 	}
 
-	return values.IstioCni != nil && values.IstioCni.Enabled
+	//nolint:staticcheck	// ignore use of deprecated field (this code will be removed when we implement the IstioCNI resource)
+	return values.IstioCni != nil && values.IstioCni.Enabled != nil && *values.IstioCni.Enabled
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -456,7 +455,8 @@ func (r *IstioRevisionReconciler) isRevisionReferencedByWorkloads(ctx context.Co
 
 	if rev.Name == v1alpha1.DefaultRevision && rev.Spec.Values != nil &&
 		rev.Spec.Values.SidecarInjectorWebhook != nil &&
-		rev.Spec.Values.SidecarInjectorWebhook.EnableNamespacesByDefault {
+		rev.Spec.Values.SidecarInjectorWebhook.EnableNamespacesByDefault != nil &&
+		*rev.Spec.Values.SidecarInjectorWebhook.EnableNamespacesByDefault {
 		return true, nil
 	}
 

@@ -12,8 +12,6 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 
--include Makefile.overrides
-
 # VERSION defines the project version for the bundle.
 # Update this value when you upgrade the version of your project.
 # To re-generate a bundle for another specific version without changing the standard setup, you can:
@@ -148,16 +146,16 @@ export
 test: envtest ## Run unit tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test `go list ./... |grep -v tests/integration/operator` -coverprofile cover.out
 
-.PHONY: test.scorecard ## Runs the operator scorecard test. Needs a valid k8s cluster as pointed by the KUBECONFIG variable
-test.scorecard: operator-sdk
-	$(OPERATOR_SDK) scorecard bundle
+.PHONY: test.scorecard
+test.scorecard: operator-sdk ## Run the operator scorecard test.
+	OPERATOR_SDK=$(OPERATOR_SDK) ${SOURCE_DIR}/tests/scorecard-test.sh
 
 .PHONY: test.integration.ocp
-test.integration.ocp:
+test.integration.ocp: ## Run the integration tests against an existing OCP cluster.
 	${SOURCE_DIR}/tests/integration/integ-suite-ocp.sh
 
 .PHONY: test.integration.kind
-test.integration.kind:
+test.integration.kind: ## Deploy a KinD cluster and run the integration tests against it.
 	${SOURCE_DIR}/tests/integration/integ-suite-kind.sh
 
 .PHONY: test.integration.describe
@@ -175,15 +173,15 @@ run: gen ## Run a controller from your host.
 
 # docker build -t ${IMAGE} --build-arg GIT_TAG=${GIT_TAG} --build-arg GIT_REVISION=${GIT_REVISION} --build-arg GIT_STATUS=${GIT_STATUS} .
 .PHONY: docker-build
-docker-build: build ## Build docker image with the manager.
+docker-build: build ## Build docker image.
 	docker build ${DOCKER_BUILD_FLAGS} -t ${IMAGE} .
 
 .PHONY: docker-push
-docker-push: ## Push docker image with the manager.
+docker-push: ## Push docker image.
 	docker push ${IMAGE}
 
-.PHONY: docker-push-nightly ## Build and push nightly docker image with the manager.
-docker-push-nightly: TAG=$(MINOR_VERSION)-nightly-$(TODAY)
+.PHONY: docker-push-nightly
+docker-push-nightly: TAG=$(MINOR_VERSION)-nightly-$(TODAY) ## Build and push nightly docker image.
 docker-push-nightly: docker-build
 	docker push ${IMAGE}
 	docker tag ${IMAGE} $(HUB)/$(IMAGE_BASE):$(MINOR_VERSION)-latest
@@ -230,7 +228,7 @@ undefine BUILDX
 endif
 
 .PHONY: docker-buildx
-docker-buildx: test build-all ## Build and push (by default) docker image for the manager for cross-platform support
+docker-buildx: test build-all ## Build and push docker image with cross-platform support.
 	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
 	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile.cross
 	- docker buildx create --name project-v4-builder
@@ -246,57 +244,57 @@ ifndef ignore-not-found
 endif
 
 .PHONY: install
-install: gen-manifests ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+install: gen-manifests ## Install CRDs into an existing cluster.
 	kubectl create ns ${NAMESPACE} || echo "namespace ${NAMESPACE} already exists"
 	kubectl apply --server-side=true -f chart/crds
 
 .PHONY: uninstall
-uninstall: ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+uninstall: ## Uninstall CRDs from an existing cluster. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	kubectl delete --ignore-not-found=$(ignore-not-found) -f chart/crds
 
 .PHONY: deploy
-deploy: helm ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+deploy: helm ## Deploy controller to an existing cluster.
 	$(info NAMESPACE: $(NAMESPACE))
-	$(MAKE) -e HELM_TEMPL_DEF_FLAGS="$(HELM_TEMPL_DEF_FLAGS)" -s deploy-yaml | kubectl apply -f -
+	$(MAKE) -e HELM_TEMPL_DEF_FLAGS="$(HELM_TEMPL_DEF_FLAGS)" -s deploy-yaml | kubectl apply --server-side=true -f -
 
 .PHONY: deploy-yaml
-deploy-yaml: helm ## Outputs YAML manifests needed to deploy the controller
+deploy-yaml: helm ## Output YAML manifests used by `deploy`.
 	$(HELM) template chart chart $(HELM_TEMPL_DEF_FLAGS) --namespace ${NAMESPACE}
 
 .PHONY: deploy-openshift # TODO: remove this target and use deploy-olm instead (when we fix the internal registry TLS issues when using operator-sdk run bundle)
-deploy-openshift: helm ## Deploy controller to OpenShift via YAML manifests
+deploy-openshift: helm ## Deploy controller to an existing OCP cluster.
 	$(info NAMESPACE: $(NAMESPACE))
-	$(MAKE) -e HELM_TEMPL_DEF_FLAGS="$(HELM_TEMPL_DEF_FLAGS)" -s deploy-yaml-openshift | kubectl apply -f -
+	$(MAKE) -e HELM_TEMPL_DEF_FLAGS="$(HELM_TEMPL_DEF_FLAGS)" -s deploy-yaml-openshift | kubectl apply --server-side=true -f -
 
 .PHONY: deploy-yaml-openshift
-deploy-yaml-openshift: helm ## Outputs YAML manifests needed to deploy the controller in OpenShift
+deploy-yaml-openshift: helm ## Output YAML manifests used by `deploy-openshift`.
 	$(HELM) template chart chart $(HELM_TEMPL_DEF_FLAGS) --namespace ${NAMESPACE} --set platform="openshift"
 
 .PHONY: deploy-olm
-deploy-olm: bundle bundle-build bundle-push ## Builds and pushes the operator OLM bundle and then deploys the operator using OLM
+deploy-olm: bundle bundle-build bundle-push ## Build and push the operator OLM bundle and deploy the operator using OLM.
 	kubectl create ns ${NAMESPACE} || echo "namespace ${NAMESPACE} already exists"
 	$(OPERATOR_SDK) run bundle $(BUNDLE_IMG) -n ${NAMESPACE}
 
 .PHONY: undeploy
-undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+undeploy: ## Undeploy controller from an existing cluster. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	kubectl delete istios.operator.istio.io --all --all-namespaces --wait=true
 	$(MAKE) -e HELM_TEMPL_DEF_FLAGS="$(HELM_TEMPL_DEF_FLAGS)" deploy-yaml | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
 .PHONY: undeploy-olm
-undeploy-olm: operator-sdk ## Undeploys the operator from the cluster (used only if operator was installed via OLM)
+undeploy-olm: operator-sdk ## Undeploy the operator from an existing cluster (used only if operator was installed via OLM).
 	kubectl delete istios.operator.istio.io --all --all-namespaces --wait=true
 	$(OPERATOR_SDK) cleanup $(OPERATOR_NAME) --delete-all -n ${NAMESPACE}
 
 .PHONY: deploy-example
-deploy-example: deploy-example-openshift
+deploy-example: deploy-example-openshift ## Deploy an example Istio resource to an existing OCP cluster. Same as `deploy-example-openshift`.
 
 .PHONY: deploy-example-openshift
-deploy-example-openshift: ## Deploy an example Istio resource on OpenShift
+deploy-example-openshift: ## Deploy an example Istio resource to an existing OCP cluster.
 	kubectl create ns istio-system || echo "namespace istio-system already exists"
 	kubectl apply -n istio-system -f chart/samples/istio-sample-openshift.yaml
 
 .PHONY: deploy-example-kubernetes
-deploy-example-kubernetes: ## Deploy an example Istio resource on Kubernetes
+deploy-example-kubernetes: ## Deploy an example Istio resource on an existing cluster.
 	kubectl create ns istio-system || echo "namespace istio-system already exists"
 	kubectl apply -n istio-system -f chart/samples/istio-sample-kubernetes.yaml
 
@@ -306,12 +304,28 @@ deploy-example-kubernetes: ## Deploy an example Istio resource on Kubernetes
 gen-manifests: controller-gen ## Generate WebhookConfiguration and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) crd:allowDangerousTypes=true webhook paths="./..." output:crd:artifacts:config=chart/crds
 
+# TODO: move this to versions.yaml or get the files via go.mod instead of downloading them
+ISTIO_REPO_BASE=https://raw.githubusercontent.com/istio/istio/0e7ecbd31f9524b063ced1f49f1a6f6e063d2bf5
+API_REPO_BASE=https://raw.githubusercontent.com/istio/api/ccd5cd40965ccba232d1f7c3b0e4ecacd0f6ceda
+.PHONY: gen-api
+gen-api: ## Generate API types from upstream files.
+	# TODO: should we get these files from the local filesystem by inspecting go.mod?
+	curl -o /tmp/values_types.pb.go $(ISTIO_REPO_BASE)/operator/pkg/apis/istio/v1alpha1/values_types.pb.go
+	curl -o /tmp/config.pb.go $(API_REPO_BASE)/mesh/v1alpha1/config.pb.go
+	curl -o /tmp/network.pb.go $(API_REPO_BASE)/mesh/v1alpha1/network.pb.go
+	curl -o /tmp/proxy.pb.go $(API_REPO_BASE)/mesh/v1alpha1/proxy.pb.go
+	curl -o /tmp/proxy_config.pb.go $(API_REPO_BASE)/networking/v1beta1/proxy_config.pb.go
+	curl -o /tmp/selector.pb.go $(API_REPO_BASE)/type/v1beta1/selector.pb.go
+	curl -o /tmp/destination_rule.pb.go $(API_REPO_BASE)/networking/v1alpha3/destination_rule.pb.go
+	curl -o /tmp/virtual_service.pb.go $(API_REPO_BASE)/networking/v1alpha3/virtual_service.pb.go
+	go run hack/api_transformer/main.go hack/api_transformer/transform.yaml
+
 .PHONY: gen-code
 gen-code: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
-	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+	$(CONTROLLER_GEN) object:headerFile="common/scripts/copyright-banner-go.txt" paths="./..."
 
 .PHONY: gen-charts
-gen-charts: ## Pull charts from maistra/istio repository
+gen-charts: ## Pull charts from istio repository.
 	@# use yq to generate a list of download-charts.sh commands for each version in versions.yaml; these commands are
 	@# passed to sh and executed; in a nutshell, the yq command generates commands like:
 	@# ./hack/download-charts.sh <version> <git repo> <commit> [chart1] [chart2] ...
@@ -329,11 +343,11 @@ gen-charts: ## Pull charts from maistra/istio repository
 	@# calls copy-crds.sh with the version specified in the .crdSourceVersion field in versions.yaml
 	@hack/copy-crds.sh "resources/$$(yq eval '.crdSourceVersion' versions.yaml)/charts"
 
-.PHONY: gen ## Generate everything
-gen: controller-gen gen-charts gen-manifests gen-code bundle
+.PHONY: gen
+gen: controller-gen gen-api gen-charts gen-manifests gen-code bundle ## Generate everything.
 
 .PHONY: gen-check
-gen-check: gen restore-manifest-dates check-clean-repo ## Verifies that changes in generated resources have been checked in
+gen-check: gen restore-manifest-dates check-clean-repo ## Verify that changes in generated resources have been checked in.
 
 .PHONY: restore-manifest-dates
 restore-manifest-dates:
@@ -342,7 +356,7 @@ ifneq "${BUNDLE_MANIFEST_DATE}" ""
 endif
 
 .PHONY: update-istio
-update-istio: ## Updates the Istio commit hash in the 'latest' entry in versions.yaml to the latest commit in the branch
+update-istio: ## Update the Istio commit hash in the 'latest' entry in versions.yaml to the latest commit in the branch.
 	@hack/update-istio.sh
 
 ##@ Build Dependencies
@@ -361,12 +375,12 @@ OPM ?= $(LOCALBIN)/opm
 
 ## Tool Versions
   OPERATOR_SDK_VERSION ?= v1.33.0
-  HELM_VERSION ?= v3.14.0
+  HELM_VERSION ?= v3.14.2
   CONTROLLER_TOOLS_VERSION ?= v0.14.0
   OPM_VERSION ?= v1.36.0
 
 .PHONY: helm $(HELM)
-helm: $(HELM) ## Download helm locally if necessary. If wrong version is installed, it will be removed before downloading.
+helm: $(HELM) ## Download helm to bin directory. If wrong version is installed, it will be overwritten.
 $(HELM): $(LOCALBIN)
 	@if test -x $(LOCALBIN)/helm && ! $(LOCALBIN)/helm version | grep -q $(shell v='$(HELM_VERSION)'; echo "$${v%.*}") > /dev/stderr; then \
 		echo "$(LOCALBIN)/helm version is not expected $(HELM_VERSION). Removing it before installing." > /dev/stderr; \
@@ -387,13 +401,13 @@ $(OPERATOR_SDK): $(LOCALBIN)
 	chmod +x $(LOCALBIN)/operator-sdk;
 
 .PHONY: controller-gen
-controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary. If wrong version is installed, it will be overwritten.
+controller-gen: $(CONTROLLER_GEN) ## Download controller-gen to bin directory. If wrong version is installed, it will be overwritten.
 $(CONTROLLER_GEN): $(LOCALBIN)
 	@test -s $(LOCALBIN)/controller-gen && $(LOCALBIN)/controller-gen --version | grep -q $(CONTROLLER_TOOLS_VERSION) || \
 	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
 
 .PHONY: envtest
-envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
+envtest: $(ENVTEST) ## Download envtest-setup to bin directory.
 $(ENVTEST): $(LOCALBIN)
 	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 
@@ -428,26 +442,26 @@ bundle-push: ## Push the bundle image.
 	$(MAKE) docker-push IMAGE=$(BUNDLE_IMG)
 
 .PHONY: bundle-publish
-bundle-publish: ## Create a PR for publishing in OperatorHub
+bundle-publish: ## Create a PR for publishing in OperatorHub.
 	export GIT_USER=$(GITHUB_USER); \
 	export GITHUB_TOKEN=$(GITHUB_TOKEN); \
 	export OPERATOR_VERSION=$(OPERATOR_VERSION); \
 	export OPERATOR_NAME=$(OPERATOR_NAME); \
 	./hack/operatorhub/publish-bundle.sh
 
-.PHONY: bundle-nightly ## Generate nightly bundle
-bundle-nightly: VERSION:=$(VERSION)-nightly-$(TODAY)
+.PHONY: bundle-nightly
+bundle-nightly: VERSION:=$(VERSION)-nightly-$(TODAY)  ## Generate nightly bundle.
 bundle-nightly: CHANNELS:=$(MINOR_VERSION)-nightly
 bundle-nightly: TAG=$(MINOR_VERSION)-nightly-$(TODAY)
 bundle-nightly: bundle
 
 .PHONY: bundle-publish-nightly
-bundle-publish-nightly: OPERATOR_VERSION=$(VERSION)-nightly-$(TODAY)
+bundle-publish-nightly: OPERATOR_VERSION=$(VERSION)-nightly-$(TODAY)  ## Publish nightly bundle.
 bundle-publish-nightly: TAG=$(MINOR_VERSION)-nightly-$(TODAY)
 bundle-publish-nightly: bundle-nightly bundle-publish
 
 .PHONY: patch-istio-crd
-patch-istio-crd: ## Update Istio CRD's openAPIV3Schema values
+patch-istio-crd: ## Update Istio CRD's openAPIV3Schema values.
 	@hack/patch-istio-crd.sh
 
 .PHONY: opm $(OPM)
@@ -491,19 +505,22 @@ catalog-push: ## Push a catalog image.
 ##@ Linting
 
 .PHONY: lint-bundle
-lint-bundle: operator-sdk ## runs linters against OLM metadata bundle
+lint-bundle: operator-sdk ## Run linters against OLM metadata bundle.
 	$(OPERATOR_SDK) bundle validate bundle --select-optional suite=operatorframework
 
 .PHONY: lint-watches
-lint-watches: ## checks if the operator watches all resource kinds present in Helm charts
+lint-watches: ## Checks if the operator watches all resource kinds present in Helm charts.
 	@hack/lint-watches.sh
 
 .PHONY: lint
-lint: lint-scripts lint-copyright-banner lint-go lint-yaml lint-helm lint-bundle lint-watches ## runs all linters
+lint: lint-scripts lint-copyright-banner lint-go lint-yaml lint-helm lint-bundle lint-watches ## Run all linters.
 
 .PHONY: format
-format: format-go tidy-go ## Auto formats all code. This should be run before sending a PR.
+format: format-go tidy-go ## Auto-format all code. This should be run before sending a PR.
 
 .SILENT: helm $(HELM) $(LOCALBIN) deploy-yaml
 
-include common/Makefile.common.mk
+COMMON_IMPORTS = lint-all lint-scripts lint-copyright-banner lint-go lint-yaml lint-helm format-go tidy-go check-clean-repo update-common
+.PHONY: $(COMMON_IMPORTS)
+$(COMMON_IMPORTS):
+	@$(MAKE) --no-print-directory -f common/Makefile.common.mk $@

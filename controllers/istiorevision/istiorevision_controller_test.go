@@ -27,6 +27,8 @@ import (
 	"maistra.io/istio-operator/pkg/test"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"istio.io/istio/pkg/ptr"
 )
 
 const operatorNamespace = "istio-operator"
@@ -175,8 +177,8 @@ func TestDetermineReadyCondition(t *testing.T) {
 		{
 			name: "Istiod and CNI ready",
 			values: &v1.Values{
-				IstioCni: &v1.CNIConfig{
-					Enabled: true,
+				IstioCni: &v1.CNIUsageConfig{
+					Enabled: ptr.Of(true),
 				},
 			},
 			clientObjects: []client.Object{
@@ -210,8 +212,8 @@ func TestDetermineReadyCondition(t *testing.T) {
 		{
 			name: "CNI not ready",
 			values: &v1.Values{
-				IstioCni: &v1.CNIConfig{
-					Enabled: true,
+				IstioCni: &v1.CNIUsageConfig{
+					Enabled: ptr.Of(true),
 				},
 			},
 			clientObjects: []client.Object{
@@ -247,8 +249,8 @@ func TestDetermineReadyCondition(t *testing.T) {
 		{
 			name: "CNI pods not scheduled",
 			values: &v1.Values{
-				IstioCni: &v1.CNIConfig{
-					Enabled: true,
+				IstioCni: &v1.CNIUsageConfig{
+					Enabled: ptr.Of(true),
 				},
 			},
 			clientObjects: []client.Object{
@@ -284,8 +286,8 @@ func TestDetermineReadyCondition(t *testing.T) {
 		{
 			name: "CNI not found",
 			values: &v1.Values{
-				IstioCni: &v1.CNIConfig{
-					Enabled: true,
+				IstioCni: &v1.CNIUsageConfig{
+					Enabled: ptr.Of(true),
 				},
 			},
 			clientObjects: []client.Object{
@@ -509,7 +511,7 @@ func TestDetermineInUseCondition(t *testing.T) {
 				if tc.enableAllNamespaces {
 					rev.Spec.Values = &v1.Values{
 						SidecarInjectorWebhook: &v1.SidecarInjectorConfig{
-							EnableNamespacesByDefault: true,
+							EnableNamespacesByDefault: ptr.Of(true),
 						},
 					}
 				}

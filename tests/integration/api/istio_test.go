@@ -70,6 +70,26 @@ var _ = Describe("Istio resource", Ordered, func() {
 		deleteAllIstiosAndRevisions(ctx)
 	})
 
+	Describe("validation", func() {
+		It("rejects an Istio where spec.values.global.istioNamespace doesn't match spec.namespace", func() {
+			istio = &v1alpha1.Istio{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: istioName,
+				},
+				Spec: v1alpha1.IstioSpec{
+					Version:   defaultVersion,
+					Namespace: istioNamespace,
+					Values: &v1alpha1.Values{
+						Global: &v1alpha1.GlobalConfig{
+							IstioNamespace: "wrong-namespace",
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, istio)).To(Not(Succeed()))
+		})
+	})
+
 	Describe("basic operation", func() {
 		BeforeAll(func() {
 			Step("Creating the custom resource")
@@ -88,8 +108,8 @@ var _ = Describe("Istio resource", Ordered, func() {
 						Pilot: &v1alpha1.PilotConfig{
 							Image: pilotImage,
 						},
-						IstioCni: &v1alpha1.CNIConfig{
-							Enabled: true,
+						IstioCni: &v1alpha1.CNIUsageConfig{
+							Enabled: ptr.Of(true),
 						},
 					},
 				},
@@ -117,11 +137,11 @@ var _ = Describe("Istio resource", Ordered, func() {
 				Namespace: istio.Spec.Namespace,
 				Values: &v1alpha1.Values{
 					Global: &v1alpha1.GlobalConfig{
-						ConfigValidation: true,
+						ConfigValidation: ptr.Of(true),
 						IstioNamespace:   istio.Spec.Namespace,
 					},
-					IstioCni: &v1alpha1.CNIConfig{
-						Enabled: true,
+					IstioCni: &v1alpha1.CNIUsageConfig{
+						Enabled: ptr.Of(true),
 					},
 					Pilot: &v1alpha1.PilotConfig{
 						Image: pilotImage,
@@ -152,11 +172,11 @@ var _ = Describe("Istio resource", Ordered, func() {
 					Namespace: istio.Spec.Namespace,
 					Values: &v1alpha1.Values{
 						Global: &v1alpha1.GlobalConfig{
-							ConfigValidation: true,
+							ConfigValidation: ptr.Of(true),
 							IstioNamespace:   istio.Spec.Namespace,
 						},
-						IstioCni: &v1alpha1.CNIConfig{
-							Enabled: true,
+						IstioCni: &v1alpha1.CNIUsageConfig{
+							Enabled: ptr.Of(true),
 						},
 						Pilot: &v1alpha1.PilotConfig{
 							Image: pilotImage,
