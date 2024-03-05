@@ -99,7 +99,7 @@ func GetPodPhase(ns, podName string) (string, error) {
 
 // GetResource returns the json of a resource
 func GetResource(ns, resourceType, resourceName string) (string, error) {
-	// `2>&1 | sed -n '/^{/,$p'` is a workaround for oc commands that can show Warning at the beggining of the output.
+	// `2>&1 | sed -n '/^{/,$p'` is a workaround for oc commands that can show Warning at the beginning of the output.
 	cmd := fmt.Sprintf("%s get %s %s -n %s -o json 2>&1 | sed -n '/^{/,$p'", commandTool(), resourceType, resourceName, ns)
 	json, err := shell.ExecuteCommand(cmd)
 	if err != nil {

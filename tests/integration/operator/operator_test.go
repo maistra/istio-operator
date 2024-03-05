@@ -91,7 +91,7 @@ var _ = Describe("Operator", Ordered, func() {
 
 				AfterAll(func() {
 					Eventually(kubectl.DeleteNamespace).WithArguments(controlPlaneNamespace).Should(Succeed(), "Namespace should be deleted")
-					Eventually(kubectl.GetNamespace).WithArguments(controlPlaneNamespace).Should(Equal(fmt.Sprintf("namespace %s not found", controlPlaneNamespace)), "Namespace should not be found")
+					Eventually(kubectl.GetNamespace).WithArguments(controlPlaneNamespace).Should(Equal(fmt.Sprintf("namespace %s not found", controlPlaneNamespace)))
 					GinkgoWriter.Println("Cleanup done")
 				})
 
