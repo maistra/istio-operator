@@ -338,7 +338,7 @@ func (v *versionStrategyV2_4) ValidateUpdate(ctx context.Context, cl client.Clie
 		return err
 	}
 	if oldClusterScoped != newClusterScoped {
-		return fmt.Errorf("field spec.mode is immutable; to change its value, delete the ServiceMeshControlPlane and recreate it")
+		return fmt.Errorf("field spec.mode is immutable in v2.4; to change its value, upgrade the ServiceMeshControlPlane to v2.5")
 	}
 	return nil
 }
