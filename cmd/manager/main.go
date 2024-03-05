@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	"github.com/magiconair/properties"
@@ -26,6 +27,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -128,12 +130,48 @@ func main() {
 	}
 
 	ctx := context.Background()
-	// Become the leader before proceeding
-	err = leader.Become(ctx, "istio-operator-lock")
+	c1 := make(chan error, 1)
 
-	if err != nil {
-		log.Error(err, "")
-		os.Exit(1)
+	go func() {
+		// Become the leader before proceeding
+		c1 <- leader.Become(ctx, "istio-operator-lock")
+	}()
+
+	select {
+	case err := <-c1:
+		if err != nil {
+			log.Error(err, "")
+			os.Exit(1)
+		}
+		break
+
+	// OSSM-5541: Delete the existing configmap when leader selection timeout
+	case <-time.After(5 * time.Minute):
+		client, err := crclient.New(cfg, crclient.Options{})
+		if err != nil {
+			log.Error(err, "")
+		}
+
+		// Delete the existing lock from this pod, in case the node stopped
+		existing := &v1.ConfigMap{}
+		key := crclient.ObjectKey{Namespace: namespace, Name: "istio-operator-lock"}
+		err = client.Get(ctx, key, existing)
+		if err != nil {
+			log.Info("No pre-existing configmap istio-operator-lock was found.")
+		} else {
+			err = client.Delete(ctx, existing)
+			if err != nil {
+				log.Error(err, "Unknown error trying to delete existing ConfigMap.")
+			}
+		}
+
+		// Block until receiving a notification from leader.Become
+		err = <-c1
+
+		if err != nil {
+			log.Error(err, "")
+			os.Exit(1)
+		}
 	}
 
 	// Set default manager options
