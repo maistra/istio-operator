@@ -37,7 +37,7 @@ func commandTool() string {
 
 // ApplyFromYamlString applies the given yaml string to the cluster
 func ApplyString(yamlString string) error {
-	cmd := fmt.Sprintf("%s apply -f - ", commandTool())
+	cmd := kubectl("apply -f -")
 	_, err := shell.ExecuteCommandWithInput(cmd, yamlString)
 	if err != nil {
 		return err

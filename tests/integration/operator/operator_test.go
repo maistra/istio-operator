@@ -127,7 +127,7 @@ var _ = Describe("Operator", Ordered, func() {
 						GinkgoWriter.Println("Istio Operator stopped reconciling")
 					})
 
-					It("only istiod is deployed", func() {
+					It("deploys istiod", func() {
 						expectedDeployments := []string{"istiod"}
 
 						deploymentsList, err := kubectl.GetDeployments(controlPlaneNamespace)
@@ -155,7 +155,7 @@ var _ = Describe("Operator", Ordered, func() {
 							Eventually(kubectl.GetPodPhase).WithArguments(namespace, podName).Should(Equal("Running"), "CNI DaemonSet should be Running")
 							GinkgoWriter.Println("CNI DaemonSet is deployed in the namespace and Running")
 						} else {
-							Expect(daemonsetsList).To(BeEmpty(), "DaemonSet List should empty because it's not OpenShift")
+							Expect(daemonsetsList).To(BeEmpty(), "CNI DaemonSet should not be deployed on OpenShift")
 							GinkgoWriter.Println("CNI DaemonSet is not deployed in the namespace because it's not OpenShift")
 						}
 					})
