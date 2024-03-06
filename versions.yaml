@@ -30,10 +30,10 @@ versions:
   - name: latest
     repo: https://github.com/istio/istio
     branch: master
-    commit: bd5f4f05b95fdc5fe371bdf4760948aa4c07399d
+    commit: 05d0d5a529e1e9f83736b78b1808ba122536ec2a
     charts:
-      - https://storage.googleapis.com/istio-build/dev/1.22-alpha.bd5f4f05b95fdc5fe371bdf4760948aa4c07399d/helm/base-1.22-alpha.bd5f4f05b95fdc5fe371bdf4760948aa4c07399d.tgz
-      - https://storage.googleapis.com/istio-build/dev/1.22-alpha.bd5f4f05b95fdc5fe371bdf4760948aa4c07399d/helm/cni-1.22-alpha.bd5f4f05b95fdc5fe371bdf4760948aa4c07399d.tgz
-      - https://storage.googleapis.com/istio-build/dev/1.22-alpha.bd5f4f05b95fdc5fe371bdf4760948aa4c07399d/helm/gateway-1.22-alpha.bd5f4f05b95fdc5fe371bdf4760948aa4c07399d.tgz
-      - https://storage.googleapis.com/istio-build/dev/1.22-alpha.bd5f4f05b95fdc5fe371bdf4760948aa4c07399d/helm/istiod-1.22-alpha.bd5f4f05b95fdc5fe371bdf4760948aa4c07399d.tgz
-      - https://storage.googleapis.com/istio-build/dev/1.22-alpha.bd5f4f05b95fdc5fe371bdf4760948aa4c07399d/helm/ztunnel-1.22-alpha.bd5f4f05b95fdc5fe371bdf4760948aa4c07399d.tgz
+      - https://storage.googleapis.com/istio-build/dev/1.22-alpha.05d0d5a529e1e9f83736b78b1808ba122536ec2a/helm/base-1.22-alpha.05d0d5a529e1e9f83736b78b1808ba122536ec2a.tgz
+      - https://storage.googleapis.com/istio-build/dev/1.22-alpha.05d0d5a529e1e9f83736b78b1808ba122536ec2a/helm/cni-1.22-alpha.05d0d5a529e1e9f83736b78b1808ba122536ec2a.tgz
+      - https://storage.googleapis.com/istio-build/dev/1.22-alpha.05d0d5a529e1e9f83736b78b1808ba122536ec2a/helm/gateway-1.22-alpha.05d0d5a529e1e9f83736b78b1808ba122536ec2a.tgz
+      - https://storage.googleapis.com/istio-build/dev/1.22-alpha.05d0d5a529e1e9f83736b78b1808ba122536ec2a/helm/istiod-1.22-alpha.05d0d5a529e1e9f83736b78b1808ba122536ec2a.tgz
+      - https://storage.googleapis.com/istio-build/dev/1.22-alpha.05d0d5a529e1e9f83736b78b1808ba122536ec2a/helm/ztunnel-1.22-alpha.05d0d5a529e1e9f83736b78b1808ba122536ec2a.tgz
