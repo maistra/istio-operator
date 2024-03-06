@@ -203,11 +203,11 @@ main_test() {
     if ! ${COMMAND} wait "istio/${ISTIO_NAME}" --for condition=Reconciled=True --timeout=${TIMEOUT}; then
       logFailure "Operator failed to reconcile Istio CR"
       echo
-      echo "Istio operator:"
-      ${COMMAND} describe "deploy/${DEPLOYMENT_NAME}" -n "${NAMESPACE}"
+      echo "Istio resource:"
+      ${COMMAND} get istio "${ISTIO_NAME}" -n "${CONTROL_PLANE_NS}" -oyaml
       echo
       echo "Pods:"
-      ${COMMAND} get pods -n "${NAMESPACE}" -o wide
+      ${COMMAND} get pods -n "${CONTROL_PLANE_NS}" -o wide
       echo
       echo "Operator logs:"
       ${COMMAND} logs deploy/istio-operator -n "${NAMESPACE}"
@@ -219,7 +219,7 @@ main_test() {
       logFailure "Istio CR failed to become ready"
       echo
       echo "Istio resource:"
-      ${COMMAND} describe "istio/${ISTIO_NAME}"
+      ${COMMAND} get istio "${ISTIO_NAME}" -n "${CONTROL_PLANE_NS}" -oyaml
       echo
       echo "Pods:"
       ${COMMAND} get pods -n "${CONTROL_PLANE_NS}" -o wide
