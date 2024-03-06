@@ -121,7 +121,7 @@ var _ = Describe("Operator", Ordered, func() {
 						Expect(istio.Spec.Version).To(Equal(version), "Istio CR version should match the applied version")
 					})
 
-					It("istio resource stopped reconciling", func() {
+					Specify("istio resource stopped reconciling", func() {
 						istiodPodName, _ := kubectl.GetPodFromLabel(controlPlaneNamespace, "app=istiod")
 						Eventually(kubectl.GetPodLogs).WithArguments(controlPlaneNamespace, istiodPodName, "30s").ShouldNot(ContainSubstring("Reconciliation done"))
 						GinkgoWriter.Println("Istio Operator stopped reconciling")
