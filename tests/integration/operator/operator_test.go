@@ -50,9 +50,7 @@ var _ = Describe("Operator", Ordered, func() {
 			})
 
 			Specify("the operator is running", func() {
-				Eventually(func(g Gomega) {
-					g.Expect(kubectl.GetResourceCondition(namespace, "deployment", deploymentName)).Should(ContainElement(resourceAvailable))
-				}).Should(Succeed(), "Operator deployment should be Available")
+				Eventually(kubectl.GetResourceCondition).WithArguments(namespace, "deployment", deploymentName).Should(ContainElement(resourceAvailable), "Operator deployment should be Available")
 				GinkgoWriter.Println("Operator deployment is Available")
 
 				podName, err := kubectl.GetPodFromLabel(namespace, "control-plane=istio-operator")
