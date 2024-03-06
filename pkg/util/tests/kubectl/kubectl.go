@@ -8,13 +8,15 @@
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// WITHOUT WARRANTIES OR Condition OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package kubectl
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -25,19 +27,38 @@ import (
 
 const DefaultCommandTool = "kubectl"
 
-func commandTool() string {
-	// Get the command tool from the environment
-	// If not set, use the default command tool
+var (
+	ErrNotFound       = errors.New("resource was not found")
+	EmptyResourceList = resourcecondition.ResourceList{
+		APIVersion: "v1",
+		Items:      []interface{}{},
+		Kind:       "List",
+		Metadata: struct {
+			ResourceVersion string `json:"resourceVersion"`
+		}{
+			ResourceVersion: "",
+		},
+	}
+)
+
+// kubectl return the kubectl command
+// If the environment variable COMMAND is set, it will return the value of COMMAND
+// Otherwise, it will return the default value "kubectl" as default
+// Arguments:
+// - format: format of the command without kubeclt or oc
+// - args: arguments of the command
+func kubectl(format string, args ...interface{}) string {
+	binary := DefaultCommandTool
 	if cmd := os.Getenv("COMMAND"); cmd != "" {
-		return cmd
+		binary = cmd
 	}
 
-	return DefaultCommandTool
+	return fmt.Sprintf("%s "+format, append([]interface{}{binary}, args...)...)
 }
 
-// ApplyFromYamlString applies the given yaml string to the cluster
+// ApplyString applies the given yaml string to the cluster
 func ApplyString(yamlString string) error {
-	cmd := kubectl("apply -f -")
+	cmd := kubectl("apply --server-side -f -")
 	_, err := shell.ExecuteCommandWithInput(cmd, yamlString)
 	if err != nil {
 		return err
@@ -46,9 +67,9 @@ func ApplyString(yamlString string) error {
 	return nil
 }
 
-// DeleteFromYamlString delete the given yaml string to the cluster
-func DeleteFromYamlString(yamlString string) error {
-	cmd := fmt.Sprintf("%s delete -f - ", commandTool())
+// DeleteString delete the given yaml string to the cluster
+func DeleteString(yamlString string) error {
+	cmd := kubectl("delete -f -")
 	output, err := shell.ExecuteCommandWithInput(cmd, yamlString)
 	if err != nil {
 		// Workaround because the resource can be already deleted
@@ -64,25 +85,30 @@ func DeleteFromYamlString(yamlString string) error {
 }
 
 // GetResourceCondition returns the condition of a resource
-func GetResourceCondition(ns, resourceType, resourceName string) ([]resourcecondition.Conditions, error) {
+func GetResourceCondition(ns, resourceType, resourceName string) ([]resourcecondition.Condition, error) {
 	var resource resourcecondition.Resource
 
 	output, err := GetResource(ns, resourceType, resourceName)
 	if err != nil {
-		return []resourcecondition.Conditions{}, err
+		return []resourcecondition.Condition{}, err
 	}
 
 	err = json.Unmarshal([]byte(output), &resource)
 	if err != nil {
-		return []resourcecondition.Conditions{}, err
+		return []resourcecondition.Condition{}, err
 	}
 
 	return resource.Status.Conditions, nil
 }
 
 // GetPodPhase returns the phase of a pod
-func GetPodPhase(ns, podName string) (string, error) {
+func GetPodPhase(ns, podLabel string) (string, error) {
 	var resource resourcecondition.Resource
+
+	podName, err := GetPodFromLabel(ns, podLabel)
+	if err != nil {
+		return "", err
+	}
 
 	output, err := GetResource(ns, "pod", podName)
 	if err != nil {
@@ -97,10 +123,30 @@ func GetPodPhase(ns, podName string) (string, error) {
 	return resource.Status.Phase, nil
 }
 
+// GetAllResources returns all the resources of a namespace
+func GetAllResources(ns string) (resourcecondition.ResourceList, error) {
+	output, err := GetResource(ns, "all", "")
+	if err != nil {
+		return EmptyResourceList, err
+	}
+
+	var resourceList resourcecondition.ResourceList
+	err = json.Unmarshal([]byte(output), &resourceList)
+	if err != nil {
+		return EmptyResourceList, err
+	}
+
+	// Return an empty list if there are no resources
+	if len(resourceList.Items) == 0 {
+		return EmptyResourceList, nil
+	}
+
+	return resourceList, nil
+}
+
 // GetResource returns the json of a resource
 func GetResource(ns, resourceType, resourceName string) (string, error) {
-	// `2>&1 | sed -n '/^{/,$p'` is a workaround for oc commands that can show Warning at the beginning of the output.
-	cmd := fmt.Sprintf("%s get %s %s -n %s -o json 2>&1 | sed -n '/^{/,$p'", commandTool(), resourceType, resourceName, ns)
+	cmd := kubectl("get %s %s -n %s -o json", resourceType, resourceName, ns)
 	json, err := shell.ExecuteCommand(cmd)
 	if err != nil {
 		return "", err
@@ -129,7 +175,7 @@ func GetPodFromLabel(ns, label string) (string, error) {
 // GetPodsFromLabel returns the pod name from a label
 func GetPodsFromLabel(ns, label string) ([]string, error) {
 	var podList []string
-	cmd := fmt.Sprintf("%s get pods -n %s -l %s -o jsonpath={.items[*].metadata.name}", commandTool(), ns, label)
+	cmd := kubectl("get pods -n %s -l %s -o jsonpath={.items[*].metadata.name}", ns, label)
 	output, err := shell.ExecuteCommand(cmd)
 	podList = strings.Split(output, " ")
 	if err != nil {
@@ -141,7 +187,7 @@ func GetPodsFromLabel(ns, label string) ([]string, error) {
 // CreateNamespace creates a namespace
 // If the namespace already exists, it will return nil
 func CreateNamespace(ns string) error {
-	cmd := fmt.Sprintf("%s create namespace %s", commandTool(), ns)
+	cmd := kubectl("create namespace %s", ns)
 	output, err := shell.ExecuteCommand(cmd)
 	if err != nil {
 		if strings.Contains(output, "AlreadyExists") {
@@ -156,7 +202,7 @@ func CreateNamespace(ns string) error {
 
 // DeleteNamespace deletes a namespace
 func DeleteNamespace(ns string) error {
-	cmd := fmt.Sprintf("%s delete namespace %s", commandTool(), ns)
+	cmd := kubectl("delete namespace %s", ns)
 	_, err := shell.ExecuteCommand(cmd)
 	if err != nil {
 		return err
@@ -165,27 +211,27 @@ func DeleteNamespace(ns string) error {
 	return nil
 }
 
-// GetNamespace returns the namespace
+// CheckNamespaceExist checks if a namespace exists
+// If the namespace exists, it will return nil
 // If the namespace does not exist, it will return an error
-func GetNamespace(ns string) (string, error) {
-	cmd := fmt.Sprintf("%s get namespace %s -o jsonpath={metadata.name}", commandTool(), ns)
-	json, err := shell.ExecuteCommand(cmd)
+func CheckNamespaceExist(ns string) error {
+	cmd := kubectl("get namespace %s -o jsonpath={metadata.name}", ns)
+	_, err := shell.ExecuteCommand(cmd)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			// Workaround because Eventually seems to not be handling the error properly
-			return fmt.Sprintf("namespace %s not found", ns), nil
+			return ErrNotFound
 		}
 
-		return "", err
+		return err
 	}
 
-	return json, nil
+	return nil
 }
 
 // GetDeployments returns the deployments of a namespace
 func GetDeployments(ns string) ([]string, error) {
 	var deployments []string
-	cmd := fmt.Sprintf("%s get deployments -n %s -o jsonpath={.items[*].metadata.name}", commandTool(), ns)
+	cmd := kubectl("get deployments -n %s -o jsonpath={.items[*].metadata.name}", ns)
 	output, err := shell.ExecuteCommand(cmd)
 	deployments = strings.Split(output, " ")
 	if err != nil {
@@ -194,13 +240,13 @@ func GetDeployments(ns string) ([]string, error) {
 	return deployments, nil
 }
 
-// GetDeploymentLogs returns the logs of a deployment
+// GetPodLogs returns the logs of a deployment
 // Arguments:
 // - ns: namespace
 // - deploymentName: deployment name
 // - Since: time range
 func GetPodLogs(ns, podName, since string) (string, error) {
-	cmd := fmt.Sprintf("%s logs %s -n %s  --since=%s", commandTool(), podName, ns, since)
+	cmd := kubectl("logs %s -n %s  --since=%s", podName, ns, since)
 	output, err := shell.ExecuteCommand(cmd)
 	if err != nil {
 		return "", err
@@ -213,7 +259,7 @@ func GetPodLogs(ns, podName, since string) (string, error) {
 // Return a list of daemonsets
 func GetDaemonSets(ns string) ([]string, error) {
 	var daemonsets []string
-	cmd := fmt.Sprintf("%s get daemonsets -n %s -o jsonpath={.items[*].metadata.name}", commandTool(), ns)
+	cmd := kubectl("get daemonsets -n %s -o jsonpath={.items[*].metadata.name}", ns)
 	output, err := shell.ExecuteCommand(cmd)
 	// If output is empty, return an empty list
 	if output == "" {

@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package helm
 
 import (
@@ -21,7 +22,7 @@ import (
 	"maistra.io/istio-operator/pkg/util/tests/shell"
 )
 
-// hemlTemplate runs helm template in the given directory with params and returns the output yaml string
+// Template runs helm template in the given directory with params and returns the output yaml string
 // name: name of the helm release
 // chart: chart directory
 // ns: namespace

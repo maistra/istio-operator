@@ -16,6 +16,7 @@ package integrationoperator
 
 import (
 	"os"
+	"path/filepath"
 
 	g "github.com/onsi/ginkgo/v2"
 )
@@ -30,6 +31,7 @@ var (
 	controlPlaneNamespace = getEnvOrDefault("CONTROL_PLANE_NS", "istio-system")
 	wd, _                 = os.Getwd()
 	istioName             = getEnvOrDefault("ISTIO_NAME", "default")
+	baseDir               = filepath.Join(wd, "../../..")
 )
 
 func getEnvOrDefault(key, defaultValue string) string {

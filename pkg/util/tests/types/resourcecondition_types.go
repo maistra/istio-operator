@@ -11,16 +11,17 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package resource
 
-type Conditions struct {
+type Condition struct {
 	Type   string `json:"type"`
 	Status string `json:"status"`
 }
 
 type Status struct {
-	Conditions []Conditions `json:"conditions"`
-	Phase      string       `json:"phase"`
+	Conditions []Condition `json:"conditions"`
+	Phase      string      `json:"phase"`
 }
 
 type Resource struct {

@@ -33,7 +33,6 @@ func TestInstall(t *testing.T) {
 func setup() {
 	GinkgoWriter.Println("************ Running Setup ************")
 
-	baseDir := filepath.Dir(filepath.Dir(filepath.Dir(wd)))
 	istioVersions = getIstioVersions(filepath.Join(baseDir, "versions.yaml"))
 
 	if ocp == "true" {

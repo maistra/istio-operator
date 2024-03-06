@@ -18,22 +18,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	"maistra.io/istio-operator/api/v1alpha1"
 	"maistra.io/istio-operator/pkg/util/tests/helm"
 	"maistra.io/istio-operator/pkg/util/tests/kubectl"
 	"sigs.k8s.io/yaml"
-)
-
-type Action int
-
-const (
-	Delete Action = iota
-	Apply
-	Deploy
-	Undeploy
 )
 
 // deployOperator deploys the operator to either an OpenShift cluster or a Kubernetes cluster based on the value of the 'ocp' variable.
@@ -43,20 +33,15 @@ func deployOperator() error {
 	if ocp == "true" {
 		extraArg = "--set=platform=openshift"
 	}
-	baseDir := filepath.Dir(filepath.Dir(filepath.Dir(wd)))
+
 	output, err := helm.Template("chart", filepath.Join(baseDir, "chart"), namespace, "--include-crds", fmt.Sprintf("--set=image=%s", image), extraArg)
 	if err != nil {
 		return err
 	}
 
-	yamlDocs := strings.Split(output, "---")
-	for _, doc := range yamlDocs {
-		if strings.Contains(doc, "apiVersion") {
-			err := kubectl.ApplyString(doc)
-			if err != nil {
-				return err
-			}
-		}
+	err = kubectl.ApplyString(output)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -70,20 +55,15 @@ func undeployOperator() error {
 	if ocp == "true" {
 		extraArg = "--set=platform=openshift"
 	}
-	baseDir := filepath.Dir(filepath.Dir(filepath.Dir(wd)))
+
 	output, err := helm.Template("chart", fmt.Sprintf("%s/chart", baseDir), namespace, "--include-crds", fmt.Sprintf("--set=image=%s", image), extraArg)
 	if err != nil {
 		return err
 	}
 
-	yamlDocs := strings.Split(output, "---")
-	for _, doc := range yamlDocs {
-		if strings.Contains(doc, "apiVersion") {
-			err := kubectl.DeleteFromYamlString(doc)
-			if err != nil {
-				return err
-			}
-		}
+	err = kubectl.DeleteString(output)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -117,7 +97,7 @@ func deleteIstioCR(version string) error {
 		return err
 	}
 
-	err = kubectl.DeleteFromYamlString(yamlString)
+	err = kubectl.DeleteString(yamlString)
 	if err != nil {
 		GinkgoWriter.Println("Error deleting Istio resources")
 		return err
@@ -129,7 +109,6 @@ func deleteIstioCR(version string) error {
 
 func readAndReplaceVersionInManifest(version string) (string, error) {
 	// Read Istio manifest
-	baseDir := filepath.Dir(filepath.Dir(filepath.Dir(wd)))
 	istioManifest, err := os.ReadFile(filepath.Join(baseDir, istioManifest))
 	if err != nil {
 		return "", err
