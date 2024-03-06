@@ -19,11 +19,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"maistra.io/istio-operator/api/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"istio.io/istio/pkg/ptr"
@@ -36,7 +36,7 @@ var _ = Describe("Istio resource", Ordered, func() {
 		workloadNamespace = "istio-test-workloads"
 
 		gracePeriod = 30 * time.Second
-		pilotImage  = "maistra.io/test:latest"
+		pilotImage  = "operator.io/test:latest"
 	)
 	istioKey := client.ObjectKey{Name: istioName}
 	istio := &v1alpha1.Istio{}

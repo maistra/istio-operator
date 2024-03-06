@@ -1,4 +1,4 @@
-module maistra.io/istio-operator
+module github.com/istio-ecosystem/sail-operator
 
 go 1.21
 

@@ -18,13 +18,13 @@ import (
 	"context"
 	"time"
 
+	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"maistra.io/istio-operator/api/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"istio.io/istio/pkg/ptr"
@@ -35,7 +35,7 @@ var _ = Describe("IstioRevision resource", Ordered, func() {
 		revName        = "test-istiorevision"
 		istioNamespace = "istiorevision-test"
 
-		pilotImage = "maistra.io/test:latest"
+		pilotImage = "operator.io/test:latest"
 	)
 
 	SetDefaultEventuallyPollingInterval(time.Second)

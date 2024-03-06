@@ -17,10 +17,10 @@ package kube
 import (
 	"context"
 
+	"github.com/istio-ecosystem/sail-operator/pkg/common"
 	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"maistra.io/istio-operator/pkg/common"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
