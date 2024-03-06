@@ -44,7 +44,7 @@ func deployOperator() error {
 		extraArg = "--set=platform=openshift"
 	}
 	baseDir := filepath.Dir(filepath.Dir(filepath.Dir(wd)))
-	output, err := helm.Template("chart", fmt.Sprintf("%s/chart", baseDir), namespace, "--include-crds", fmt.Sprintf("--set=image=%s", image), extraArg)
+	output, err := helm.Template("chart", filepath.Join(baseDir, "chart"), namespace, "--include-crds", fmt.Sprintf("--set=image=%s", image), extraArg)
 	if err != nil {
 		return err
 	}
