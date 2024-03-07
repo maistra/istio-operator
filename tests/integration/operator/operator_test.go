@@ -67,6 +67,12 @@ var _ = Describe("Operator", Ordered, func() {
 	})
 
 	Describe("installation and unistallation of the istio resource", func() {
+		AfterAll(func() {
+			// Cleanup the operator at the end of the test
+			Eventually(undeployOperator).Should(Succeed(), "Operator failed to be deleted; unexpected error")
+			g.Success("Operator deployment is deleted")
+		})
+
 		for _, version := range istioVersions {
 			// Note: This var version is needed to avoid the closure of the loop
 			version := version
@@ -124,7 +130,7 @@ var _ = Describe("Operator", Ordered, func() {
 							Expect(kubectl.GetPodPhase(namespace, "k8s-app=istio-cni-node")).Should(Equal("Running"), "CNI Daemon it's not Running; unexpected Phase")
 							g.Success("CNI DaemonSet is deployed in the namespace and Running")
 						} else {
-							Consistently(kubectl.GetDaemonSets).WithArguments(namespace).WithTimeout(60*time.Second).Should(BeEmpty(), "CNI DaemonSet it's present; expected list to be empty")
+							Consistently(kubectl.GetDaemonSets).WithArguments(namespace).WithTimeout(30*time.Second).Should(BeEmpty(), "CNI DaemonSet it's present; expected list to be empty")
 							g.Success("CNI DaemonSet is not deployed in the namespace because it's not OpenShift")
 						}
 					})
@@ -142,14 +148,5 @@ var _ = Describe("Operator", Ordered, func() {
 				})
 			})
 		}
-	})
-
-	Describe("uninstallation", func() {
-		When("is deleted the operator manifest from the cluster", func() {
-			Specify("the operator it's deleted", func() {
-				Eventually(undeployOperator).Should(Succeed(), "Operator deployment should be deleted")
-				g.Success("Operator deployment is deleted")
-			})
-		})
 	})
 })
