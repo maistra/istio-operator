@@ -37,12 +37,12 @@ func deployOperator() error {
 
 	output, err := helm.Template("chart", filepath.Join(baseDir, "chart"), namespace, "--include-crds", fmt.Sprintf("--set=image=%s", image), extraArg)
 	if err != nil {
-		return err
+		return fmt.Errorf("error running Helm template: %v", err)
 	}
 
 	err = kubectl.ApplyString(output)
 	if err != nil {
-		return err
+		return fmt.Errorf("error applying operator resources: %v", err)
 	}
 
 	return nil
@@ -59,12 +59,12 @@ func undeployOperator() error {
 
 	output, err := helm.Template("chart", fmt.Sprintf("%s/chart", baseDir), namespace, "--include-crds", fmt.Sprintf("--set=image=%s", image), extraArg)
 	if err != nil {
-		return err
+		return fmt.Errorf("error running Helm template: %v", err)
 	}
 
 	err = kubectl.DeleteString(output)
 	if err != nil {
-		return err
+		return fmt.Errorf("error deleting operator resources: %v", err)
 	}
 
 	return nil

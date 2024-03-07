@@ -33,7 +33,7 @@ func Template(name string, chart string, ns string, args ...string) (string, err
 	command := fmt.Sprintf("helm template %s %s --namespace %s %s", name, chart, ns, argsStr)
 	outputString, err := shell.ExecuteCommand(command)
 	if err != nil {
-		return "", fmt.Errorf("Error running Helm template: %s", outputString)
+		return "", fmt.Errorf("error running Helm template: %s", outputString)
 	}
 
 	g.Success("Helm template executed successfully")

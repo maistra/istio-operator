@@ -62,7 +62,7 @@ func ApplyString(yamlString string) error {
 	cmd := kubectl("apply --server-side -f -")
 	_, err := shell.ExecuteCommandWithInput(cmd, yamlString)
 	if err != nil {
-		return err
+		return fmt.Errorf("error applying yaml: %v", err)
 	}
 
 	return nil
@@ -78,7 +78,7 @@ func DeleteString(yamlString string) error {
 			return nil
 		}
 
-		return err
+		return fmt.Errorf("error deleting yaml: %v", err)
 
 	}
 
@@ -126,6 +126,7 @@ func GetPodPhase(ns, selector string) (string, error) {
 
 // GetAllResources returns all the resources of a namespace
 func GetAllResources(ns string) (resourcecondition.ResourceList, error) {
+	// TODO: improve the function to get all the resources
 	output, err := GetResource(ns, "all", "")
 	if err != nil {
 		return EmptyResourceList, err
@@ -195,7 +196,7 @@ func CreateNamespace(ns string) error {
 			return nil
 		}
 
-		return err
+		return fmt.Errorf("error creating namespace: %v, output: %s", err, output)
 	}
 
 	return nil
@@ -206,7 +207,7 @@ func DeleteNamespace(ns string) error {
 	cmd := kubectl("delete namespace %s", ns)
 	_, err := shell.ExecuteCommand(cmd)
 	if err != nil {
-		return err
+		return fmt.Errorf("error deleting namespace: %v", err)
 	}
 
 	return nil
@@ -223,7 +224,7 @@ func CheckNamespaceExist(ns string) error {
 			return ErrNotFound
 		}
 
-		return err
+		return fmt.Errorf("error checking namespace: %v", err)
 	}
 
 	return nil
