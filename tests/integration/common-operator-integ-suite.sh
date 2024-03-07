@@ -58,8 +58,8 @@ initialize_variables() {
   WD=$(dirname "$0")
   WD=$(cd "${WD}" || exit; pwd)
 
-  NAMESPACE="${NAMESPACE:-istio-operator}"
-  DEPLOYMENT_NAME="${DEPLOYMENT_NAME:-istio-operator}"
+  NAMESPACE="${NAMESPACE:-sail-operator}"
+  DEPLOYMENT_NAME="${DEPLOYMENT_NAME:-sail-operator}"
   CONTROL_PLANE_NS="${CONTROL_PLANE_NS:-istio-system}"
   COMMAND="kubectl"
 
@@ -159,7 +159,7 @@ deploy_operator() {
     # To avoid errors of certificates meanwhile we are pulling the operator image from the internal registry
     # We need to set image $HUB to a fixed known value
     # This value always will be equal to the svc url of the internal registry
-    HUB="image-registry.openshift-image-registry.svc:5000/istio-operator"
+    HUB="image-registry.openshift-image-registry.svc:5000/sail-operator"
 
     TARGET="deploy-openshift"
   fi
@@ -210,7 +210,7 @@ main_test() {
       ${COMMAND} get pods -n "${CONTROL_PLANE_NS}" -o wide
       echo
       echo "Operator logs:"
-      ${COMMAND} logs deploy/istio-operator -n "${NAMESPACE}"
+      ${COMMAND} logs "deploy/${DEPLOYMENT_NAME}" -n "${NAMESPACE}"
       exit 1
     fi
 
@@ -237,7 +237,7 @@ main_test() {
     sleep 30
     last30secondsOfLog=$(${COMMAND} logs "deploy/${DEPLOYMENT_NAME}" -n "${NAMESPACE}" --since 30s)
     if echo "$last30secondsOfLog" | grep "Reconciliation done" >/dev/null 2>&1; then
-        logFailure "Expected istio-operator to stop reconciling the resource, but it didn't:"
+        logFailure "Expected sail-operator to stop reconciling the resource, but it didn't:"
         echo "$last30secondsOfLog"
         echo "Note: The above log was captured at $(date)"
         exit 1

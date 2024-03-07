@@ -20,7 +20,7 @@ $ docker run -d -t --rm \
     entrypoint tail -f /dev/null
 ```
 
-2. Copy this istio-operator integration tests source code into the container, copy kubeconfig file into container and copy oc binary into container (Only needed when you are running against OCP cluster):
+2. Copy this sail-operator integration tests source code into the container, copy kubeconfig file into container and copy oc binary into container (Only needed when you are running against OCP cluster):
 
 ```
 $ cd $(git rev-parse --show-toplevel)

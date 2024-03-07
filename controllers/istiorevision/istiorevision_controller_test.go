@@ -31,7 +31,7 @@ import (
 	"istio.io/istio/pkg/ptr"
 )
 
-const operatorNamespace = "istio-operator"
+const operatorNamespace = "sail-operator"
 
 func TestDeriveState(t *testing.T) {
 	testCases := []struct {

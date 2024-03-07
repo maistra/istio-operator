@@ -44,7 +44,7 @@ const (
 	InternalKey = MetadataNamespace + "/internal"
 
 	// FinalizerName is the finalizer name the controllers add to any resources that need to be finalized during deletion
-	FinalizerName = MetadataNamespace + "/istio-operator"
+	FinalizerName = MetadataNamespace + "/sail-operator"
 
 	// KubernetesAppNamespace is the common namespace for application information
 	KubernetesAppNamespace    = "app.kubernetes.io"
@@ -59,11 +59,5 @@ const (
 	KubernetesAppPartOfValue = "istio"
 
 	// KubernetesAppManagedByValue is the KubernetesAppManagedByKey label value the operator sets on all objects it creates
-	KubernetesAppManagedByValue = "maistra-istio-operator"
-
-	// MemberRollName is the only name we allow for ServiceMeshMemberRoll objects
-	MemberRollName = "default"
-
-	// MemberName is the only name we allow for ServiceMeshMember objects
-	MemberName = "default"
+	KubernetesAppManagedByValue = "sail-operator"
 )

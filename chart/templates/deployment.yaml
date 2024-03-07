@@ -107,7 +107,7 @@ spec:
             drop:
             - ALL
         volumeMounts:
-        - mountPath: /etc/istio-operator
+        - mountPath: /etc/sail-operator
           name: operator-config
           readOnly: true
       securityContext:

@@ -47,7 +47,7 @@ var (
 	cancel    context.CancelFunc
 )
 
-const operatorNamespace = "istio-operator"
+const operatorNamespace = "sail-operator"
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
