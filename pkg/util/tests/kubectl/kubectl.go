@@ -102,7 +102,7 @@ func GetResourceCondition(ns, resourceType, resourceName string) ([]resourcecond
 }
 
 // GetPodPhase returns the phase of a pod
-func GetPodPhase(ns, podLabel string) (string, error) {
+func GetPodPhase(ns, selector string) (string, error) {
 	var resource resourcecondition.Resource
 
 	podName, err := GetPodFromLabel(ns, podLabel)
@@ -245,7 +245,7 @@ func GetDeployments(ns string) ([]string, error) {
 // - ns: namespace
 // - deploymentName: deployment name
 // - Since: time range
-func GetPodLogs(ns, podName, since string) (string, error) {
+func GetPodLogs(ns, podName, since time.Duration) (string, error) {
 	cmd := kubectl("logs %s -n %s  --since=%s", podName, ns, since)
 	output, err := shell.ExecuteCommand(cmd)
 	if err != nil {

@@ -43,7 +43,7 @@ var _ = Describe("Operator", Ordered, func() {
 		}
 	)
 
-	Describe("operator installation", func() {
+	Describe("installation", func() {
 		// TODO: we  need to support testing both types of deployment for the operator, helm and olm via subscription.
 		// Discuss with the team if we should add a flag to the test to enable the olm deployment and don't do that deployment in different step
 		When("default helm manifest are applied", func() {
@@ -52,10 +52,10 @@ var _ = Describe("Operator", Ordered, func() {
 					Skip("Skipping the deployment of the operator and the tests")
 				}
 				GinkgoWriter.Println("Deploying Operator using default helm charts located in /chart folder")
-				Eventually(deployOperator).Should(Succeed(), "Operator deployment should be successful")
+				Eventually(deployOperator).Should(Succeed(), "Operator deployment failed")
 			})
 
-			Specify("the operator is running", func() {
+			It("starts successfully", func() {
 				Eventually(kubectl.GetResourceCondition).WithArguments(namespace, "deployment", deploymentName).Should(ContainElement(resourceAvailable))
 				GinkgoWriter.Println("Operator deployment is Available")
 
@@ -70,7 +70,7 @@ var _ = Describe("Operator", Ordered, func() {
 			// Note: This var version is needed to avoid the closure of the loop
 			version := version
 
-			Context(fmt.Sprintf("is applied the istio resource with version %s", version), func() {
+			Context("version " + version), func() {
 				BeforeAll(func() {
 					Expect(kubectl.CreateNamespace(controlPlaneNamespace)).To(Succeed())
 					Eventually(createIstioCR).WithArguments(version).Should(Succeed(), "Istio CR should be created")
@@ -84,21 +84,21 @@ var _ = Describe("Operator", Ordered, func() {
 					GinkgoWriter.Println("Cleanup done")
 				})
 
-				When("the Istio resource is created", func() {
+				When("the resource is created", func() {
 					It("updates the Istio resource status to Ready and Running", func() {
 						Eventually(kubectl.GetResourceCondition).WithArguments(controlPlaneNamespace, "istio", istioName).Should(ContainElement(resourceReconcilied))
 						Eventually(kubectl.GetResourceCondition).WithArguments(controlPlaneNamespace, "istio", istioName).Should(ContainElement(resourceReady))
 						Eventually(kubectl.GetPodPhase).WithArguments(controlPlaneNamespace, "app=istiod").Should(Equal("Running"), "Istiod should be Running")
 					})
 
-					Specify("the istio resource version match the applied version", func() {
+					It("deploys correct istiod image tag according to the version in the Istio CR", func() {
 						// TODO: we need to add a function to get the istio version from the control panel directly
 						// and compare it with the applied version
 						// This is a TODO because actual version.yaml contains for example latest and not the actual version
 						// Posible solution is to add actual version to the version.yaml
 					})
 
-					Specify("istio resource stopped reconciling", func() {
+					It("doesn't continuously reconcile the istio resource", func() {
 						istiodPodName, _ := kubectl.GetPodFromLabel(controlPlaneNamespace, "app=istiod")
 						Eventually(kubectl.GetPodLogs).WithArguments(controlPlaneNamespace, istiodPodName, "30s").ShouldNot(ContainSubstring("Reconciliation done"))
 						GinkgoWriter.Println("Istio Operator stopped reconciling")
@@ -133,7 +133,7 @@ var _ = Describe("Operator", Ordered, func() {
 						GinkgoWriter.Println("Istio CR's deleted")
 					})
 
-					Specify("the namespace is empty", func() {
+					It("removes everything from the namespace", func() {
 						Eventually(kubectl.GetAllResources).WithArguments(controlPlaneNamespace).Should(Equal(kubectl.EmptyResourceList), "Namespace should be empty")
 					})
 				})
