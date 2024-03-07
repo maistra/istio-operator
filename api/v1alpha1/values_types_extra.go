@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	"maistra.io/istio-operator/pkg/helm"
+	"github.com/istio-ecosystem/sail-operator/pkg/helm"
 )
 
 type SDSConfigToken struct {
