@@ -21,7 +21,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	"maistra.io/istio-operator/api/v1alpha1"
-	g "maistra.io/istio-operator/pkg/util/tests/ginkgo"
 	"maistra.io/istio-operator/pkg/util/tests/helm"
 	"maistra.io/istio-operator/pkg/util/tests/kubectl"
 	"sigs.k8s.io/yaml"
@@ -99,7 +98,6 @@ func deleteIstioCR(version string) error {
 		return fmt.Errorf("error deleting Istio resources: %s", err)
 	}
 
-	g.Success("Istio resources deleted successfully")
 	return nil
 }
 

@@ -124,6 +124,17 @@ func GetPodPhase(ns, selector string) (string, error) {
 	return resource.Status.Phase, nil
 }
 
+// GetCRDs returns all the CRDs names in a list
+func GetCRDs() ([]string, error) {
+	cmd := kubectl("get crds -o jsonpath={.items[*].metadata.name}")
+	output, err := shell.ExecuteCommand(cmd)
+	if err != nil {
+		return []string{}, fmt.Errorf("error getting crds: %v", err)
+	}
+
+	return strings.Split(output, " "), nil
+}
+
 // GetAllResources returns all the resources of a namespace
 func GetAllResources(ns string) (resourcecondition.ResourceList, error) {
 	// TODO: improve the function to get all the resources

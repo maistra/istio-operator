@@ -20,7 +20,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	g "maistra.io/istio-operator/pkg/util/tests/ginkgo"
+	. "maistra.io/istio-operator/pkg/util/tests/ginkgo"
 	"maistra.io/istio-operator/pkg/util/tests/kubectl"
 	resourcecondition "maistra.io/istio-operator/pkg/util/tests/types"
 )
@@ -42,6 +42,26 @@ var _ = Describe("Operator", Ordered, func() {
 			Type:   "Ready",
 			Status: "True",
 		}
+
+		istioResources = []string{
+			// TODO: Find an alternative to this list
+			"authorizationpolicies.security.istio.io",
+			"destinationrules.networking.istio.io",
+			"envoyfilters.networking.istio.io",
+			"gateways.networking.istio.io",
+			"istiorevisions.operator.istio.io",
+			"istios.operator.istio.io",
+			"peerauthentications.security.istio.io",
+			"proxyconfigs.networking.istio.io",
+			"requestauthentications.security.istio.io",
+			"serviceentries.networking.istio.io",
+			"sidecars.networking.istio.io",
+			"telemetries.telemetry.istio.io",
+			"virtualservices.networking.istio.io",
+			"wasmplugins.extensions.istio.io",
+			"workloadentries.networking.istio.io",
+			"workloadgroups.networking.istio.io",
+		}
 	)
 
 	Describe("installation", func() {
@@ -52,7 +72,7 @@ var _ = Describe("Operator", Ordered, func() {
 				if skipDeploy == "true" {
 					Skip("Skipping the deployment of the operator and the tests")
 				}
-				g.Success("Deploying Operator using default helm charts located in /chart folder")
+				Success("Deploying Operator using default helm charts located in /chart folder")
 				Eventually(deployOperator).Should(Succeed(), "Operator failed to be deployed; unexpected error")
 			})
 
@@ -60,10 +80,16 @@ var _ = Describe("Operator", Ordered, func() {
 				Eventually(kubectl.GetResourceCondition).
 					WithArguments(namespace, "deployment", deploymentName).
 					Should(ContainElement(resourceAvailable))
-				g.Success("Operator deployment is Available")
+				Success("Operator deployment is Available")
 
 				Expect(kubectl.GetPodPhase(namespace, "control-plane=istio-operator")).Should(Equal("Running"), "Operator failed to start; unexpected pod Phase")
-				g.Success("Istio-operator pod is Running")
+				Success("Istio-operator pod is Running")
+			})
+
+			It("deploys all the CRDs", func() {
+				Eventually(kubectl.GetCRDs).
+					Should(ContainElements(istioResources), "Istio CRDs are not present; expected list to contain all elements")
+				Success("Istio CRDs are present")
 			})
 		})
 	})
@@ -72,7 +98,7 @@ var _ = Describe("Operator", Ordered, func() {
 		AfterAll(func() {
 			// Cleanup the operator at the end of the test
 			Eventually(undeployOperator).Should(Succeed(), "Operator failed to be deleted; unexpected error")
-			g.Success("Operator deployment is deleted")
+			Success("Operator deployment is deleted")
 		})
 
 		for _, version := range istioVersions {
@@ -82,10 +108,16 @@ var _ = Describe("Operator", Ordered, func() {
 			Context(fmt.Sprintf("version %s", version), func() {
 				BeforeAll(func() {
 					Expect(kubectl.CreateNamespace(controlPlaneNamespace)).To(Succeed(), "Namespace failed to be created; unexpected error")
+
+					By("Creating Istio CR")
+					Eventually(createIstioCR).
+						WithArguments(version).
+						Should(Succeed(), "Istio CR failed to be created; unexpected error")
+					Success("Istio CR created")
 				})
 
 				AfterAll(func() {
-					g.Success("Cleaning up")
+					By("Cleaning up")
 					Eventually(kubectl.DeleteNamespace).
 						WithArguments(controlPlaneNamespace).
 						Should(Succeed(), "Namespace failed to be deleted; unexpected error")
@@ -93,15 +125,10 @@ var _ = Describe("Operator", Ordered, func() {
 					Eventually(kubectl.CheckNamespaceExist).
 						WithArguments(controlPlaneNamespace).
 						Should(MatchError(kubectl.ErrNotFound), "Namespace should not exist; unexpected error")
-					g.Success("Cleanup done")
+					Success("Cleanup done")
 				})
 
 				When("the resource is created", func() {
-					It("deploys the Istio CR", func() {
-						Expect(createIstioCR(version)).Should(Succeed(), "Istio CR failed to be created; unexpected error")
-						g.Success("Istio CR created")
-					})
-
 					It("updates the Istio resource status to Reconcilied and Ready", func() {
 						Eventually(kubectl.GetResourceCondition).
 							WithArguments(controlPlaneNamespace, "istio", istioName).
@@ -113,8 +140,8 @@ var _ = Describe("Operator", Ordered, func() {
 
 						Eventually(kubectl.GetPodPhase).
 							WithArguments(controlPlaneNamespace, "app=istiod").
-							Should(Equal("Running"), "Istiod it's not Running; unexpected pod Phase")
-						g.Success("Istio resource is Reconcilied and Ready")
+							Should(Equal("Running"), "Istiod is not running; unexpected pod Phase")
+						Success("Istio resource is Reconcilied and Ready")
 					})
 
 					It("deploys correct istiod image tag according to the version in the Istio CR", func() {
@@ -128,19 +155,13 @@ var _ = Describe("Operator", Ordered, func() {
 						Eventually(kubectl.GetPodLogs).
 							WithArguments(controlPlaneNamespace, "app=istiod", 30*time.Second).
 							ShouldNot(ContainSubstring("Reconciliation done"), "Istio Operator is continuously reconciling")
-						g.Success("Istio Operator stopped reconciling")
+						Success("Istio Operator stopped reconciling")
 					})
 
 					It("deploys istiod", func() {
-						expectedDeployments := []string{"istiod"}
-
-						deploymentsList, err := kubectl.GetDeploymentsNames(controlPlaneNamespace)
-						if err != nil {
-							Fail("Error getting deployments")
-						}
-
-						Expect(deploymentsList).To(Equal(expectedDeployments), "Istiod deployment is not present; expected list to be equal")
-						g.Success("Istiod deployment is present")
+						Expect(kubectl.GetDeploymentsNames(controlPlaneNamespace)).
+							To(Equal([]string{"istiod"}), "Istiod deployment is not present; expected list to be equal")
+						Success("Istiod deployment is present")
 					})
 
 					It("deploys the CNI DaemonSet when running on OpenShift", func() {
@@ -149,28 +170,28 @@ var _ = Describe("Operator", Ordered, func() {
 								WithArguments(namespace).
 								Should(ContainElement("istio-cni-node"), "CNI DaemonSet is not deployed; expected list to contain element")
 
-							Expect(kubectl.GetPodPhase(namespace, "k8s-app=istio-cni-node")).Should(Equal("Running"), "CNI Daemon it's not Running; unexpected Phase")
-							g.Success("CNI DaemonSet is deployed in the namespace and Running")
+							Expect(kubectl.GetPodPhase(namespace, "k8s-app=istio-cni-node")).Should(Equal("Running"), "CNI Daemon is not running; unexpected Phase")
+							Success("CNI DaemonSet is deployed in the namespace and Running")
 						} else {
 							Consistently(kubectl.GetDaemonSets).
 								WithArguments(namespace).WithTimeout(30*time.Second).
 								Should(BeEmpty(), "CNI DaemonSet it's present; expected list to be empty")
-							g.Success("CNI DaemonSet is not deployed in the namespace because it's not OpenShift")
+							Success("CNI DaemonSet is not deployed in the namespace because it's not OpenShift")
 						}
 					})
 				})
 
 				When("the Istio CR is deleted", func() {
 					BeforeEach(func() {
-						Expect(deleteIstioCR(version)).Should(Succeed(), "Istio CR's failed to be deleted; unexpected error")
-						g.Success("Istio CR's deleted")
+						Expect(deleteIstioCR(version)).Should(Succeed(), "Istio CR deletion failed; unexpected error")
+						Success("Istio CR deleted")
 					})
 
 					It("removes everything from the namespace", func() {
 						Eventually(kubectl.GetAllResources).
 							WithArguments(controlPlaneNamespace).
 							Should(Equal(kubectl.EmptyResourceList), "Namespace should be empty")
-						g.Success("Namespace is empty")
+						Success("Namespace is empty")
 					})
 				})
 			})

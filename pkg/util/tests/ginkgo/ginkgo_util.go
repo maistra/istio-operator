@@ -15,8 +15,6 @@
 package gutils
 
 import (
-	"fmt"
-
 	g "github.com/onsi/ginkgo/v2"
 )
 
@@ -24,5 +22,5 @@ import (
 // Arguments:
 // - string: message to be printed
 func Success(message string) {
-	g.GinkgoWriter.Println(fmt.Sprintf("* %s", message))
+	g.GinkgoWriter.Println("* " + message)
 }
