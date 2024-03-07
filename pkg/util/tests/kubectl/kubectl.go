@@ -22,8 +22,8 @@ import (
 	"strings"
 	"time"
 
-	"maistra.io/istio-operator/pkg/util/tests/shell"
-	resourcecondition "maistra.io/istio-operator/pkg/util/tests/types"
+	"github.com/istio-ecosystem/sail-operator/pkg/util/tests/shell"
+	resourcecondition "github.com/istio-ecosystem/sail-operator/pkg/util/tests/types"
 )
 
 const DefaultCommandTool = "kubectl"

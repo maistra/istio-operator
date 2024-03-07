@@ -19,10 +19,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
+	"github.com/istio-ecosystem/sail-operator/pkg/util/tests/helm"
+	"github.com/istio-ecosystem/sail-operator/pkg/util/tests/kubectl"
 	. "github.com/onsi/ginkgo/v2"
-	"maistra.io/istio-operator/api/v1alpha1"
-	"maistra.io/istio-operator/pkg/util/tests/helm"
-	"maistra.io/istio-operator/pkg/util/tests/kubectl"
 	"sigs.k8s.io/yaml"
 )
 

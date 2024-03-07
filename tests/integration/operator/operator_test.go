@@ -18,11 +18,11 @@ import (
 	"fmt"
 	"time"
 
+	. "github.com/istio-ecosystem/sail-operator/pkg/util/tests/ginkgo"
+	"github.com/istio-ecosystem/sail-operator/pkg/util/tests/kubectl"
+	resourcecondition "github.com/istio-ecosystem/sail-operator/pkg/util/tests/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	. "maistra.io/istio-operator/pkg/util/tests/ginkgo"
-	"maistra.io/istio-operator/pkg/util/tests/kubectl"
-	resourcecondition "maistra.io/istio-operator/pkg/util/tests/types"
 )
 
 var _ = Describe("Operator", Ordered, func() {
