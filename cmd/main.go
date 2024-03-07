@@ -21,7 +21,7 @@ import (
 	"os"
 	"strings"
 
-	maistraiov1 "github.com/istio-ecosystem/sail-operator/api/v1alpha1"
+	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
 	"github.com/istio-ecosystem/sail-operator/controllers/istio"
 	"github.com/istio-ecosystem/sail-operator/controllers/istiorevision"
 	"github.com/istio-ecosystem/sail-operator/pkg/common"
@@ -51,7 +51,7 @@ func init() {
 	utilruntime.Must(multusv1.AddToScheme(scheme))
 	utilruntime.Must(networkingv1alpha3.AddToScheme(scheme))
 
-	utilruntime.Must(maistraiov1.AddToScheme(scheme))
+	utilruntime.Must(v1alpha1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 

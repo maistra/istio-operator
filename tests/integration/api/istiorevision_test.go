@@ -35,7 +35,7 @@ var _ = Describe("IstioRevision resource", Ordered, func() {
 		revName        = "test-istiorevision"
 		istioNamespace = "istiorevision-test"
 
-		pilotImage = "operator.io/test:latest"
+		pilotImage = "sail-operator/test:latest"
 	)
 
 	SetDefaultEventuallyPollingInterval(time.Second)
