@@ -20,6 +20,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	g "maistra.io/istio-operator/pkg/util/tests/ginkgo"
 	"maistra.io/istio-operator/pkg/util/tests/kubectl"
 	resourcecondition "maistra.io/istio-operator/pkg/util/tests/types"
 )
@@ -51,16 +52,16 @@ var _ = Describe("Operator", Ordered, func() {
 				if skipDeploy == "true" {
 					Skip("Skipping the deployment of the operator and the tests")
 				}
-				GinkgoWriter.Println("Deploying Operator using default helm charts located in /chart folder")
-				Eventually(deployOperator).Should(Succeed(), "Operator deployment failed")
+				g.Success("Deploying Operator using default helm charts located in /chart folder")
+				Eventually(deployOperator).Should(Succeed(), "Operator failed to be deployed; unexpected error")
 			})
 
 			It("starts successfully", func() {
 				Eventually(kubectl.GetResourceCondition).WithArguments(namespace, "deployment", deploymentName).Should(ContainElement(resourceAvailable))
-				GinkgoWriter.Println("Operator deployment is Available")
+				g.Success("Operator deployment is Available")
 
-				Eventually(kubectl.GetPodPhase).WithArguments(namespace, "control-plane=istio-operator").Should(Equal("Running"), "Istio-operator pod should be Running")
-				GinkgoWriter.Println("Istio-operator pod is Running")
+				Expect(kubectl.GetPodPhase(namespace, "control-plane=istio-operator")).Should(Equal("Running"), "Operator failed to start; unexpected pod Phase")
+				g.Success("Istio-operator pod is Running")
 			})
 		})
 	})
@@ -70,25 +71,28 @@ var _ = Describe("Operator", Ordered, func() {
 			// Note: This var version is needed to avoid the closure of the loop
 			version := version
 
-			Context("version " + version), func() {
+			Context(fmt.Sprintf("version %s", version), func() {
 				BeforeAll(func() {
-					Expect(kubectl.CreateNamespace(controlPlaneNamespace)).To(Succeed())
-					Eventually(createIstioCR).WithArguments(version).Should(Succeed(), "Istio CR should be created")
-					GinkgoWriter.Println("Istio CR created")
+					Expect(kubectl.CreateNamespace(controlPlaneNamespace)).To(Succeed(), "Namespace failed to be created; unexpected error")
 				})
 
 				AfterAll(func() {
-					GinkgoWriter.Println("Cleaning up")
-					Eventually(kubectl.DeleteNamespace).WithArguments(controlPlaneNamespace).Should(Succeed(), "Namespace should be deleted")
-					Eventually(kubectl.CheckNamespaceExist).WithArguments(controlPlaneNamespace).Should(MatchError(kubectl.ErrNotFound), "Namespace should be deleted")
-					GinkgoWriter.Println("Cleanup done")
+					g.Success("Cleaning up")
+					Eventually(kubectl.DeleteNamespace).WithArguments(controlPlaneNamespace).Should(Succeed(), "Namespace failed to be deleted; unexpected error")
+					Eventually(kubectl.CheckNamespaceExist).WithArguments(controlPlaneNamespace).Should(MatchError(kubectl.ErrNotFound), "Namespace should not exist; unexpected error")
+					g.Success("Cleanup done")
 				})
 
 				When("the resource is created", func() {
-					It("updates the Istio resource status to Ready and Running", func() {
-						Eventually(kubectl.GetResourceCondition).WithArguments(controlPlaneNamespace, "istio", istioName).Should(ContainElement(resourceReconcilied))
-						Eventually(kubectl.GetResourceCondition).WithArguments(controlPlaneNamespace, "istio", istioName).Should(ContainElement(resourceReady))
-						Eventually(kubectl.GetPodPhase).WithArguments(controlPlaneNamespace, "app=istiod").Should(Equal("Running"), "Istiod should be Running")
+					It("deploys the Istio CR", func() {
+						Expect(createIstioCR(version)).Should(Succeed(), "Istio CR failed to be created; unexpected error")
+						g.Success("Istio CR created")
+					})
+
+					It("updates the Istio resource status to Reconcilied and Ready", func() {
+						Eventually(kubectl.GetResourceCondition).WithArguments(controlPlaneNamespace, "istio", istioName).Should(ContainElement(resourceReconcilied), "Istio it's not Reconcilied; unexpected Condition")
+						Eventually(kubectl.GetResourceCondition).WithArguments(controlPlaneNamespace, "istio", istioName).Should(ContainElement(resourceReady), "Istio it's not Ready; unexpected Condition")
+						Eventually(kubectl.GetPodPhase).WithArguments(controlPlaneNamespace, "app=istiod").Should(Equal("Running"), "Istiod it's not Running; unexpected pod Phase")
 					})
 
 					It("deploys correct istiod image tag according to the version in the Istio CR", func() {
@@ -99,38 +103,37 @@ var _ = Describe("Operator", Ordered, func() {
 					})
 
 					It("doesn't continuously reconcile the istio resource", func() {
-						istiodPodName, _ := kubectl.GetPodFromLabel(controlPlaneNamespace, "app=istiod")
-						Eventually(kubectl.GetPodLogs).WithArguments(controlPlaneNamespace, istiodPodName, "30s").ShouldNot(ContainSubstring("Reconciliation done"))
-						GinkgoWriter.Println("Istio Operator stopped reconciling")
+						Eventually(kubectl.GetPodLogs).WithArguments(controlPlaneNamespace, "app=istiod", 30*time.Second).ShouldNot(ContainSubstring("Reconciliation done"), "Istio Operator is continuously reconciling")
+						g.Success("Istio Operator stopped reconciling")
 					})
 
 					It("deploys istiod", func() {
 						expectedDeployments := []string{"istiod"}
 
-						deploymentsList, err := kubectl.GetDeployments(controlPlaneNamespace)
+						deploymentsList, err := kubectl.GetDeploymentsNames(controlPlaneNamespace)
 						if err != nil {
 							Fail("Error getting deployments")
 						}
 
-						Expect(deploymentsList).To(Equal(expectedDeployments), "Deployments List should contains only istiod")
+						Expect(deploymentsList).To(Equal(expectedDeployments), "Istiod deployment is not present; expected list to be equal")
 					})
 
 					It("deploys the CNI DaemonSet when running on OpenShift", func() {
 						if ocp == "true" {
-							Eventually(kubectl.GetDaemonSets).WithArguments(namespace).Should(ContainElement("istio-cni-node"), "CNI DaemonSet should be deployed")
-							Eventually(kubectl.GetPodPhase).WithArguments(namespace, "k8s-app=istio-cni-node").Should(Equal("Running"), "CNI DaemonSet should be Running")
-							GinkgoWriter.Println("CNI DaemonSet is deployed in the namespace and Running")
+							Eventually(kubectl.GetDaemonSets).WithArguments(namespace).Should(ContainElement("istio-cni-node"), "CNI DaemonSet is not deployed; expected list to contain element")
+							Expect(kubectl.GetPodPhase(namespace, "k8s-app=istio-cni-node")).Should(Equal("Running"), "CNI Daemon it's not Running; unexpected Phase")
+							g.Success("CNI DaemonSet is deployed in the namespace and Running")
 						} else {
-							Eventually(kubectl.GetDaemonSets).WithArguments(namespace).Should(BeEmpty(), "CNI DaemonSet should not be deployed on OpenShift")
-							GinkgoWriter.Println("CNI DaemonSet is not deployed in the namespace because it's not OpenShift")
+							Consistently(kubectl.GetDaemonSets).WithArguments(namespace).WithTimeout(60*time.Second).Should(BeEmpty(), "CNI DaemonSet it's present; expected list to be empty")
+							g.Success("CNI DaemonSet is not deployed in the namespace because it's not OpenShift")
 						}
 					})
 				})
 
 				When("the Istio CR is deleted", func() {
 					BeforeEach(func() {
-						Eventually(deleteIstioCR).WithArguments(version).Should(Succeed(), "Istio CR should be deleted")
-						GinkgoWriter.Println("Istio CR's deleted")
+						Expect(deleteIstioCR(version)).Should(Succeed(), "Istio CR's failed to be deleted; unexpected error")
+						g.Success("Istio CR's deleted")
 					})
 
 					It("removes everything from the namespace", func() {
@@ -141,16 +144,11 @@ var _ = Describe("Operator", Ordered, func() {
 		}
 	})
 
-	Describe("operator uninstallation", func() {
+	Describe("uninstallation", func() {
 		When("is deleted the operator manifest from the cluster", func() {
-			BeforeEach(func() {
-				Eventually(undeployOperator).Should(Succeed(), "Operator deployment should be deleted")
-				GinkgoWriter.Println("Operator deployment is deleted")
-			})
-
 			Specify("the operator it's deleted", func() {
-				Eventually(kubectl.GetPodFromLabel).WithArguments(namespace, "control-plane=istio-operator").Should(BeEmpty(), "Istio-operator pod should be deleted")
-				GinkgoWriter.Println("Istio-operator pod is deleted")
+				Eventually(undeployOperator).Should(Succeed(), "Operator deployment should be deleted")
+				g.Success("Operator deployment is deleted")
 			})
 		})
 	})

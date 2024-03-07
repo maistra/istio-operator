@@ -21,6 +21,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	"maistra.io/istio-operator/api/v1alpha1"
+	g "maistra.io/istio-operator/pkg/util/tests/ginkgo"
 	"maistra.io/istio-operator/pkg/util/tests/helm"
 	"maistra.io/istio-operator/pkg/util/tests/kubectl"
 	"sigs.k8s.io/yaml"
@@ -75,17 +76,14 @@ func undeployOperator() error {
 func createIstioCR(version string) error {
 	yamlString, err := readAndReplaceVersionInManifest(version)
 	if err != nil {
-		GinkgoWriter.Println("Error updating Istio manifest:", err)
-		return err
+		return fmt.Errorf("error updating Istio manifest: %v", err)
 	}
 
 	err = kubectl.ApplyString(yamlString)
 	if err != nil {
-		GinkgoWriter.Println("Error installing resources")
-		return err
+		return fmt.Errorf("error applying Istio resources: %v", err)
 	}
 
-	GinkgoWriter.Println("Istio resource installed successfully")
 	return nil
 }
 
@@ -93,17 +91,15 @@ func createIstioCR(version string) error {
 func deleteIstioCR(version string) error {
 	yamlString, err := readAndReplaceVersionInManifest(version)
 	if err != nil {
-		GinkgoWriter.Println("Error updating Istio manifest:", err)
-		return err
+		return fmt.Errorf("error updating Istio manifest: %s", err)
 	}
 
 	err = kubectl.DeleteString(yamlString)
 	if err != nil {
-		GinkgoWriter.Println("Error deleting Istio resources")
-		return err
+		return fmt.Errorf("error deleting Istio resources: %s", err)
 	}
 
-	GinkgoWriter.Println("Istio resources deleted successfully")
+	g.Success("Istio resources deleted successfully")
 	return nil
 }
 
@@ -144,18 +140,14 @@ func getIstioVersions(filename string) []string {
 		Versions []Version `yaml:"versions"`
 	}
 
-	GinkgoWriter.Println("Getting the istio versions")
-
 	yamlFile, err := os.ReadFile(filename)
 	if err != nil {
-		GinkgoWriter.Println("Error reading the versions.yaml file")
 		Fail("Error reading the versions.yaml file")
 	}
 
 	var config IstioVersion
 	err = yaml.Unmarshal(yamlFile, &config)
 	if err != nil {
-		GinkgoWriter.Println("Error unmarshalling the versions.yaml file")
 		Fail("Error unmarshalling the versions.yaml file")
 	}
 

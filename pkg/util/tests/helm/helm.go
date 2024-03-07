@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	g "github.com/onsi/ginkgo/v2"
+	g "maistra.io/istio-operator/pkg/util/tests/ginkgo"
 	"maistra.io/istio-operator/pkg/util/tests/shell"
 )
 
@@ -28,15 +28,14 @@ import (
 // ns: namespace
 // args: additional helm args, for example "--set image=Image"
 func Template(name string, chart string, ns string, args ...string) (string, error) {
-	g.GinkgoWriter.Println("Running Helm template")
+	g.Success("Running Helm template")
 	argsStr := strings.Join(args, " ")
 	command := fmt.Sprintf("helm template %s %s --namespace %s %s", name, chart, ns, argsStr)
 	outputString, err := shell.ExecuteCommand(command)
 	if err != nil {
-		g.GinkgoWriter.Printf("Error running Helm template: %s", outputString)
-		return "", err
+		return "", fmt.Errorf("Error running Helm template: %s", outputString)
 	}
 
-	g.GinkgoWriter.Println("Helm template executed successfully")
+	g.Success("Helm template executed successfully")
 	return outputString, nil
 }

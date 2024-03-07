@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"maistra.io/istio-operator/pkg/util/tests/shell"
 	resourcecondition "maistra.io/istio-operator/pkg/util/tests/types"
@@ -105,7 +106,7 @@ func GetResourceCondition(ns, resourceType, resourceName string) ([]resourcecond
 func GetPodPhase(ns, selector string) (string, error) {
 	var resource resourcecondition.Resource
 
-	podName, err := GetPodFromLabel(ns, podLabel)
+	podName, err := GetPodFromLabel(ns, selector)
 	if err != nil {
 		return "", err
 	}
@@ -228,8 +229,8 @@ func CheckNamespaceExist(ns string) error {
 	return nil
 }
 
-// GetDeployments returns the deployments of a namespace
-func GetDeployments(ns string) ([]string, error) {
+// GetDeploymentsNames returns the deployments of a namespace
+func GetDeploymentsNames(ns string) ([]string, error) {
 	var deployments []string
 	cmd := kubectl("get deployments -n %s -o jsonpath={.items[*].metadata.name}", ns)
 	output, err := shell.ExecuteCommand(cmd)
@@ -243,9 +244,13 @@ func GetDeployments(ns string) ([]string, error) {
 // GetPodLogs returns the logs of a deployment
 // Arguments:
 // - ns: namespace
-// - deploymentName: deployment name
+// - selector: selector of the pod
 // - Since: time range
-func GetPodLogs(ns, podName, since time.Duration) (string, error) {
+func GetPodLogs(ns, selector string, since time.Duration) (string, error) {
+	podName, err := GetPodFromLabel(ns, selector)
+	if err != nil {
+		return "", err
+	}
 	cmd := kubectl("logs %s -n %s  --since=%s", podName, ns, since)
 	output, err := shell.ExecuteCommand(cmd)
 	if err != nil {
