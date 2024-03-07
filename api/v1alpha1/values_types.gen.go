@@ -259,7 +259,7 @@ type GlobalConfig struct {
 	// See https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
 	//
 	// Deprecated: Marked as deprecated in pkg/apis/istio/v1alpha1/values_types.proto.
-	DefaultNodeSelector *k8sv1.NodeSelector `json:"defaultNodeSelector,omitempty"`
+	DefaultNodeSelector map[string]string `json:"defaultNodeSelector,omitempty"`
 	// Specifies the default pod disruption budget configuration.
 	//
 	// Deprecated: Marked as deprecated in pkg/apis/istio/v1alpha1/values_types.proto.
@@ -523,7 +523,7 @@ type PilotConfig struct {
 	// See https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
 	//
 	// Deprecated: Marked as deprecated in pkg/apis/istio/v1alpha1/values_types.proto.
-	NodeSelector *k8sv1.NodeSelector `json:"nodeSelector,omitempty"`
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 	// Maximum duration that a sidecar can be connected to a pilot.
 	//
 	// This setting balances out load across pilot instances, but adds some resource overhead.
