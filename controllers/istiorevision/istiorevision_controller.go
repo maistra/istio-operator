@@ -20,6 +20,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/go-logr/logr"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
@@ -140,6 +141,10 @@ func (r *IstioRevisionReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	log.Info("Reconciliation done. Updating status.")
 	err = r.updateStatus(ctx, &rev, err)
+	if errors.IsConflict(err) {
+		log.Info("Status update failed. Requeuing reconciliation")
+		return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
+	}
 
 	return ctrl.Result{}, err
 }

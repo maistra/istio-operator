@@ -699,7 +699,7 @@ func TestReconcileActiveRevision(t *testing.T) {
 					cl := newFakeClientBuilder().WithObjects(initObjs...).Build()
 					reconciler := NewIstioReconciler(cl, scheme.Scheme, resourceDir, nil)
 
-					err := reconciler.reconcileActiveRevision(ctx, istio, &tc.istioValues)
+					_, err := reconciler.reconcileActiveRevision(ctx, istio, &tc.istioValues)
 					if err != nil {
 						t.Errorf("Expected no error, but got: %v", err)
 					}

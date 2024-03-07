@@ -91,7 +91,10 @@ func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 	log.Info("Reconciliation done. Updating status.")
 	err = r.updateStatus(ctx, &istio, err)
-
+	if errors.IsConflict(err) {
+		log.Info("Status update failed. Requeuing reconciliation")
+		return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
+	}
 	return result, err
 }
 
@@ -110,14 +113,15 @@ func (r *IstioReconciler) doReconcile(ctx context.Context, istio v1alpha1.Istio)
 		return ctrl.Result{}, err
 	}
 
-	if err = r.reconcileActiveRevision(ctx, &istio, values); err != nil {
-		return ctrl.Result{}, err
+	var res ctrl.Result
+	if res, err = r.reconcileActiveRevision(ctx, &istio, values); err != nil || shouldRequeue(res) {
+		return res, err
 	}
 
 	return r.pruneInactiveRevisions(ctx, &istio)
 }
 
-func (r *IstioReconciler) reconcileActiveRevision(ctx context.Context, istio *v1alpha1.Istio, values *v1alpha1.Values) error {
+func (r *IstioReconciler) reconcileActiveRevision(ctx context.Context, istio *v1alpha1.Istio, values *v1alpha1.Values) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
 	activeRevisionName := getActiveRevisionName(istio)
@@ -129,7 +133,10 @@ func (r *IstioReconciler) reconcileActiveRevision(ctx context.Context, istio *v1
 		rev.Spec.Version = istio.Spec.Version
 		rev.Spec.Values = values
 		log.Info("Updating IstioRevision")
-		return r.Client.Update(ctx, &rev)
+		if err = r.Client.Update(ctx, &rev); errors.IsConflict(err) {
+			log.Info("IstioRevision update failed. Requeuing reconciliation")
+			return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
+		}
 	} else if errors.IsNotFound(err) {
 		// create new
 		rev = v1alpha1.IstioRevision{
@@ -153,9 +160,12 @@ func (r *IstioReconciler) reconcileActiveRevision(ctx context.Context, istio *v1
 			},
 		}
 		log.Info("Creating IstioRevision")
-		return r.Client.Create(ctx, &rev)
+		if err = r.Client.Create(ctx, &rev); errors.IsForbidden(err) && strings.Contains(err.Error(), "RESTMapping") {
+			log.Info("APIServer seems to be not ready - RESTMapper of gc admission plugin is not up to date. Trying again in 5 seconds", "error", err)
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		}
 	}
-	return err
+	return ctrl.Result{}, err
 }
 
 func (r *IstioReconciler) pruneInactiveRevisions(ctx context.Context, istio *v1alpha1.Istio) (ctrl.Result, error) {
@@ -586,4 +596,8 @@ func mergeOverwrite(base map[string]any, overrides map[string]any) map[string]an
 		}
 	}
 	return base
+}
+
+func shouldRequeue(result ctrl.Result) bool {
+	return result.Requeue || result.RequeueAfter > 0
 }
