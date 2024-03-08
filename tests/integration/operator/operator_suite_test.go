@@ -37,7 +37,7 @@ func setup() {
 
 	fillIstioVersions()
 
-	if ocp == "true" {
+	if ocp {
 		GinkgoWriter.Println("Running on OCP cluster")
 		GinkgoWriter.Printf("Absolute Path: %s\n", wd)
 	} else {

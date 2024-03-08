@@ -40,8 +40,10 @@ func Install(name string, chart string, args ...string) error {
 
 // Uninstall runs helm uninstall in the given directory with params
 // name: name of the helm release
-func Uninstall(ns, name string) error {
-	command := fmt.Sprintf("helm uninstall %s -n %s", name, ns)
+// args: additional helm args, for example "--namespace istio-operator"
+func Uninstall(name string, args ...string) error {
+	argsStr := strings.Join(args, " ")
+	command := fmt.Sprintf("helm uninstall %s %s", name, argsStr)
 	output, err := shell.ExecuteCommand(command)
 	if err != nil {
 		return fmt.Errorf("error running Helm uninstall: %s. Output: %s", err, output)

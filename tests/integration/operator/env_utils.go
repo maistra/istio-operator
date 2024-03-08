@@ -17,16 +17,17 @@ package integrationoperator
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 
 	g "github.com/onsi/ginkgo/v2"
 )
 
 var (
-	ocp                   = getEnvOrDefault("OCP", "false")
-	skipDeploy            = getEnvOrDefault("SKIP_DEPLOY", "false")
+	ocp                   = getBoolEnvOrDefault("OCP", false)
+	skipDeploy            = getBoolEnvOrDefault("SKIP_DEPLOY", false)
 	image                 = getEnvOrDefault("IMAGE", "quay.io/maistra-dev/istio-operator:latest")
-	namespace             = getEnvOrDefault("NAMESPACE", "istio-operator")
-	deploymentName        = getEnvOrDefault("DEPLOYMENT_NAME", "istio-operator")
+	namespace             = getEnvOrDefault("NAMESPACE", "sail-operator")
+	deploymentName        = getEnvOrDefault("DEPLOYMENT_NAME", "sail-operator")
 	controlPlaneNamespace = getEnvOrDefault("CONTROL_PLANE_NS", "istio-system")
 	wd, _                 = os.Getwd()
 	istioName             = getEnvOrDefault("ISTIO_NAME", "default")
@@ -42,4 +43,19 @@ func getEnvOrDefault(key, defaultValue string) string {
 	g.GinkgoWriter.Printf("Env variable %s is set to %s\n", key, value)
 
 	return value
+}
+
+func getBoolEnvOrDefault(key string, defaultValue bool) bool {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+
+	boolValue, err := strconv.ParseBool(value)
+	if err != nil {
+		// Log error or handle it as you see fit
+		return defaultValue
+	}
+
+	return boolValue
 }

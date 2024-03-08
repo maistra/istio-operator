@@ -74,8 +74,8 @@ initialize_variables() {
   WD=$(dirname "$0")
   WD=$(cd "${WD}" || exit; pwd)
 
-  NAMESPACE="${NAMESPACE:-istio-operator}"
-  DEPLOYMENT_NAME="${DEPLOYMENT_NAME:-istio-operator}"
+  NAMESPACE="${NAMESPACE:-sail-operator}"
+  DEPLOYMENT_NAME="${DEPLOYMENT_NAME:-sail-operator}"
   CONTROL_PLANE_NS="${CONTROL_PLANE_NS:-istio-system}"
   COMMAND="kubectl"
 

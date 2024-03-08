@@ -81,8 +81,8 @@ func DeleteString(yamlString string) error {
 	return nil
 }
 
-// GetJSONCondition returns the condition of a resource
-func GetJSONCondition(ns, resourceType, resourceName string) ([]r.Condition, error) {
+// GetCondition returns the condition of a resource
+func GetCondition(ns, resourceType, resourceName string) ([]r.Condition, error) {
 	var resource r.Resource
 
 	output, err := GetJSON(ns, resourceType, resourceName)
@@ -131,8 +131,8 @@ func GetCRDs() ([]string, error) {
 	return strings.Split(output, " "), nil
 }
 
-// GetJSONList returns a json list of the resources of a namespace
-func GetJSONList(ns string) (r.ResourceList, error) {
+// GetResourceList returns a json list of the resources of a namespace
+func GetResourceList(ns string) (r.ResourceList, error) {
 	// TODO: improve the function to get all the resources
 	output, err := GetJSON(ns, "all", "")
 	if err != nil {
