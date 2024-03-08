@@ -23,7 +23,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/sail-operator:3.0-latest
-    createdAt: "2024-03-08T07:43:50Z"
+    createdAt: "2024-03-08T08:39:16Z"
     description: Experimental operator for installing Istio service mesh
     features.operators.openshift.io/cnf: "false"
     features.operators.openshift.io/cni: "true"
@@ -117,8 +117,8 @@ spec:
       version: v1alpha1
     - description: IstioRevision represents a single revision of an Istio Service
         Mesh deployment. Users shouldn't create IstioRevision objects directly. Instead,
-        they should create an Istio object and allow the Istio operator to create
-        the underlying IstioRevision object(s).
+        they should create an Istio object and allow the operator to create the underlying
+        IstioRevision object(s).
       displayName: Istio Revision
       kind: IstioRevision
       name: istiorevisions.operator.istio.io
@@ -145,9 +145,9 @@ spec:
     - description: Istio represents an Istio Service Mesh deployment consisting of
         one or more control plane instances (represented by one or more IstioRevision
         objects). To deploy an Istio Service Mesh, a user creates an Istio object
-        with the desired Istio version and configuration. The Istio operator then
-        creates an IstioRevision object, which in turn creates the underlying Deployment
-        objects for istiod and other control plane components, similar to how a Deployment
+        with the desired Istio version and configuration. The operator then creates
+        an IstioRevision object, which in turn creates the underlying Deployment objects
+        for istiod and other control plane components, similar to how a Deployment
         object in Kubernetes creates ReplicaSets that create the Pods.
       displayName: Istio
       kind: Istio
