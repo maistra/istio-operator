@@ -87,6 +87,8 @@ func newCondition(conditionType v1alpha1.IstioCNIConditionType, status bool, rea
 }
 
 func TestDetermineReadyCondition(t *testing.T) {
+	resourceDir := t.TempDir()
+
 	testCases := []struct {
 		name          string
 		cniEnabled    bool
@@ -170,7 +172,7 @@ func TestDetermineReadyCondition(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(tt.clientObjects...).Build()
 
-			r := NewIstioCNIReconciler(cl, scheme.Scheme, nil)
+			r := NewIstioCNIReconciler(cl, scheme.Scheme, nil, resourceDir, nil)
 
 			cni := &v1alpha1.IstioCNI{
 				ObjectMeta: metav1.ObjectMeta{
@@ -321,7 +323,7 @@ func TestApplyImageDigests(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := applyImageDigests(tc.input, tc.config)
+			result := applyImageDigests(tc.input, tc.input.Spec.Values, tc.config)
 			if diff := cmp.Diff(tc.expectValues, result); diff != "" {
 				t.Errorf("unexpected merge result; diff (-expected, +actual):\n%v", diff)
 			}

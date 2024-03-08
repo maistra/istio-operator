@@ -17,7 +17,6 @@ package istio
 import (
 	"context"
 	"fmt"
-	"os"
 	"path"
 	"reflect"
 	"strings"
@@ -26,12 +25,10 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
 	"github.com/istio-ecosystem/sail-operator/pkg/common"
-	"github.com/istio-ecosystem/sail-operator/pkg/helm"
 	"github.com/istio-ecosystem/sail-operator/pkg/kube"
-	"gopkg.in/yaml.v3"
+	"github.com/istio-ecosystem/sail-operator/pkg/profiles"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -41,7 +38,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"istio.io/istio/pkg/ptr"
-	"istio.io/istio/pkg/util/sets"
 )
 
 // IstioReconciler reconciles an Istio object
@@ -297,12 +293,12 @@ func computeIstioRevisionValues(istio v1alpha1.Istio, defaultProfiles []string, 
 	userValues = applyImageDigests(&istio, userValues, common.Config)
 
 	// apply userValues on top of defaultValues from profiles
-	defaultValues, err := getValuesFromProfiles(getProfilesDir(resourceDir, istio), getProfiles(istio, defaultProfiles))
+	mergedHelmValues, err := profiles.Apply(getProfilesDir(resourceDir, istio), getProfiles(istio, defaultProfiles), userValues.ToHelmValues())
 	if err != nil {
 		return nil, err
 	}
-	mergedHelmValues := mergeOverwrite(defaultValues, userValues.ToHelmValues())
-	values, err := v1alpha1.ValuesFromHelmValues(mergedHelmValues)
+
+	values, err := v1alpha1.FromHelmValues(mergedHelmValues, &v1alpha1.Values{})
 	if err != nil {
 		return nil, err
 	}
@@ -506,87 +502,6 @@ func convertConditionReason(reason v1alpha1.IstioRevisionConditionReason) v1alph
 	default:
 		panic(fmt.Sprintf("can't convert IstioRevisionConditionReason: %s", reason))
 	}
-}
-
-func getValuesFromProfiles(profilesDir string, profiles []string) (helm.HelmValues, error) {
-	// start with an empty values map
-	values := helm.HelmValues{}
-
-	// apply profiles in order, overwriting values from previous profiles
-	alreadyApplied := sets.New[string]()
-	for _, profile := range profiles {
-		if profile == "" {
-			return nil, fmt.Errorf("profile name cannot be empty")
-		}
-		if alreadyApplied.Contains(profile) {
-			continue
-		}
-		alreadyApplied.Insert(profile)
-
-		file := path.Join(profilesDir, profile+".yaml")
-		// prevent path traversal attacks
-		if path.Dir(file) != profilesDir {
-			return nil, fmt.Errorf("invalid profile name %s", profile)
-		}
-
-		profileValues, err := getProfileValues(file)
-		if err != nil {
-			return nil, err
-		}
-		values = mergeOverwrite(values, profileValues)
-	}
-
-	return values, nil
-}
-
-func getProfileValues(file string) (helm.HelmValues, error) {
-	fileContents, err := os.ReadFile(file)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read profile file %v: %v", file, err)
-	}
-
-	var profile map[string]any
-	err = yaml.Unmarshal(fileContents, &profile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal profile YAML %s: %v", file, err)
-	}
-
-	val, found, err := unstructured.NestedFieldNoCopy(profile, "spec", "values")
-	if !found || err != nil {
-		return nil, err
-	}
-	m, ok := val.(map[string]any)
-	if !ok {
-		return nil, fmt.Errorf("spec.values is not a map[string]any")
-	}
-	return m, nil
-}
-
-func mergeOverwrite(base map[string]any, overrides map[string]any) map[string]any {
-	if base == nil {
-		base = make(map[string]any, 1)
-	}
-
-	for key, value := range overrides {
-		// if the key doesn't already exist, add it
-		if _, exists := base[key]; !exists {
-			base[key] = value
-			continue
-		}
-
-		// At this point, key exists in both base and overrides.
-		// If both are maps, recurse so that we override only specific values in the map.
-		// If only override value is a map, overwrite base value completely.
-		// If both are values, overwrite base.
-		childOverrides, overrideValueIsMap := value.(map[string]any)
-		childBase, baseValueIsMap := base[key].(map[string]any)
-		if baseValueIsMap && overrideValueIsMap {
-			base[key] = mergeOverwrite(childBase, childOverrides)
-		} else {
-			base[key] = value
-		}
-	}
-	return base
 }
 
 func shouldRequeue(result ctrl.Result) bool {

@@ -59,7 +59,8 @@ var _ = BeforeSuite(func() {
 	testEnv, k8sClient, cfg = test.SetupEnv()
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
-	helm.ResourceDirectory = path.Join(common.RepositoryRoot, "resources")
+	resourceDir := path.Join(common.RepositoryRoot, "resources")
+	helm.ResourceDirectory = resourceDir
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme.Scheme,
@@ -71,13 +72,14 @@ var _ = BeforeSuite(func() {
 		panic(err)
 	}
 
-	Expect(istio.NewIstioReconciler(mgr.GetClient(), mgr.GetScheme(), path.Join(common.RepositoryRoot, "resources"), []string{"default"}).
+	defaultProfiles := []string{"default"}
+	Expect(istio.NewIstioReconciler(mgr.GetClient(), mgr.GetScheme(), resourceDir, defaultProfiles).
 		SetupWithManager(mgr)).To(Succeed())
 
 	Expect(istiorevision.NewIstioRevisionReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig()).
 		SetupWithManager(mgr)).To(Succeed())
 
-	Expect(istiocni.NewIstioCNIReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig()).
+	Expect(istiocni.NewIstioCNIReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), resourceDir, defaultProfiles).
 		SetupWithManager(mgr)).To(Succeed())
 
 	// create new cancellable context

@@ -40,21 +40,18 @@ func (x *Values) ToHelmValues() helm.HelmValues {
 	return obj
 }
 
-func ValuesFromHelmValues(helmValues helm.HelmValues) (*Values, error) {
+func FromHelmValues[V any](helmValues helm.HelmValues, values V) (V, error) {
 	data, err := json.Marshal(helmValues)
 	if err != nil {
-		return nil, err
+		return values, err
 	}
 
-	values := Values{}
 	decoder := json.NewDecoder(strings.NewReader(string(data)))
-	decoder.DisallowUnknownFields()
-
 	err = decoder.Decode(&values)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal into Values struct: %v:\n%v", err, string(data))
+		return values, fmt.Errorf("failed to unmarshal into Values struct: %v:\n%v", err, string(data))
 	}
-	return &values, nil
+	return values, nil
 }
 
 type CNIValues struct {

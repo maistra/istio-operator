@@ -17,6 +17,7 @@ package istiocni
 import (
 	"context"
 	"fmt"
+	"path"
 	"reflect"
 
 	"github.com/go-logr/logr"
@@ -24,6 +25,7 @@ import (
 	"github.com/istio-ecosystem/sail-operator/pkg/common"
 	"github.com/istio-ecosystem/sail-operator/pkg/helm"
 	"github.com/istio-ecosystem/sail-operator/pkg/kube"
+	"github.com/istio-ecosystem/sail-operator/pkg/profiles"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -44,16 +46,22 @@ import (
 
 // IstioCNIReconciler reconciles an IstioCNI object
 type IstioCNIReconciler struct {
-	RestClientGetter genericclioptions.RESTClientGetter
+	ResourceDirectory string
+	DefaultProfiles   []string
+	RestClientGetter  genericclioptions.RESTClientGetter
 	client.Client
 	Scheme *runtime.Scheme
 }
 
-func NewIstioCNIReconciler(client client.Client, scheme *runtime.Scheme, restConfig *rest.Config) *IstioCNIReconciler {
+func NewIstioCNIReconciler(client client.Client, scheme *runtime.Scheme, restConfig *rest.Config,
+	resourceDir string, defaultProfiles []string,
+) *IstioCNIReconciler {
 	return &IstioCNIReconciler{
-		RestClientGetter: helm.NewRESTClientGetter(restConfig),
-		Client:           client,
-		Scheme:           scheme,
+		ResourceDirectory: resourceDir,
+		DefaultProfiles:   defaultProfiles,
+		RestClientGetter:  helm.NewRESTClientGetter(restConfig),
+		Client:            client,
+		Scheme:            scheme,
 	}
 }
 
@@ -144,15 +152,34 @@ func (r *IstioCNIReconciler) installHelmCharts(ctx context.Context, cni *v1alpha
 		BlockOwnerDeletion: ptr.Of(true),
 	}
 
-	values := applyImageDigests(cni, common.Config).ToHelmValues()
+	// get userValues from Istio.spec.values
+	userValues := cni.Spec.Values
 
-	return helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, userCharts, values,
+	// apply image digests from configuration, if not already set by user
+	userValues = applyImageDigests(cni, userValues, common.Config)
+
+	// apply userValues on top of defaultValues from profiles
+	mergedHelmValues, err := profiles.Apply(getProfilesDir(r.ResourceDirectory, cni), getProfiles(cni, r.DefaultProfiles), userValues.ToHelmValues())
+	if err != nil {
+		return err
+	}
+
+	return helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, userCharts, mergedHelmValues,
 		cni.Spec.Version, cni.Name, cni.Spec.Namespace, ownerReference)
 }
 
-func applyImageDigests(cni *v1alpha1.IstioCNI, config common.OperatorConfig) *v1alpha1.CNIValues {
-	values := cni.Spec.Values
+func getProfiles(cni *v1alpha1.IstioCNI, defaultProfiles []string) []string {
+	if cni.Spec.Profile == "" {
+		return defaultProfiles
+	}
+	return append(defaultProfiles, cni.Spec.Profile)
+}
 
+func getProfilesDir(resourceDir string, cni *v1alpha1.IstioCNI) string {
+	return path.Join(resourceDir, cni.Spec.Version, "profiles")
+}
+
+func applyImageDigests(cni *v1alpha1.IstioCNI, values *v1alpha1.CNIValues, config common.OperatorConfig) *v1alpha1.CNIValues {
 	imageDigests, digestsDefined := config.ImageDigests[cni.Spec.Version]
 	// if we don't have default image digests defined for this version, it's a no-op
 	if !digestsDefined {

@@ -39,4 +39,4 @@ sed -i -E \
   -e "/\+sail:profile/,/Profile string/ s/(\/\/ \+operator-sdk:csv:customresourcedefinitions:type=spec,displayName=\"Profile\",xDescriptors=\{.*fieldGroup:General\")[^}]*(})/\1$selectValues}/g" \
   -e "/\+sail:profile/,/Profile string/ s/(\/\/ \+kubebuilder:validation:Enum=)(.*)/\1$enumValues/g" \
   -e "/\+sail:profile/,/Profile string/ s/(\/\/ Must be one of:)(.*)/\1 ${profiles//,/, }./g" \
-  api/v1alpha1/istio_types.go
+  api/v1alpha1/istio_types.go api/v1alpha1/istiocni_types.go
