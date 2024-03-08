@@ -45,7 +45,7 @@ spec:
         description: |-
           IstioRevision represents a single revision of an Istio Service Mesh deployment.
           Users shouldn't create IstioRevision objects directly. Instead, they should
-          create an Istio object and allow the Istio operator to create the underlying
+          create an Istio object and allow the operator to create the underlying
           IstioRevision object(s).
         properties:
           apiVersion:
@@ -1355,6 +1355,8 @@ spec:
                           type: string
                         type: array
                       defaultNodeSelector:
+                        additionalProperties:
+                          type: string
                         description: |-
                           Default k8s node selector for all the Istio control plane components
 
@@ -1363,87 +1365,7 @@ spec:
 
 
                           Deprecated: Marked as deprecated in pkg/apis/istio/v1alpha1/values_types.proto.
-                        properties:
-                          nodeSelectorTerms:
-                            description: Required. A list of node selector terms.
-                              The terms are ORed.
-                            items:
-                              description: |-
-                                A null or empty node selector term matches no objects. The requirements of
-                                them are ANDed.
-                                The TopologySelectorTerm type implements a subset of the NodeSelectorTerm.
-                              properties:
-                                matchExpressions:
-                                  description: A list of node selector requirements
-                                    by node's labels.
-                                  items:
-                                    description: |-
-                                      A node selector requirement is a selector that contains values, a key, and an operator
-                                      that relates the key and values.
-                                    properties:
-                                      key:
-                                        description: The label key that the selector
-                                          applies to.
-                                        type: string
-                                      operator:
-                                        description: |-
-                                          Represents a key's relationship to a set of values.
-                                          Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.
-                                        type: string
-                                      values:
-                                        description: |-
-                                          An array of string values. If the operator is In or NotIn,
-                                          the values array must be non-empty. If the operator is Exists or DoesNotExist,
-                                          the values array must be empty. If the operator is Gt or Lt, the values
-                                          array must have a single element, which will be interpreted as an integer.
-                                          This array is replaced during a strategic merge patch.
-                                        items:
-                                          type: string
-                                        type: array
-                                    required:
-                                    - key
-                                    - operator
-                                    type: object
-                                  type: array
-                                matchFields:
-                                  description: A list of node selector requirements
-                                    by node's fields.
-                                  items:
-                                    description: |-
-                                      A node selector requirement is a selector that contains values, a key, and an operator
-                                      that relates the key and values.
-                                    properties:
-                                      key:
-                                        description: The label key that the selector
-                                          applies to.
-                                        type: string
-                                      operator:
-                                        description: |-
-                                          Represents a key's relationship to a set of values.
-                                          Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.
-                                        type: string
-                                      values:
-                                        description: |-
-                                          An array of string values. If the operator is In or NotIn,
-                                          the values array must be non-empty. If the operator is Exists or DoesNotExist,
-                                          the values array must be empty. If the operator is Gt or Lt, the values
-                                          array must have a single element, which will be interpreted as an integer.
-                                          This array is replaced during a strategic merge patch.
-                                        items:
-                                          type: string
-                                        type: array
-                                    required:
-                                    - key
-                                    - operator
-                                    type: object
-                                  type: array
-                              type: object
-                              x-kubernetes-map-type: atomic
-                            type: array
-                        required:
-                        - nodeSelectorTerms
                         type: object
-                        x-kubernetes-map-type: atomic
                       defaultPodDisruptionBudget:
                         description: |-
                           Specifies the default pod disruption budget configuration.
@@ -6833,6 +6755,8 @@ spec:
                             type: integer
                         type: object
                       nodeSelector:
+                        additionalProperties:
+                          type: string
                         description: |-
                           K8s node selector.
 
@@ -6841,87 +6765,7 @@ spec:
 
 
                           Deprecated: Marked as deprecated in pkg/apis/istio/v1alpha1/values_types.proto.
-                        properties:
-                          nodeSelectorTerms:
-                            description: Required. A list of node selector terms.
-                              The terms are ORed.
-                            items:
-                              description: |-
-                                A null or empty node selector term matches no objects. The requirements of
-                                them are ANDed.
-                                The TopologySelectorTerm type implements a subset of the NodeSelectorTerm.
-                              properties:
-                                matchExpressions:
-                                  description: A list of node selector requirements
-                                    by node's labels.
-                                  items:
-                                    description: |-
-                                      A node selector requirement is a selector that contains values, a key, and an operator
-                                      that relates the key and values.
-                                    properties:
-                                      key:
-                                        description: The label key that the selector
-                                          applies to.
-                                        type: string
-                                      operator:
-                                        description: |-
-                                          Represents a key's relationship to a set of values.
-                                          Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.
-                                        type: string
-                                      values:
-                                        description: |-
-                                          An array of string values. If the operator is In or NotIn,
-                                          the values array must be non-empty. If the operator is Exists or DoesNotExist,
-                                          the values array must be empty. If the operator is Gt or Lt, the values
-                                          array must have a single element, which will be interpreted as an integer.
-                                          This array is replaced during a strategic merge patch.
-                                        items:
-                                          type: string
-                                        type: array
-                                    required:
-                                    - key
-                                    - operator
-                                    type: object
-                                  type: array
-                                matchFields:
-                                  description: A list of node selector requirements
-                                    by node's fields.
-                                  items:
-                                    description: |-
-                                      A node selector requirement is a selector that contains values, a key, and an operator
-                                      that relates the key and values.
-                                    properties:
-                                      key:
-                                        description: The label key that the selector
-                                          applies to.
-                                        type: string
-                                      operator:
-                                        description: |-
-                                          Represents a key's relationship to a set of values.
-                                          Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.
-                                        type: string
-                                      values:
-                                        description: |-
-                                          An array of string values. If the operator is In or NotIn,
-                                          the values array must be non-empty. If the operator is Exists or DoesNotExist,
-                                          the values array must be empty. If the operator is Gt or Lt, the values
-                                          array must have a single element, which will be interpreted as an integer.
-                                          This array is replaced during a strategic merge patch.
-                                        items:
-                                          type: string
-                                        type: array
-                                    required:
-                                    - key
-                                    - operator
-                                    type: object
-                                  type: array
-                              type: object
-                              x-kubernetes-map-type: atomic
-                            type: array
-                        required:
-                        - nodeSelectorTerms
                         type: object
-                        x-kubernetes-map-type: atomic
                       podAnnotations:
                         additionalProperties:
                           type: string

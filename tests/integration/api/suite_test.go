@@ -19,17 +19,17 @@ import (
 	"path"
 	"testing"
 
+	"github.com/istio-ecosystem/sail-operator/controllers/istio"
+	"github.com/istio-ecosystem/sail-operator/controllers/istiorevision"
+	"github.com/istio-ecosystem/sail-operator/pkg/common"
+	"github.com/istio-ecosystem/sail-operator/pkg/helm"
+	"github.com/istio-ecosystem/sail-operator/pkg/test"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/kubectl/pkg/scheme"
-	"maistra.io/istio-operator/controllers/istio"
-	"maistra.io/istio-operator/controllers/istiorevision"
-	"maistra.io/istio-operator/pkg/common"
-	"maistra.io/istio-operator/pkg/helm"
-	"maistra.io/istio-operator/pkg/test"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
@@ -47,7 +47,7 @@ var (
 	cancel    context.CancelFunc
 )
 
-const operatorNamespace = "istio-operator"
+const operatorNamespace = "sail-operator"
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)

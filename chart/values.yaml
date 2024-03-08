@@ -1,10 +1,10 @@
 name: sailoperator
 deployment:
-  name: istio-operator
+  name: sail-operator
   annotations: {}
 service:
   port: 8443
-serviceAccountName: istio-operator
+serviceAccountName: sail-operator
 
 csv:
   displayName: Sail Operator
@@ -18,9 +18,9 @@ csv:
 
     - v1.20.3
     - v1.19.7
-    - latest (bd5f4f05)
+    - latest (4831d1a5)
 
-    [See this page](https://github.com/maistra/istio-operator/blob/maistra-3.0/bundle/README.md) for instructions on how to use it.
+    [See this page](https://github.com/istio-ecosystem/sail-operator/blob/pre-main/bundle/README.md) for instructions on how to use it.
   support: Community based
   version: 3.0.0
   icon:

@@ -19,14 +19,14 @@ import (
 	"os"
 	"testing"
 
+	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
+	"github.com/istio-ecosystem/sail-operator/pkg/common"
+	"github.com/istio-ecosystem/sail-operator/pkg/test"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
-	v1 "maistra.io/istio-operator/api/v1alpha1"
-	"maistra.io/istio-operator/pkg/common"
-	"maistra.io/istio-operator/pkg/test"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 )
@@ -74,26 +74,26 @@ func TestHasFinalizer(t *testing.T) {
 		expectedResult bool
 	}{
 		{
-			obj:            &v1.Istio{},
+			obj:            &v1alpha1.Istio{},
 			expectedResult: false,
 		},
 		{
-			obj: &v1.Istio{
+			obj: &v1alpha1.Istio{
 				ObjectMeta: metav1.ObjectMeta{
 					Finalizers: []string{"blah"},
 				},
-				Spec: v1.IstioSpec{
+				Spec: v1alpha1.IstioSpec{
 					Version: version,
 				},
 			},
 			expectedResult: false,
 		},
 		{
-			obj: &v1.Istio{
+			obj: &v1alpha1.Istio{
 				ObjectMeta: metav1.ObjectMeta{
 					Finalizers: []string{common.FinalizerName},
 				},
-				Spec: v1.IstioSpec{
+				Spec: v1alpha1.IstioSpec{
 					Version: version,
 				},
 			},
@@ -113,25 +113,25 @@ func TestAddRemoveFinalizer(t *testing.T) {
 		resultFinalizers []string
 	}{
 		{
-			obj: &v1.Istio{
+			obj: &v1alpha1.Istio{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: "test",
 				},
-				Spec: v1.IstioSpec{
+				Spec: v1alpha1.IstioSpec{
 					Version: version,
 				},
 			},
 			resultFinalizers: []string{common.FinalizerName},
 		},
 		{
-			obj: &v1.Istio{
+			obj: &v1alpha1.Istio{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:       "test",
 					Namespace:  "test",
 					Finalizers: []string{common.FinalizerName},
 				},
-				Spec: v1.IstioSpec{
+				Spec: v1alpha1.IstioSpec{
 					Version: version,
 				},
 			},
@@ -141,7 +141,7 @@ func TestAddRemoveFinalizer(t *testing.T) {
 	for _, tc := range testCases {
 		Eventually(k8sClient.Create(context.TODO(), tc.obj)).Should(Succeed())
 		Expect(AddFinalizer(context.TODO(), tc.obj, k8sClient)).NotTo(HaveOccurred())
-		obj := &v1.Istio{}
+		obj := &v1alpha1.Istio{}
 		Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: tc.obj.GetNamespace(), Name: tc.obj.GetName()}, obj)).To(Succeed())
 		Expect(obj.ObjectMeta.Finalizers).To(Equal(tc.resultFinalizers))
 		Expect(RemoveFinalizer(context.TODO(), tc.obj, k8sClient)).NotTo(HaveOccurred())

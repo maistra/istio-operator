@@ -54,6 +54,7 @@ spec:
         stackdriver: {}
       imagePullSecrets: []
       oneNamespace: false
+      defaultNodeSelector: {}
       configValidation: true
       multiCluster:
         enabled: false
@@ -85,6 +86,7 @@ spec:
       env: {}
       cpu:
         targetAverageUtilization: 80
+      nodeSelector: {}
       keepaliveMaxServerConnectionAge: 30m
       deploymentLabels:
       podLabels: {}

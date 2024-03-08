@@ -25,15 +25,15 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	v1alpha1 "github.com/istio-ecosystem/sail-operator/api/v1alpha1"
+	"github.com/istio-ecosystem/sail-operator/pkg/common"
+	"github.com/istio-ecosystem/sail-operator/pkg/helm"
+	"github.com/istio-ecosystem/sail-operator/pkg/test"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/kubectl/pkg/scheme"
-	v1alpha1 "maistra.io/istio-operator/api/v1alpha1"
-	"maistra.io/istio-operator/pkg/common"
-	"maistra.io/istio-operator/pkg/helm"
-	"maistra.io/istio-operator/pkg/test"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -699,7 +699,7 @@ func TestReconcileActiveRevision(t *testing.T) {
 					cl := newFakeClientBuilder().WithObjects(initObjs...).Build()
 					reconciler := NewIstioReconciler(cl, scheme.Scheme, resourceDir, nil)
 
-					err := reconciler.reconcileActiveRevision(ctx, istio, &tc.istioValues)
+					_, err := reconciler.reconcileActiveRevision(ctx, istio, &tc.istioValues)
 					if err != nil {
 						t.Errorf("Expected no error, but got: %v", err)
 					}

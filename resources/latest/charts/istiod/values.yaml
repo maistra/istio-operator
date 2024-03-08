@@ -161,6 +161,8 @@ defaults:
     # Sidecar injector mutating webhook configuration path value for the clientConfig.service field.
     # Override to pass env variables, for example: /inject/cluster/remote/net/network2
     injectionPath: "/inject"
+
+    injectionCABundle: ""
   telemetry:
     enabled: true
     v2:
@@ -219,7 +221,7 @@ defaults:
     # Dev builds from prow are on gcr.io
     hub: gcr.io/istio-testing
     # Default tag for Istio images.
-    tag: 1.22-alpha.bd5f4f05b95fdc5fe371bdf4760948aa4c07399d
+    tag: 1.22-alpha.4831d1a5f49b7a31c5c5a7ed5cb382e910aa3cb7
     # Variant of the image to use.
     # Currently supported are: [debug, distroless]
     variant: ""
@@ -351,9 +353,9 @@ defaults:
       # Default port for Pilot agent health checks. A value of 0 will disable health checking.
       statusPort: 15020
 
-      # Specify which tracer to use. One of: zipkin, lightstep, datadog, stackdriver.
+      # Specify which tracer to use. One of: zipkin, lightstep, datadog, stackdriver, none.
       # If using stackdriver tracer outside GCP, set env GOOGLE_APPLICATION_CREDENTIALS to the GCP credential file.
-      tracer: "zipkin"
+      tracer: "none"
 
     proxy_init:
       # Base name for the proxy_init container, used to configure iptables.

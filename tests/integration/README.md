@@ -1,4 +1,4 @@
-# Maistra Istio Operator Integration Test
+# Sail Operator Integration Test
 
 This integration test suite utilizes Ginkgo, a testing framework known for its expressive specs (reference: https://onsi.github.io/ginkgo/). The setup for the test run is similar to the upstream Istio integration tests:
 * In the case of kind execution, it relies on the upstream script `kind_provisioner.sh` and `integ-suite-kind.sh`, which are copied from the `github.com/maistra/istio` repository to set up the kind cluster used for the test.

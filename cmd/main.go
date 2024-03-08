@@ -21,17 +21,17 @@ import (
 	"os"
 	"strings"
 
+	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
+	"github.com/istio-ecosystem/sail-operator/controllers/istio"
+	"github.com/istio-ecosystem/sail-operator/controllers/istiorevision"
+	"github.com/istio-ecosystem/sail-operator/pkg/common"
+	"github.com/istio-ecosystem/sail-operator/pkg/helm"
+	"github.com/istio-ecosystem/sail-operator/pkg/version"
 	multusv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
-	maistraiov1 "maistra.io/istio-operator/api/v1alpha1"
-	"maistra.io/istio-operator/controllers/istio"
-	"maistra.io/istio-operator/controllers/istiorevision"
-	"maistra.io/istio-operator/pkg/common"
-	"maistra.io/istio-operator/pkg/helm"
-	"maistra.io/istio-operator/pkg/version"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -51,7 +51,7 @@ func init() {
 	utilruntime.Must(multusv1.AddToScheme(scheme))
 	utilruntime.Must(networkingv1alpha3.AddToScheme(scheme))
 
-	utilruntime.Must(maistraiov1.AddToScheme(scheme))
+	utilruntime.Must(v1alpha1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -65,8 +65,8 @@ func main() {
 	var printVersion bool
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
-	flag.StringVar(&configFile, "config-file", "/etc/istio-operator/config.properties", "Location of the config file, propagated by k8s downward APIs")
-	flag.StringVar(&resourceDirectory, "resource-directory", "/var/lib/istio-operator/resources", "Where to find resources (e.g. charts)")
+	flag.StringVar(&configFile, "config-file", "/etc/sail-operator/config.properties", "Location of the config file, propagated by k8s downward APIs")
+	flag.StringVar(&resourceDirectory, "resource-directory", "/var/lib/sail-operator/resources", "Where to find resources (e.g. charts)")
 	flag.StringVar(&defaultProfiles, "default-profiles", "default", "One or more comma-separated profile names that are always applied to each Istio resource")
 	flag.BoolVar(&logAPIRequests, "log-api-requests", false, "Whether to log each request sent to the Kubernetes API server")
 	flag.BoolVar(&printVersion, "version", printVersion, "Prints version information and exits")

@@ -368,8 +368,10 @@ func (in *GlobalConfig) DeepCopyInto(out *GlobalConfig) {
 	}
 	if in.DefaultNodeSelector != nil {
 		in, out := &in.DefaultNodeSelector, &out.DefaultNodeSelector
-		*out = new(v1.NodeSelector)
-		(*in).DeepCopyInto(*out)
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
 	}
 	if in.DefaultPodDisruptionBudget != nil {
 		in, out := &in.DefaultPodDisruptionBudget, &out.DefaultPodDisruptionBudget
@@ -2193,8 +2195,10 @@ func (in *PilotConfig) DeepCopyInto(out *PilotConfig) {
 	}
 	if in.NodeSelector != nil {
 		in, out := &in.NodeSelector, &out.NodeSelector
-		*out = new(v1.NodeSelector)
-		(*in).DeepCopyInto(*out)
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
 	}
 	if in.KeepaliveMaxServerConnectionAge != nil {
 		in, out := &in.KeepaliveMaxServerConnectionAge, &out.KeepaliveMaxServerConnectionAge

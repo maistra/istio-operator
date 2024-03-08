@@ -20,8 +20,12 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
+	"github.com/istio-ecosystem/sail-operator/pkg/helm"
+	"github.com/istio-ecosystem/sail-operator/pkg/kube"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
@@ -35,9 +39,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/rest"
-	"maistra.io/istio-operator/api/v1alpha1"
-	"maistra.io/istio-operator/pkg/helm"
-	"maistra.io/istio-operator/pkg/kube"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -140,6 +141,10 @@ func (r *IstioRevisionReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	log.Info("Reconciliation done. Updating status.")
 	err = r.updateStatus(ctx, &rev, err)
+	if errors.IsConflict(err) {
+		log.Info("Status update failed. Requeuing reconciliation")
+		return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
+	}
 
 	return ctrl.Result{}, err
 }
