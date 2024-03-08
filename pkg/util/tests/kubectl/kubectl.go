@@ -186,7 +186,7 @@ func GetPodName(ns, label string) (string, error) {
 }
 
 // GetPodsName returns the pod name from a label
-func GetPodsName(ns, label string) ([]string, error) {
+func GetPods(ns, label string) ([]string, error) {
 	var podList []string
 	cmd := kubectl("get pods -n %s -l %s -o jsonpath={.items[*].metadata.name}", ns, label)
 	output, err := shell.ExecuteCommand(cmd)

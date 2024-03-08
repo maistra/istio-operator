@@ -135,11 +135,11 @@ spec:
 					It("updates the Istio resource status to Reconcilied and Ready", func() {
 						Eventually(kubectl.GetCondition).
 							WithArguments(controlPlaneNamespace, "istio", istioName).
-							Should(ContainElement(resourceReconcilied), "Istio it's not Reconcilied; unexpected Condition")
+							Should(ContainElement(resourceReconcilied), "Istio is not Reconcilied; unexpected Condition")
 
 						Eventually(kubectl.GetCondition).
 							WithArguments(controlPlaneNamespace, "istio", istioName).
-							Should(ContainElement(resourceReady), "Istio it's not Ready; unexpected Condition")
+							Should(ContainElement(resourceReady), "Istio is not Ready; unexpected Condition")
 
 						Success("Istio resource is Reconcilied and Ready")
 					})
@@ -168,7 +168,7 @@ spec:
 						} else {
 							Consistently(kubectl.GetDaemonSetNames).
 								WithArguments(namespace).WithTimeout(30*time.Second).
-								Should(BeEmpty(), "CNI DaemonSet it's present; expected list to be empty")
+								Should(BeEmpty(), "CNI DaemonSet is present; expected list to be empty")
 							Success("CNI DaemonSet is not deployed in the namespace because it's not OpenShift")
 						}
 					})
@@ -214,7 +214,7 @@ spec:
 		By("Cleaning up the operator")
 		Expect(helm.Uninstall("sail-operator", "--namespace "+namespace)).
 			Should(Succeed(), "Operator failed to be deleted; unexpected error")
-		Expect(kubectl.DeleteCRDs(crds)).Should(Succeed(), "CRDs failed to be deleted; unexpected error")
+		Expect(kubectl.DeleteCRDs(crds)).To(Succeed(), "CRDs failed to be deleted")
 		Success("Operator is deleted")
 	})
 })

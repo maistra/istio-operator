@@ -31,7 +31,7 @@ func Install(name string, chart string, args ...string) error {
 	command := fmt.Sprintf("helm install %s %s %s", name, chart, argsStr)
 	output, err := shell.ExecuteCommand(command)
 	if err != nil {
-		return fmt.Errorf("error running Helm install: %s. Output: %s", err, output)
+		return fmt.Errorf("error running %s: %s. Output: %s", command, err, output)
 	}
 
 	g.Success("Helm install executed successfully")
