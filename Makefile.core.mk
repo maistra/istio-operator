@@ -58,11 +58,11 @@ HUB ?= quay.io/maistra-dev
 # Image tag to use
 TAG ?= ${MINOR_VERSION}-latest
 # Image base to use
-IMAGE_BASE ?= istio-operator
+IMAGE_BASE ?= sail-operator
 # Image URL to use all building/pushing image targets
 IMAGE ?= ${HUB}/${IMAGE_BASE}:${TAG}
 # Namespace to deploy the controller in
-NAMESPACE ?= istio-operator
+NAMESPACE ?= sail-operator
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.26.0
 
@@ -93,7 +93,7 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 # This variable is used to construct full image tags for bundle and catalog images.
 #
 # For example, running 'make bundle-build bundle-push catalog-build catalog-push' will build and push both
-# quay.io/maistra-dev/istio-operator-bundle:$VERSION and quay.io/maistra-dev/istio-operator-catalog:$VERSION.
+# quay.io/sail-dev/sail-operator-bundle:$VERSION and quay.io/sail-dev/sail-operator-catalog:$VERSION.
 IMAGE_TAG_BASE ?= ${HUB}/${IMAGE_BASE}
 
 BUNDLE_MANIFEST_DATE := $(shell cat bundle/manifests/${OPERATOR_NAME}.clusterserviceversion.yaml 2>/dev/null | grep createdAt | awk '{print $$2}')

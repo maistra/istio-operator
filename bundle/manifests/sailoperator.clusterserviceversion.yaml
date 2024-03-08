@@ -22,8 +22,8 @@ metadata:
       ]
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
-    containerImage: quay.io/maistra-dev/istio-operator:3.0-latest
-    createdAt: "2024-03-08T03:33:04Z"
+    containerImage: quay.io/maistra-dev/sail-operator:3.0-latest
+    createdAt: "2024-03-08T07:43:50Z"
     description: Experimental operator for installing Istio service mesh
     features.operators.openshift.io/cnf: "false"
     features.operators.openshift.io/cni: "true"
@@ -38,7 +38,7 @@ metadata:
     operators.operatorframework.io/builder: operator-sdk-v1.34.1
     operators.operatorframework.io/internal-objects: '["wasmplugins.extensions.istio.io","destinationrules.networking.istio.io","envoyfilters.networking.istio.io","gateways.networking.istio.io","proxyconfigs.networking.istio.io","serviceentries.networking.istio.io","sidecars.networking.istio.io","virtualservices.networking.istio.io","workloadentries.networking.istio.io","workloadgroups.networking.istio.io","authorizationpolicies.security.istio.io","peerauthentications.security.istio.io","requestauthentications.security.istio.io","telemetries.telemetry.istio.io"]'
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
-    repository: https://github.com/maistra/istio-operator/tree/maistra-3.0
+    repository: https://github.com/istio-ecosystem/sail-operator
     support: Community based
   name: sailoperator.v3.0.0
   namespace: placeholder
@@ -224,7 +224,7 @@ spec:
     - v1.19.7
     - latest (4831d1a5)
 
-    [See this page](https://github.com/maistra/istio-operator/blob/maistra-3.0/bundle/README.md) for instructions on how to use it.
+    [See this page](https://github.com/istio-ecosystem/sail-operator/blob/pre-main/bundle/README.md) for instructions on how to use it.
   displayName: Sail Operator
   icon:
   - base64data: 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
@@ -372,24 +372,24 @@ spec:
           - securitycontextconstraints
           verbs:
           - use
-        serviceAccountName: istio-operator
+        serviceAccountName: sail-operator
       deployments:
       - label:
           app.kubernetes.io/component: manager
           app.kubernetes.io/created-by: sailoperator
-          app.kubernetes.io/instance: istio-operator
+          app.kubernetes.io/instance: sail-operator
           app.kubernetes.io/managed-by: helm
           app.kubernetes.io/name: deployment
           app.kubernetes.io/part-of: sailoperator
-          control-plane: istio-operator
-        name: istio-operator
+          control-plane: sail-operator
+        name: sail-operator
         spec:
           replicas: 1
           selector:
             matchLabels:
               app.kubernetes.io/created-by: sailoperator
               app.kubernetes.io/part-of: sailoperator
-              control-plane: istio-operator
+              control-plane: sail-operator
           strategy: {}
           template:
             metadata:
@@ -398,7 +398,7 @@ spec:
               labels:
                 app.kubernetes.io/created-by: sailoperator
                 app.kubernetes.io/part-of: sailoperator
-                control-plane: istio-operator
+                control-plane: sail-operator
             spec:
               affinity:
                 nodeAffinity:
@@ -446,7 +446,7 @@ spec:
                 - --default-profiles=default,openshift
                 command:
                 - /manager
-                image: quay.io/maistra-dev/istio-operator:3.0-latest
+                image: quay.io/maistra-dev/sail-operator:3.0-latest
                 imagePullPolicy: Always
                 livenessProbe:
                   httpGet:
@@ -474,12 +474,12 @@ spec:
                     drop:
                     - ALL
                 volumeMounts:
-                - mountPath: /etc/istio-operator
+                - mountPath: /etc/sail-operator
                   name: operator-config
                   readOnly: true
               securityContext:
                 runAsNonRoot: true
-              serviceAccountName: istio-operator
+              serviceAccountName: sail-operator
               terminationGracePeriodSeconds: 10
               volumes:
               - downwardAPI:
@@ -522,7 +522,7 @@ spec:
           verbs:
           - create
           - patch
-        serviceAccountName: istio-operator
+        serviceAccountName: sail-operator
     strategy: deployment
   installModes:
   - supported: false
