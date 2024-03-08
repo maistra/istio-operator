@@ -67,7 +67,7 @@ var _ = Describe("Operator", Ordered, func() {
 	Describe("installation", func() {
 		// TODO: we  need to support testing both types of deployment for the operator, helm and olm via subscription.
 		// Discuss with the team if we should add a flag to the test to enable the olm deployment and don't do that deployment in different step
-		When("default helm manifest are applied", func() {
+		When("installed via helm install", func() {
 			BeforeAll(func() {
 				if skipDeploy == "true" {
 					Skip("Skipping the deployment of the operator and the tests")

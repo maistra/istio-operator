@@ -34,7 +34,7 @@ func deployOperator() error {
 		extraArg = "--set=platform=openshift"
 	}
 
-	output, err := helm.Template("chart", filepath.Join(baseDir, "chart"), namespace, "--include-crds", fmt.Sprintf("--set=image=%s", image), extraArg)
+	output, err := helm.Template("sail-operator", filepath.Join(baseDir, "chart"), namespace, "--include-crds", fmt.Sprintf("--set=image=%s", image), extraArg)
 	if err != nil {
 		return fmt.Errorf("error running Helm template: %v", err)
 	}
@@ -56,7 +56,7 @@ func undeployOperator() error {
 		extraArg = "--set=platform=openshift"
 	}
 
-	output, err := helm.Template("chart", fmt.Sprintf("%s/chart", baseDir), namespace, "--include-crds", fmt.Sprintf("--set=image=%s", image), extraArg)
+	output, err := helm.Template("sail-operator", fmt.Sprintf("%s/chart", baseDir), namespace, "--include-crds", fmt.Sprintf("--set=image=%s", image), extraArg)
 	if err != nil {
 		return fmt.Errorf("error running Helm template: %v", err)
 	}

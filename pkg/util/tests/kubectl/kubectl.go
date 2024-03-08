@@ -54,7 +54,7 @@ func kubectl(format string, args ...interface{}) string {
 		binary = cmd
 	}
 
-	return fmt.Sprintf("%s "+format, append([]interface{}{binary}, args...)...)
+	return binary + " " + fmt.Sprintf(format, args...)
 }
 
 // ApplyString applies the given yaml string to the cluster
@@ -274,7 +274,7 @@ func GetPodLogs(ns, selector string, since time.Duration) (string, error) {
 
 // GetDaemonSets returns the daemonsets of a namespace
 // Return a list of daemonsets
-func GetDaemonSets(ns string) ([]string, error) {
+func GetDaemonSetNames(ns string) ([]string, error) {
 	var daemonsets []string
 	cmd := kubectl("get daemonsets -n %s -o jsonpath={.items[*].metadata.name}", ns)
 	output, err := shell.ExecuteCommand(cmd)
