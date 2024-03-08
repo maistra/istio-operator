@@ -18,7 +18,9 @@ type ResourceList struct {
 	APIVersion string        `json:"apiVersion"`
 	Items      []interface{} `json:"items"`
 	Kind       string        `json:"kind"`
-	Metadata   struct {
-		ResourceVersion string `json:"resourceVersion"`
-	} `json:"metadata"`
+	Metadata   Metadata      `json:"metadata"`
+}
+
+type Metadata struct {
+	ResourceVersion string `json:"resourceVersion"`
 }

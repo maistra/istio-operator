@@ -22,23 +22,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/istio-ecosystem/sail-operator/pkg/util/tests/shell"
-	resourcecondition "github.com/istio-ecosystem/sail-operator/pkg/util/tests/types"
+	"maistra.io/istio-operator/pkg/util/tests/shell"
+	r "maistra.io/istio-operator/pkg/util/tests/types"
 )
 
-const DefaultCommandTool = "kubectl"
+const DefaultBinary = "kubectl"
 
 var (
 	ErrNotFound       = errors.New("resource was not found")
-	EmptyResourceList = resourcecondition.ResourceList{
+	EmptyResourceList = r.ResourceList{
 		APIVersion: "v1",
 		Items:      []interface{}{},
 		Kind:       "List",
-		Metadata: struct {
-			ResourceVersion string `json:"resourceVersion"`
-		}{
-			ResourceVersion: "",
-		},
+		Metadata:   r.Metadata{ResourceVersion: ""},
 	}
 )
 
@@ -49,7 +45,7 @@ var (
 // - format: format of the command without kubeclt or oc
 // - args: arguments of the command
 func kubectl(format string, args ...interface{}) string {
-	binary := DefaultCommandTool
+	binary := DefaultBinary
 	if cmd := os.Getenv("COMMAND"); cmd != "" {
 		binary = cmd
 	}
@@ -85,18 +81,18 @@ func DeleteString(yamlString string) error {
 	return nil
 }
 
-// GetResourceCondition returns the condition of a resource
-func GetResourceCondition(ns, resourceType, resourceName string) ([]resourcecondition.Condition, error) {
-	var resource resourcecondition.Resource
+// GetJSONCondition returns the condition of a resource
+func GetJSONCondition(ns, resourceType, resourceName string) ([]r.Condition, error) {
+	var resource r.Resource
 
-	output, err := GetResource(ns, resourceType, resourceName)
+	output, err := GetJSON(ns, resourceType, resourceName)
 	if err != nil {
-		return []resourcecondition.Condition{}, err
+		return []r.Condition{}, err
 	}
 
 	err = json.Unmarshal([]byte(output), &resource)
 	if err != nil {
-		return []resourcecondition.Condition{}, err
+		return []r.Condition{}, err
 	}
 
 	return resource.Status.Conditions, nil
@@ -104,14 +100,14 @@ func GetResourceCondition(ns, resourceType, resourceName string) ([]resourcecond
 
 // GetPodPhase returns the phase of a pod
 func GetPodPhase(ns, selector string) (string, error) {
-	var resource resourcecondition.Resource
+	var resource r.Resource
 
-	podName, err := GetPodFromLabel(ns, selector)
+	podName, err := GetPodName(ns, selector)
 	if err != nil {
 		return "", err
 	}
 
-	output, err := GetResource(ns, "pod", podName)
+	output, err := GetJSON(ns, "pod", podName)
 	if err != nil {
 		return "", err
 	}
@@ -135,15 +131,15 @@ func GetCRDs() ([]string, error) {
 	return strings.Split(output, " "), nil
 }
 
-// GetAllResources returns all the resources of a namespace
-func GetAllResources(ns string) (resourcecondition.ResourceList, error) {
+// GetJSONList returns a json list of the resources of a namespace
+func GetJSONList(ns string) (r.ResourceList, error) {
 	// TODO: improve the function to get all the resources
-	output, err := GetResource(ns, "all", "")
+	output, err := GetJSON(ns, "all", "")
 	if err != nil {
 		return EmptyResourceList, err
 	}
 
-	var resourceList resourcecondition.ResourceList
+	var resourceList r.ResourceList
 	err = json.Unmarshal([]byte(output), &resourceList)
 	if err != nil {
 		return EmptyResourceList, err
@@ -157,8 +153,12 @@ func GetAllResources(ns string) (resourcecondition.ResourceList, error) {
 	return resourceList, nil
 }
 
-// GetResource returns the json of a resource
-func GetResource(ns, resourceType, resourceName string) (string, error) {
+// GetJSON returns the json of a resource
+// Arguments:
+// - ns: namespace
+// - resourceType: type of the resource
+// - resourceName: name of the resource
+func GetJSON(ns, resourceType, resourceName string) (string, error) {
 	cmd := kubectl("get %s %s -n %s -o json", resourceType, resourceName, ns)
 	json, err := shell.ExecuteCommand(cmd)
 	if err != nil {
@@ -168,10 +168,10 @@ func GetResource(ns, resourceType, resourceName string) (string, error) {
 	return json, nil
 }
 
-// GetPodFromLabel returns the pod name from a label, if there is more than one pod, it will return an error
-func GetPodFromLabel(ns, label string) (string, error) {
+// GetPodName returns the pod name from a label, if there is more than one pod, it will return an error
+func GetPodName(ns, label string) (string, error) {
 	var podList []string
-	podList, err := GetPodsFromLabel(ns, label)
+	podList, err := GetPodsName(ns, label)
 	if err != nil {
 		return "", err
 	}
@@ -185,8 +185,8 @@ func GetPodFromLabel(ns, label string) (string, error) {
 	return podList[0], nil
 }
 
-// GetPodsFromLabel returns the pod name from a label
-func GetPodsFromLabel(ns, label string) ([]string, error) {
+// GetPodsName returns the pod name from a label
+func GetPodsName(ns, label string) ([]string, error) {
 	var podList []string
 	cmd := kubectl("get pods -n %s -l %s -o jsonpath={.items[*].metadata.name}", ns, label)
 	output, err := shell.ExecuteCommand(cmd)
@@ -241,8 +241,8 @@ func CheckNamespaceExist(ns string) error {
 	return nil
 }
 
-// GetDeploymentsNames returns the deployments of a namespace
-func GetDeploymentsNames(ns string) ([]string, error) {
+// GetDeploymentNames returns the deployments of a namespace
+func GetDeploymentNames(ns string) ([]string, error) {
 	var deployments []string
 	cmd := kubectl("get deployments -n %s -o jsonpath={.items[*].metadata.name}", ns)
 	output, err := shell.ExecuteCommand(cmd)
@@ -253,13 +253,13 @@ func GetDeploymentsNames(ns string) ([]string, error) {
 	return deployments, nil
 }
 
-// GetPodLogs returns the logs of a deployment
+// Logs returns the logs of a deployment
 // Arguments:
 // - ns: namespace
 // - selector: selector of the pod
 // - Since: time range
-func GetPodLogs(ns, selector string, since time.Duration) (string, error) {
-	podName, err := GetPodFromLabel(ns, selector)
+func Logs(ns, selector string, since time.Duration) (string, error) {
+	podName, err := GetPodName(ns, selector)
 	if err != nil {
 		return "", err
 	}

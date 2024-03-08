@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"strings"
 
-	g "github.com/istio-ecosystem/sail-operator/pkg/util/tests/ginkgo"
-	"github.com/istio-ecosystem/sail-operator/pkg/util/tests/shell"
+	g "maistra.io/istio-operator/pkg/util/tests/ginkgo"
+	"maistra.io/istio-operator/pkg/util/tests/shell"
 )
 
 // Template runs helm template in the given directory with params and returns the output yaml string
@@ -27,10 +27,9 @@ import (
 // chart: chart directory
 // ns: namespace
 // args: additional helm args, for example "--set image=Image"
-func Template(name string, chart string, ns string, args ...string) (string, error) {
-	g.Success("Running Helm template")
+func Template(name string, chart string, args ...string) (string, error) {
 	argsStr := strings.Join(args, " ")
-	command := fmt.Sprintf("helm template %s %s --namespace %s %s", name, chart, ns, argsStr)
+	command := fmt.Sprintf("helm template %s %s %s", name, chart, argsStr)
 	outputString, err := shell.ExecuteCommand(command)
 	if err != nil {
 		return "", fmt.Errorf("error running Helm template: %s", outputString)

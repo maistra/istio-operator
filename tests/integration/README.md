@@ -60,16 +60,25 @@ When you run this target, the test definitions will be printed to the console wi
     
 ```
 Name,Text,Start,End,Spec,Focused,Pending,Labels
-Describe,Operator,702,2757,false,false,false,""
-    BeforeEach,,733,810,false,false,false,""
-    When,a fresh cluster exist,813,1344,false,false,false,""
-        It,the operator can be installed,854,1340,true,false,false,""
-            By,using the helm chart with default values,902,948,false,false,false,""
-    When,the operator is installed,1347,2509,false,false,false,""
-        Context,a control plane can be installed and uninstalled,1392,2505,false,false,false,""
-            It,for every istio version in version.yaml file,1640,2500,true,false,false,""
-    When,the operator is installed,2512,2754,false,false,false,""
-        It,can be uninstalled,2557,2750,true,false,false,""
+Describe,Operator,882,7688,false,false,false,""
+    Describe,installation,2039,3282,false,false,false,""
+        When,installed via helm install,2327,3278,false,false,false,""
+            It,starts successfully,2608,3042,true,false,false,""
+            It,deploys all the CRDs,3047,3273,true,false,false,""
+    Describe,installation and unistallation of the istio resource,3285,7473,false,false,false,""
+        Context,undefined,3499,7042,false,false,false,""
+            When,the resource is created,3713,6569,false,false,false,""
+                Specify,successfully,3759,3973,true,false,false,""
+                It,updates the Istio resource status to Reconcilied and Ready,3980,4709,true,false,false,""
+                It,deploys istiod,4716,4964,true,false,false,""
+                It,deploys correct istiod image tag according to the version in the Istio CR,4971,5392,true,false,false,""
+                It,deploys the CNI DaemonSet when running on OpenShift,5399,6220,true,false,false,""
+                It,doesn't continuously reconcile the istio resource,6227,6562,true,false,false,""
+            When,the Istio CR is deleted,6575,7036,false,false,false,""
+                BeforeEach,,6621,6765,false,false,false,""
+                It,removes everything from the namespace,6772,7029,true,false,false,""
+        By,Cleaning up the namespace,7071,7102,false,false,false,""
+    By,Cleaning up the operator deployment,7496,7537,false,false,false,""
 ```
 
 This can be used to show the actual coverage of the test suite.

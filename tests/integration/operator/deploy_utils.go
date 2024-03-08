@@ -19,10 +19,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
-	"github.com/istio-ecosystem/sail-operator/pkg/util/tests/helm"
-	"github.com/istio-ecosystem/sail-operator/pkg/util/tests/kubectl"
 	. "github.com/onsi/ginkgo/v2"
+	"maistra.io/istio-operator/api/v1alpha1"
+	"maistra.io/istio-operator/pkg/util/tests/helm"
+	"maistra.io/istio-operator/pkg/util/tests/kubectl"
 	"sigs.k8s.io/yaml"
 )
 
@@ -34,7 +34,7 @@ func deployOperator() error {
 		extraArg = "--set=platform=openshift"
 	}
 
-	output, err := helm.Template("sail-operator", filepath.Join(baseDir, "chart"), namespace, "--include-crds", fmt.Sprintf("--set=image=%s", image), extraArg)
+	output, err := helm.Template("sail-operator", filepath.Join(baseDir, "chart"), fmt.Sprintf("--namespace %s", namespace), "--include-crds", fmt.Sprintf("--set=image=%s", image), extraArg)
 	if err != nil {
 		return fmt.Errorf("error running Helm template: %v", err)
 	}
@@ -56,7 +56,7 @@ func undeployOperator() error {
 		extraArg = "--set=platform=openshift"
 	}
 
-	output, err := helm.Template("sail-operator", fmt.Sprintf("%s/chart", baseDir), namespace, "--include-crds", fmt.Sprintf("--set=image=%s", image), extraArg)
+	output, err := helm.Template("sail-operator", fmt.Sprintf("%s/chart", baseDir), fmt.Sprintf("--namespace %s", namespace), "--include-crds", fmt.Sprintf("--set=image=%s", image), extraArg)
 	if err != nil {
 		return fmt.Errorf("error running Helm template: %v", err)
 	}
