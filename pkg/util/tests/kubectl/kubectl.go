@@ -22,8 +22,8 @@ import (
 	"strings"
 	"time"
 
-	"maistra.io/istio-operator/pkg/util/tests/shell"
-	r "maistra.io/istio-operator/pkg/util/tests/types"
+	"github.com/istio-ecosystem/sail-operator/pkg/util/tests/shell"
+	r "github.com/istio-ecosystem/sail-operator/pkg/util/tests/types"
 )
 
 const DefaultBinary = "kubectl"

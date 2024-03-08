@@ -19,14 +19,14 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
+	. "github.com/istio-ecosystem/sail-operator/pkg/util/tests/ginkgo"
+	"github.com/istio-ecosystem/sail-operator/pkg/util/tests/helm"
+	"github.com/istio-ecosystem/sail-operator/pkg/util/tests/kubectl"
+	resourcecondition "github.com/istio-ecosystem/sail-operator/pkg/util/tests/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"maistra.io/istio-operator/api/v1alpha1"
-	. "maistra.io/istio-operator/pkg/util/tests/ginkgo"
-	"maistra.io/istio-operator/pkg/util/tests/helm"
-	"maistra.io/istio-operator/pkg/util/tests/kubectl"
-	resourcecondition "maistra.io/istio-operator/pkg/util/tests/types"
 	"sigs.k8s.io/yaml"
 )
 

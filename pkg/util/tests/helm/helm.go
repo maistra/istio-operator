@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"strings"
 
-	g "maistra.io/istio-operator/pkg/util/tests/ginkgo"
-	"maistra.io/istio-operator/pkg/util/tests/shell"
+	g "github.com/istio-ecosystem/sail-operator/pkg/util/tests/ginkgo"
+	"github.com/istio-ecosystem/sail-operator/pkg/util/tests/shell"
 )
 
 // Install runs helm install in the given directory with params

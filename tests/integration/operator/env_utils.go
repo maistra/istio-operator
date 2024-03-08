@@ -25,7 +25,6 @@ var (
 	ocp                   = getEnvOrDefault("OCP", "false")
 	skipDeploy            = getEnvOrDefault("SKIP_DEPLOY", "false")
 	image                 = getEnvOrDefault("IMAGE", "quay.io/maistra-dev/istio-operator:latest")
-	istioManifest         = getEnvOrDefault("ISTIO_MANIFEST", "chart/samples/istio-sample-kubernetes.yaml")
 	namespace             = getEnvOrDefault("NAMESPACE", "istio-operator")
 	deploymentName        = getEnvOrDefault("DEPLOYMENT_NAME", "istio-operator")
 	controlPlaneNamespace = getEnvOrDefault("CONTROL_PLANE_NS", "istio-system")
