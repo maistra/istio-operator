@@ -18,7 +18,7 @@ csv:
 
     - v1.20.3
     - v1.19.7
-    - latest (007a9500)
+    - latest (4831d1a5)
 
     [See this page](https://github.com/maistra/istio-operator/blob/maistra-3.0/bundle/README.md) for instructions on how to use it.
   support: Community based
