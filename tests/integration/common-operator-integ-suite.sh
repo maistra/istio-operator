@@ -15,7 +15,7 @@
 # limitations under the License.
 
 # To be able to run this script, it's needed to pass the flag --ocp or --kind
-set -eu -o pipefail
+set -euo pipefail
 
 check_arguments() {
   if [ $# -eq 0 ]; then
@@ -58,6 +58,7 @@ initialize_variables() {
   WD=$(dirname "$0")
   WD=$(cd "${WD}" || exit; pwd)
 
+  VERSIONS_YAML_FILE=${VERSIONS_YAML_FILE:-"versions.yaml"}
   NAMESPACE="${NAMESPACE:-sail-operator}"
   DEPLOYMENT_NAME="${DEPLOYMENT_NAME:-sail-operator}"
   CONTROL_PLANE_NS="${CONTROL_PLANE_NS:-istio-system}"
@@ -191,7 +192,7 @@ main_test() {
   check_ready "${NAMESPACE}" "${DEPLOYMENT_NAME}" "${DEPLOYMENT_NAME}"
   
   # Deploy and test every istio version inside versions.yaml
-  versions=$(yq eval '.versions[].name' versions.yaml)
+  versions=$(yq eval '.versions[].name' "${VERSIONS_YAML_FILE}")
   echo "Versions to test: ${versions//$'\n'/ }"
   for ver in ${versions}; do
     echo "--------------------------------------------------------------"

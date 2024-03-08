@@ -14,13 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e -u
+set -euo pipefail
 
 CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+VERSIONS_YAML_FILE=${VERSIONS_YAML_FILE:-"versions.yaml"}
 
 : "${YQ:=yq}"
 : "${API_VERSION:=v1alpha1}"
-: "${VERSIONS_FILE:=${CUR_DIR}/../versions.yaml}"
 : "${CRD_FILE:=${CUR_DIR}/../chart/crds/operator.istio.io_istios.yaml}"
 
 values_yaml_path=".spec.versions.[] | select(.name == \"${API_VERSION}\") | .schema.openAPIV3Schema.properties.spec.properties.values"
@@ -47,7 +47,7 @@ function download_values_types_proto_file() {
 
   # Getting the values_types.proto url from the latest version
   # shellcheck disable=SC2016
-  values_types_proto_file_url="$(${YQ} '.crdSourceVersion as $crdSourceVersion | .versions[] | select(.name == $crdSourceVersion) | .repo + "/" + .commit + "/operator/pkg/apis/istio/v1alpha1/values_types.proto"' "${VERSIONS_FILE}"  | sed "s/github.com/raw.githubusercontent.com/")"
+  values_types_proto_file_url="$(${YQ} '.crdSourceVersion as $crdSourceVersion | .versions[] | select(.name == $crdSourceVersion) | .repo + "/" + .commit + "/operator/pkg/apis/istio/v1alpha1/values_types.proto"' "${VERSIONS_YAML_FILE}"  | sed "s/github.com/raw.githubusercontent.com/")"
   curl --silent "${values_types_proto_file_url}" --output "${dst_dir}/values_types.proto"
   echo "${dst_dir}/values_types.proto"
 }
