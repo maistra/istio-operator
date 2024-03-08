@@ -22,19 +22,31 @@ import (
 	"maistra.io/istio-operator/pkg/util/tests/shell"
 )
 
-// Template runs helm template in the given directory with params and returns the output yaml string
+// Install runs helm install in the given directory with params
 // name: name of the helm release
 // chart: chart directory
-// ns: namespace
 // args: additional helm args, for example "--set image=Image"
-func Template(name string, chart string, args ...string) (string, error) {
+func Install(name string, chart string, args ...string) error {
 	argsStr := strings.Join(args, " ")
-	command := fmt.Sprintf("helm template %s %s %s", name, chart, argsStr)
-	outputString, err := shell.ExecuteCommand(command)
+	command := fmt.Sprintf("helm install %s %s %s", name, chart, argsStr)
+	output, err := shell.ExecuteCommand(command)
 	if err != nil {
-		return "", fmt.Errorf("error running Helm template: %s", outputString)
+		return fmt.Errorf("error running Helm install: %s. Output: %s", err, output)
 	}
 
-	g.Success("Helm template executed successfully")
-	return outputString, nil
+	g.Success("Helm install executed successfully")
+	return nil
+}
+
+// Uninstall runs helm uninstall in the given directory with params
+// name: name of the helm release
+func Uninstall(ns, name string) error {
+	command := fmt.Sprintf("helm uninstall %s -n %s", name, ns)
+	output, err := shell.ExecuteCommand(command)
+	if err != nil {
+		return fmt.Errorf("error running Helm uninstall: %s. Output: %s", err, output)
+	}
+
+	g.Success("Helm uninstall executed successfully")
+	return nil
 }

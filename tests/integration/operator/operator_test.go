@@ -16,13 +16,18 @@ package integrationoperator
 
 import (
 	"fmt"
+	"path/filepath"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"maistra.io/istio-operator/api/v1alpha1"
 	. "maistra.io/istio-operator/pkg/util/tests/ginkgo"
+	"maistra.io/istio-operator/pkg/util/tests/helm"
 	"maistra.io/istio-operator/pkg/util/tests/kubectl"
 	resourcecondition "maistra.io/istio-operator/pkg/util/tests/types"
+	"sigs.k8s.io/yaml"
 )
 
 var _ = Describe("Operator", Ordered, func() {
@@ -42,6 +47,10 @@ var _ = Describe("Operator", Ordered, func() {
 			Type:   "Ready",
 			Status: "True",
 		}
+
+		istioCR v1alpha1.Istio
+
+		istioCRYAML []byte
 
 		istioResources = []string{
 			// TODO: Find an alternative to this list
@@ -73,7 +82,17 @@ var _ = Describe("Operator", Ordered, func() {
 					Skip("Skipping the deployment of the operator and the tests")
 				}
 
-				Eventually(deployOperator).Should(Succeed(), "Operator failed to be deployed; unexpected error")
+				Expect(kubectl.CreateNamespace(namespace)).To(Succeed(), "Namespace failed to be created; unexpected error")
+
+				extraArg := ""
+				if ocp == "true" {
+					extraArg = "--set=platform=openshift"
+				}
+
+				installArgs := fmt.Sprintf("--namespace %s --set=image=%s %s", namespace, image, extraArg)
+				Eventually(helm.Install).
+					WithArguments("sail-operator", filepath.Join(baseDir, "chart"), installArgs).
+					Should(Succeed(), "Operator failed to be deployed; unexpected error")
 			})
 
 			It("starts successfully", func() {
@@ -98,16 +117,33 @@ var _ = Describe("Operator", Ordered, func() {
 		for _, version := range istioVersions {
 			// Note: This var version is needed to avoid the closure of the loop
 			version := version
+			var err error
 
 			Context(fmt.Sprintf("version %s", version), func() {
 				BeforeAll(func() {
 					Expect(kubectl.CreateNamespace(controlPlaneNamespace)).To(Succeed(), "Namespace failed to be created; unexpected error")
+					istioCR = v1alpha1.Istio{
+						TypeMeta: metav1.TypeMeta{
+							APIVersion: "operator.istio.io/v1alpha1",
+							Kind:       "Istio",
+						},
+						ObjectMeta: metav1.ObjectMeta{
+							Name: istioName,
+						},
+						Spec: v1alpha1.IstioSpec{
+							Namespace: controlPlaneNamespace,
+							Version:   version,
+						},
+					}
+
+					istioCRYAML, err = yaml.Marshal(istioCR)
+					Expect(err).ToNot(HaveOccurred(), "Istio CR failed to be created; unexpected error")
 				})
 
 				When("the resource is created", func() {
 					Specify("successfully", func() {
-						Eventually(createIstioCR).
-							WithArguments(version).
+						Eventually(kubectl.ApplyString).
+							WithArguments(string(istioCRYAML)).
 							Should(Succeed(), "Istio CR failed to be created; unexpected error")
 						Success("Istio CR created")
 					})
@@ -166,7 +202,7 @@ var _ = Describe("Operator", Ordered, func() {
 
 				When("the Istio CR is deleted", func() {
 					BeforeEach(func() {
-						Expect(deleteIstioCR(version)).Should(Succeed(), "Istio CR deletion failed")
+						Expect(kubectl.DeleteString(string(istioCRYAML))).Should(Succeed(), "Istio CR failed to be deleted; unexpected error")
 						Success("Istio CR deleted")
 					})
 
@@ -194,8 +230,11 @@ var _ = Describe("Operator", Ordered, func() {
 	})
 
 	AfterAll(func() {
-		By("Cleaning up the operator deployment")
-		Eventually(undeployOperator).Should(Succeed(), "Operator failed to be deleted; unexpected error")
-		Success("Operator deployment is deleted")
+		By("Cleaning up the operator")
+		Eventually(helm.Uninstall).
+			WithArguments(namespace, "sail-operator").
+			Should(Succeed(), "Operator failed to be deleted; unexpected error")
+		Expect(kubectl.DeleteCRDs(istioResources)).Should(Succeed(), "CRDs failed to be deleted; unexpected error")
+		Success("Operator is deleted")
 	})
 })

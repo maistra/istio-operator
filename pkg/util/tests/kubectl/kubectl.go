@@ -289,3 +289,16 @@ func GetDaemonSetNames(ns string) ([]string, error) {
 	}
 	return daemonsets, nil
 }
+
+// DeleteCRDs deletes the CRDs by given list of crds names
+func DeleteCRDs(crds []string) error {
+	for _, crd := range crds {
+		cmd := kubectl("delete crd %s", crd)
+		_, err := shell.ExecuteCommand(cmd)
+		if err != nil {
+			return fmt.Errorf("error deleting crd %s: %v", crd, err)
+		}
+	}
+
+	return nil
+}
