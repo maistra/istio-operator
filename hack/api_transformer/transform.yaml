@@ -51,10 +51,13 @@ inputFiles:
     - DefaultResourcesConfig
     - IntOrString
     removeFields:
+    - Values.Cni                           # moved to IstioCNIValues
+    - Values.IstioCni                      # deprecated; replaced with Pilot.CNI
     - Values.Gateways                      # operator doesn't support deployment of ingress/egress gateways
     - Values.OwnerName                     # operator sets this internally
     - Values.Ztunnel                       # ambient is not yet supported
     - SidecarInjectorConfig.ObjectSelector # appears to be unused
+    - CNIConfig.Enabled                    # CNI is enabled by the mere presence of the IstioCNI resource
     replaceTypes:
       "*IntOrString": "*intstr.IntOrString"
       "*wrapperspb.BoolValue": "*bool"

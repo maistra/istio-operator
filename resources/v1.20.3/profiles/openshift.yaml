@@ -15,6 +15,7 @@ spec:
       provider: "multus"
     global:
       platform: openshift
-    istio_cni:
-      enabled: true
-      chained: false
+    pilot:
+      cni:
+        enabled: true
+        chained: false

@@ -360,13 +360,6 @@ func applyImageDigests(istio *v1alpha1.Istio, values *v1alpha1.Values, config co
 		values.Pilot.Image = imageDigests.IstiodImage
 	}
 
-	if values.Cni == nil {
-		values.Cni = &v1alpha1.CNIConfig{}
-	}
-	if values.Cni.Image == "" && values.Cni.Hub == "" && values.Cni.Tag == nil {
-		values.Cni.Image = imageDigests.CNIImage
-	}
-
 	if values.Global == nil {
 		values.Global = &v1alpha1.GlobalConfig{}
 	}
@@ -506,8 +499,6 @@ func convertConditionReason(reason v1alpha1.IstioRevisionConditionReason) v1alph
 		return ""
 	case v1alpha1.IstioRevisionConditionReasonIstiodNotReady:
 		return v1alpha1.IstioConditionReasonIstiodNotReady
-	case v1alpha1.IstioRevisionConditionReasonCNINotReady:
-		return v1alpha1.IstioConditionReasonCNINotReady
 	case v1alpha1.IstioRevisionConditionReasonHealthy:
 		return v1alpha1.IstioConditionReasonHealthy
 	case v1alpha1.IstioRevisionConditionReasonReconcileError:

@@ -23,6 +23,7 @@ import (
 
 	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
 	"github.com/istio-ecosystem/sail-operator/controllers/istio"
+	"github.com/istio-ecosystem/sail-operator/controllers/istiocni"
 	"github.com/istio-ecosystem/sail-operator/controllers/istiorevision"
 	"github.com/istio-ecosystem/sail-operator/pkg/common"
 	"github.com/istio-ecosystem/sail-operator/pkg/helm"
@@ -150,10 +151,17 @@ func main() {
 	}
 
 	helm.ResourceDirectory = resourceDirectory
-	err = istiorevision.NewIstioRevisionReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), operatorNamespace).
+	err = istiorevision.NewIstioRevisionReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig()).
 		SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "IstioRevision")
+		os.Exit(1)
+	}
+
+	err = istiocni.NewIstioCNIReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig()).
+		SetupWithManager(mgr)
+	if err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "IstioCNI")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

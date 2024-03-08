@@ -28,7 +28,7 @@ function updateVersionsInIstioTypeComment() {
       -e "/\+sail:version/,/Version string/ s/(\/\/ \+operator-sdk:csv:customresourcedefinitions:type=spec,order=1,displayName=\"Istio Version\",xDescriptors=\{.*fieldGroup:General\")[^}]*(})/\1$selectValues}/g" \
       -e "/\+sail:version/,/Version string/ s/(\/\/ \+kubebuilder:validation:Enum=)(.*)/\1$versionsEnum/g" \
       -e "/\+sail:version/,/Version string/ s/(\/\/ \Must be one of:)(.*)/\1 $versions./g" \
-      api/v1alpha1/istio_types.go api/v1alpha1/istiorevision_types.go
+      api/v1alpha1/istio_types.go api/v1alpha1/istiorevision_types.go api/v1alpha1/istiocni_types.go
 }
 
 function updateVersionsInCSVDescription() {

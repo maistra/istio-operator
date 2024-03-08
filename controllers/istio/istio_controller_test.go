@@ -1364,7 +1364,6 @@ func TestApplyImageDigests(t *testing.T) {
 					"v1.20.0": {
 						IstiodImage:  "istiod-test",
 						ProxyImage:   "proxy-test",
-						CNIImage:     "cni-test",
 						ZTunnelImage: "ztunnel-test",
 					},
 				},
@@ -1387,9 +1386,6 @@ func TestApplyImageDigests(t *testing.T) {
 						Image: "proxy-test",
 					},
 				},
-				Cni: &v1alpha1.CNIConfig{
-					Image: "cni-test",
-				},
 				// ZTunnel: &v1alpha1.ZTunnelConfig{
 				// 	Image: "ztunnel-test",
 				// },
@@ -1402,7 +1398,6 @@ func TestApplyImageDigests(t *testing.T) {
 					"v1.20.0": {
 						IstiodImage:  "istiod-test",
 						ProxyImage:   "proxy-test",
-						CNIImage:     "cni-test",
 						ZTunnelImage: "ztunnel-test",
 					},
 				},
@@ -1428,9 +1423,6 @@ func TestApplyImageDigests(t *testing.T) {
 					ProxyInit: &v1alpha1.ProxyInitConfig{
 						Image: "proxy-test",
 					},
-				},
-				Cni: &v1alpha1.CNIConfig{
-					Image: "cni-test",
 				},
 				// ZTunnel: &v1alpha1.ZTunnelConfig{
 				// 	Image: "ztunnel-test",
@@ -1444,7 +1436,6 @@ func TestApplyImageDigests(t *testing.T) {
 					"v1.20.0": {
 						IstiodImage:  "istiod-test",
 						ProxyImage:   "proxy-test",
-						CNIImage:     "cni-test",
 						ZTunnelImage: "ztunnel-test",
 					},
 				},
@@ -1473,9 +1464,6 @@ func TestApplyImageDigests(t *testing.T) {
 						Image: "proxy-test",
 					},
 				},
-				Cni: &v1alpha1.CNIConfig{
-					Image: "cni-test",
-				},
 				// ZTunnel: &v1alpha1.ZTunnelConfig{
 				// 	Image: "ztunnel-test",
 				// },
@@ -1488,7 +1476,6 @@ func TestApplyImageDigests(t *testing.T) {
 					"v1.20.0": {
 						IstiodImage:  "istiod-test",
 						ProxyImage:   "proxy-test",
-						CNIImage:     "cni-test",
 						ZTunnelImage: "ztunnel-test",
 					},
 				},

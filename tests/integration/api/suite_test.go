@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/istio-ecosystem/sail-operator/controllers/istio"
+	"github.com/istio-ecosystem/sail-operator/controllers/istiocni"
 	"github.com/istio-ecosystem/sail-operator/controllers/istiorevision"
 	"github.com/istio-ecosystem/sail-operator/pkg/common"
 	"github.com/istio-ecosystem/sail-operator/pkg/helm"
@@ -73,7 +74,10 @@ var _ = BeforeSuite(func() {
 	Expect(istio.NewIstioReconciler(mgr.GetClient(), mgr.GetScheme(), path.Join(common.RepositoryRoot, "resources"), []string{"default"}).
 		SetupWithManager(mgr)).To(Succeed())
 
-	Expect(istiorevision.NewIstioRevisionReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), operatorNamespace).
+	Expect(istiorevision.NewIstioRevisionReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig()).
+		SetupWithManager(mgr)).To(Succeed())
+
+	Expect(istiocni.NewIstioCNIReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig()).
 		SetupWithManager(mgr)).To(Succeed())
 
 	// create new cancellable context

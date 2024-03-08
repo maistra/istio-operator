@@ -103,6 +103,8 @@ function convertIstioProfiles() {
     yq eval -i '.apiVersion="operator.istio.io/v1alpha1"
       | .kind="Istio"
       | (select(.spec.meshConfig) | .spec.values.meshConfig)=.spec.meshConfig
+      | (select(.spec.values.istio_cni) | .spec.values.pilot.cni)=.spec.values.istio_cni
+      | del(.spec.values.istio_cni)
       | del(.metadata)
       | del(.spec.components)
       | del(.spec.meshConfig)

@@ -17,16 +17,23 @@
 set -euo pipefail
 
 check_watches() {
+    # path to the controller implementation
+    controllerPath=$1
+    shift
+    # space-separated list of file path patterns indicating which Helm charts to inspect
+    chartPaths="$*"
+
     # Find kinds in charts
-    read -r -a chartKinds <<< "$(grep -rEo "^kind: ([A-Za-z0-9]+)" --no-filename ./resources/*/charts | sed -e 's/^kind: //g' | sort | uniq | tr '\n' ' ')"
+    # shellcheck disable=SC2086
+    read -r -a chartKinds <<< "$(grep -rEo "^kind: ([A-Za-z0-9]+)" --no-filename $chartPaths | sed -e 's/^kind: //g' | sort | uniq | tr '\n' ' ')"
     echo "Kinds in charts: ${chartKinds[*]}"
 
     # Find watched kinds in istiorevision_controller.go
-    read -r -a watchedKinds <<< "$(grep -Eo "(Owns|Watches)\\((.*)" ./controllers/istiorevision/istiorevision_controller.go | sed 's/.*&[^.]*\.\([^{}]*\).*/\1/' | sort | uniq | tr '\n' ' ')"
+    read -r -a watchedKinds <<< "$(grep -Eo "(Owns|Watches)\\((.*)" "$controllerPath" | sed 's/.*&[^.]*\.\([^{}]*\).*/\1/' | sort | uniq | tr '\n' ' ')"
     echo "Watched kinds: ${watchedKinds[*]}"
 
     # Find ignored kinds in istiorevision_controller.go
-    read -r -a ignoredKinds <<< "$(sed -n 's/.*\+lint-watches:ignore:\s*\(\w*\).*/\1/p' ./controllers/istiorevision/istiorevision_controller.go | sort | uniq | tr '\n' ' ')"
+    read -r -a ignoredKinds <<< "$(sed -n 's/.*\+lint-watches:ignore:\s*\(\w*\).*/\1/p' "$controllerPath" | sort | uniq | tr '\n' ' ')"
     echo "Ignored kinds: ${ignoredKinds[*]}"
 
     # Check for missing lines
@@ -40,14 +47,15 @@ check_watches() {
 
     # Print missing lines, if any
     if [[ ${#missing_kinds[@]} -gt 0 ]]; then
-        printf "The following kinds aren't watched in istiorevision_controller.go:\n"
+        printf "The following kinds aren't watched in %s:\n" "$controllerPath"
         for line in "${missing_kinds[@]}"; do
             printf "  - %s\n" "$line"
         done
         exit 1
     else
-        printf "Controller watches all kinds found in Helm charts.\n"
+        printf "%s watches all kinds found in Helm charts.\n" "$controllerPath"
     fi
 }
 
-check_watches
+check_watches "./controllers/istiorevision/istiorevision_controller.go" "./resources/*/charts/base ./resources/*/charts/gateway ./resources/*/charts/istiod ./resources/*/charts/ztunnel"
+check_watches "./controllers/istiocni/istiocni_controller.go" "./resources/*/charts/cni"
