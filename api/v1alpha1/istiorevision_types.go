@@ -177,7 +177,7 @@ const (
 
 // IstioRevision represents a single revision of an Istio Service Mesh deployment.
 // Users shouldn't create IstioRevision objects directly. Instead, they should
-// create an Istio object and allow the Istio operator to create the underlying
+// create an Istio object and allow the operator to create the underlying
 // IstioRevision object(s).
 // +kubebuilder:validation:XValidation:rule="self.metadata.name == 'default' ? (!has(self.spec.values.revision) || size(self.spec.values.revision) == 0) : self.spec.values.revision == self.metadata.name",message="spec.values.revision must match metadata.name"
 type IstioRevision struct {

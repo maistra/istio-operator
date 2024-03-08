@@ -45,7 +45,7 @@ spec:
         description: |-
           IstioRevision represents a single revision of an Istio Service Mesh deployment.
           Users shouldn't create IstioRevision objects directly. Instead, they should
-          create an Istio object and allow the Istio operator to create the underlying
+          create an Istio object and allow the operator to create the underlying
           IstioRevision object(s).
         properties:
           apiVersion:
