@@ -46,14 +46,9 @@ func getEnvOrDefault(key, defaultValue string) string {
 }
 
 func getBoolEnvOrDefault(key string, defaultValue bool) bool {
-	value := os.Getenv(key)
-	if value == "" {
-		return defaultValue
-	}
-
+	value := getEnvOrDefault(key, strconv.FormatBool(defaultValue))
 	boolValue, err := strconv.ParseBool(value)
 	if err != nil {
-		// Log error or handle it as you see fit
 		return defaultValue
 	}
 

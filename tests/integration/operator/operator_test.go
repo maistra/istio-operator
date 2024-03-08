@@ -22,7 +22,7 @@ import (
 	. "github.com/istio-ecosystem/sail-operator/pkg/util/tests/ginkgo"
 	"github.com/istio-ecosystem/sail-operator/pkg/util/tests/helm"
 	"github.com/istio-ecosystem/sail-operator/pkg/util/tests/kubectl"
-	resourcecondition "github.com/istio-ecosystem/sail-operator/pkg/util/tests/types"
+	r "github.com/istio-ecosystem/sail-operator/pkg/util/tests/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -31,16 +31,16 @@ var _ = Describe("Operator", Ordered, func() {
 	SetDefaultEventuallyTimeout(120 * time.Second)
 	SetDefaultEventuallyPollingInterval(time.Second)
 	var (
-		resourceAvailable = resourcecondition.Condition{
+		resourceAvailable = r.Condition{
 			Type:   "Available",
 			Status: "True",
 		}
-		resourceReconcilied = resourcecondition.Condition{
+		resourceReconcilied = r.Condition{
 			Type:   "Reconciled",
 			Status: "True",
 		}
 
-		resourceReady = resourcecondition.Condition{
+		resourceReady = r.Condition{
 			Type:   "Ready",
 			Status: "True",
 		}
@@ -69,12 +69,12 @@ var _ = Describe("Operator", Ordered, func() {
 	Describe("installation", func() {
 		// TODO: we  need to support testing both types of deployment for the operator, helm and olm via subscription.
 		// Discuss with the team if we should add a flag to the test to enable the olm deployment and don't do that deployment in different step
+		if skipDeploy {
+			Skip("Skipping the deployment of the operator")
+		}
+
 		When("installed via helm install", func() {
 			BeforeAll(func() {
-				if skipDeploy {
-					Skip("Skipping the Test as SKIP_DEPLOY is set to true")
-				}
-
 				Expect(kubectl.CreateNamespace(namespace)).To(Succeed(), "Namespace failed to be created")
 
 				extraArg := ""
@@ -108,14 +108,6 @@ var _ = Describe("Operator", Ordered, func() {
 		for _, version := range istioVersions {
 			// Note: This var version is needed to avoid the closure of the loop
 			version := version
-			istioCRYAML := `
-apiVersion: operator.istio.io/v1alpha1
-kind: Istio
-metadata:
-  name: default
-spec:
-  version: %s
-  namespace: %s`
 
 			Context(fmt.Sprintf("version %s", version), func() {
 				BeforeAll(func() {
@@ -123,11 +115,18 @@ spec:
 				})
 
 				When("the resource is created", func() {
-					Specify("successfully", func() {
-						istioCRYAML = fmt.Sprintf(istioCRYAML, version, controlPlaneNamespace)
-						fmt.Printf("Istio CR YAML: %s\n", istioCRYAML)
-						Eventually(kubectl.ApplyString).
-							WithArguments(istioCRYAML).
+					BeforeAll(func() {
+						istioYAML := `
+apiVersion: operator.istio.io/v1alpha1
+kind: Istio
+metadata:
+  name: default
+spec:
+  version: %s
+  namespace: %s`
+						istioYAML = fmt.Sprintf(istioYAML, version, controlPlaneNamespace)
+						fmt.Printf("Istio CR YAML: %s\n", istioYAML)
+						Expect(kubectl.ApplyString(istioYAML)).
 							Should(Succeed(), "Istio CR failed to be created; unexpected error")
 						Success("Istio CR created")
 					})
@@ -183,7 +182,7 @@ spec:
 
 				When("the Istio CR is deleted", func() {
 					BeforeEach(func() {
-						Expect(kubectl.DeleteString(istioCRYAML)).Should(Succeed(), "Istio CR failed to be deleted; unexpected error")
+						Expect(kubectl.DeleteResource(controlPlaneNamespace, "istio", istioName)).To(Succeed(), "Istiod deployment failed to be deleted; unexpected error")
 						Success("Istio CR deleted")
 					})
 
@@ -199,8 +198,7 @@ spec:
 
 		AfterAll(func() {
 			By("Cleaning up the namespace")
-			Eventually(kubectl.DeleteNamespace).
-				WithArguments(controlPlaneNamespace).
+			Expect(kubectl.DeleteNamespace(controlPlaneNamespace)).
 				Should(Succeed(), "Namespace failed to be deleted; unexpected error")
 
 			Eventually(kubectl.CheckNamespaceExist).

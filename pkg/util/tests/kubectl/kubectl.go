@@ -102,7 +102,7 @@ func GetCondition(ns, resourceType, resourceName string) ([]r.Condition, error) 
 func GetPodPhase(ns, selector string) (string, error) {
 	var resource r.Resource
 
-	podName, err := GetPodName(ns, selector)
+	podName, err := GetPod(ns, selector)
 	if err != nil {
 		return "", err
 	}
@@ -168,10 +168,10 @@ func GetJSON(ns, resourceType, resourceName string) (string, error) {
 	return json, nil
 }
 
-// GetPodName returns the pod name from a label, if there is more than one pod, it will return an error
-func GetPodName(ns, label string) (string, error) {
+// GetPod returns the pod name from a label, if there is more than one pod, it will return an error
+func GetPod(ns, label string) (string, error) {
 	var podList []string
-	podList, err := GetPodsName(ns, label)
+	podList, err := GetPods(ns, label)
 	if err != nil {
 		return "", err
 	}
@@ -185,7 +185,7 @@ func GetPodName(ns, label string) (string, error) {
 	return podList[0], nil
 }
 
-// GetPodsName returns the pod name from a label
+// GetPods returns the pod name from a label
 func GetPods(ns, label string) ([]string, error) {
 	var podList []string
 	cmd := kubectl("get pods -n %s -l %s -o jsonpath={.items[*].metadata.name}", ns, label)
@@ -253,13 +253,24 @@ func GetDeploymentNames(ns string) ([]string, error) {
 	return deployments, nil
 }
 
+// DeleteResource deletes a resource
+func DeleteResource(ns, kind, resourcename string) error {
+	cmd := kubectl("delete %s %s -n %s", kind, resourcename, ns)
+	_, err := shell.ExecuteCommand(cmd)
+	if err != nil {
+		return fmt.Errorf("error deleting deployment: %v", err)
+	}
+
+	return nil
+}
+
 // Logs returns the logs of a deployment
 // Arguments:
 // - ns: namespace
 // - selector: selector of the pod
 // - Since: time range
 func Logs(ns, selector string, since time.Duration) (string, error) {
-	podName, err := GetPodName(ns, selector)
+	podName, err := GetPod(ns, selector)
 	if err != nil {
 		return "", err
 	}
