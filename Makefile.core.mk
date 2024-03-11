@@ -48,7 +48,7 @@ GIT_STATUS := $(shell git diff-index --quiet HEAD -- 2> /dev/null; if [ "$$?" = 
 endif
 
 # Linker flags for the go builds
-GO_MODULE ?= github.com/istio-ecosystem/sail-operator
+GO_MODULE = github.com/istio-ecosystem/sail-operator
 LD_EXTRAFLAGS  = -X ${GO_MODULE}/pkg/version.buildVersion=${VERSION}
 LD_EXTRAFLAGS += -X ${GO_MODULE}/pkg/version.buildGitRevision=${GIT_REVISION}
 LD_EXTRAFLAGS += -X ${GO_MODULE}/pkg/version.buildTag=${GIT_TAG}
@@ -303,17 +303,17 @@ ISTIO_REPO_BASE=https://raw.githubusercontent.com/istio/istio/0e7ecbd31f9524b063
 API_REPO_BASE=https://raw.githubusercontent.com/istio/api/ccd5cd40965ccba232d1f7c3b0e4ecacd0f6ceda
 .PHONY: gen-api
 gen-api: ## Generate API types from upstream files.
-	@# TODO: should we get these files from the local filesystem by inspecting go.mod?
-	@echo Generating API types from upstream files
-	@curl -sSLfo /tmp/values_types.pb.go $(ISTIO_REPO_BASE)/operator/pkg/apis/istio/v1alpha1/values_types.pb.go
-	@curl -sSLfo /tmp/config.pb.go $(API_REPO_BASE)/mesh/v1alpha1/config.pb.go
-	@curl -sSLfo /tmp/network.pb.go $(API_REPO_BASE)/mesh/v1alpha1/network.pb.go
-	@curl -sSLfo /tmp/proxy.pb.go $(API_REPO_BASE)/mesh/v1alpha1/proxy.pb.go
-	@curl -sSLfo /tmp/proxy_config.pb.go $(API_REPO_BASE)/networking/v1beta1/proxy_config.pb.go
-	@curl -sSLfo /tmp/selector.pb.go $(API_REPO_BASE)/type/v1beta1/selector.pb.go
-	@curl -sSLfo /tmp/destination_rule.pb.go $(API_REPO_BASE)/networking/v1alpha3/destination_rule.pb.go
-	@curl -sSLfo /tmp/virtual_service.pb.go $(API_REPO_BASE)/networking/v1alpha3/virtual_service.pb.go
-	@go run hack/api_transformer/main.go hack/api_transformer/transform.yaml
+	# TODO: should we get these files from the local filesystem by inspecting go.mod?
+	echo Generating API types from upstream files
+	curl -sSLfo /tmp/values_types.pb.go $(ISTIO_REPO_BASE)/operator/pkg/apis/istio/v1alpha1/values_types.pb.go
+	curl -sSLfo /tmp/config.pb.go $(API_REPO_BASE)/mesh/v1alpha1/config.pb.go
+	curl -sSLfo /tmp/network.pb.go $(API_REPO_BASE)/mesh/v1alpha1/network.pb.go
+	curl -sSLfo /tmp/proxy.pb.go $(API_REPO_BASE)/mesh/v1alpha1/proxy.pb.go
+	curl -sSLfo /tmp/proxy_config.pb.go $(API_REPO_BASE)/networking/v1beta1/proxy_config.pb.go
+	curl -sSLfo /tmp/selector.pb.go $(API_REPO_BASE)/type/v1beta1/selector.pb.go
+	curl -sSLfo /tmp/destination_rule.pb.go $(API_REPO_BASE)/networking/v1alpha3/destination_rule.pb.go
+	curl -sSLfo /tmp/virtual_service.pb.go $(API_REPO_BASE)/networking/v1alpha3/virtual_service.pb.go
+	go run hack/api_transformer/main.go hack/api_transformer/transform.yaml
 
 .PHONY: gen-code
 gen-code: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
@@ -520,7 +520,7 @@ lint: lint-scripts lint-copyright-banner lint-go lint-yaml lint-helm lint-bundle
 .PHONY: format
 format: format-go tidy-go ## Auto-format all code. This should be run before sending a PR.
 
-.SILENT: helm $(HELM) $(LOCALBIN) deploy-yaml
+.SILENT: helm $(HELM) $(LOCALBIN) deploy-yaml gen-api
 
 COMMON_IMPORTS ?= lint-all lint-scripts lint-copyright-banner lint-go lint-yaml lint-helm format-go tidy-go check-clean-repo update-common
 .PHONY: $(COMMON_IMPORTS)
