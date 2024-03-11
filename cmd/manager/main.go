@@ -15,7 +15,6 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"
-	"github.com/operator-framework/operator-sdk/pkg/leader"
 	"github.com/operator-framework/operator-sdk/pkg/log/zap"
 	"github.com/operator-framework/operator-sdk/pkg/metrics"
 	"github.com/spf13/pflag"
@@ -128,13 +127,6 @@ func main() {
 	}
 
 	ctx := context.Background()
-	// Become the leader before proceeding
-	err = leader.Become(ctx, "istio-operator-lock")
-
-	if err != nil {
-		log.Error(err, "")
-		os.Exit(1)
-	}
 
 	// Set default manager options
 	options := manager.Options{
@@ -142,6 +134,8 @@ func main() {
 		Port:                   admissionControllerPort,
 		MetricsBindAddress:     net.JoinHostPort(metricsHost, fmt.Sprint(metricsPort)),
 		HealthProbeBindAddress: healthProbeBindAddress,
+		LeaderElection:         true,
+		LeaderElectionID:       "istio-operator-lock",
 	}
 
 	// Add support for MultiNamespace set in WATCH_NAMESPACE (e.g ns1,ns2)
