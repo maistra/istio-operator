@@ -35,7 +35,7 @@ var _ = Describe("Operator", Ordered, func() {
 			Type:   "Available",
 			Status: "True",
 		}
-		resourceReconcilied = r.Condition{
+		resourceReconciled = r.Condition{
 			Type:   "Reconciled",
 			Status: "True",
 		}
@@ -82,7 +82,7 @@ var _ = Describe("Operator", Ordered, func() {
 			}
 
 			Expect(helm.Install("sail-operator", filepath.Join(baseDir, "chart"), "--namespace "+namespace, "--set=image="+image, extraArg)).
-				Should(Succeed(), "Operator failed to be deployed")
+				To(Succeed(), "Operator failed to be deployed")
 		})
 
 		It("deploys all the CRDs", func() {
@@ -97,7 +97,7 @@ var _ = Describe("Operator", Ordered, func() {
 				Should(ContainElement(resourceAvailable), "Operator deployment is not Available; unexpected Condition")
 			Success("Operator deployment is Available")
 
-			Expect(kubectl.GetPodPhase(namespace, "control-plane=sail-operator")).Should(Equal("Running"), "Operator failed to start; unexpected pod Phase")
+			Expect(kubectl.GetPodPhase(namespace, "control-plane=sail-operator")).To(Equal("Running"), "Operator failed to start; unexpected pod Phase")
 			Success("sail-operator pod is Running")
 		})
 
@@ -108,7 +108,7 @@ var _ = Describe("Operator", Ordered, func() {
 		})
 	})
 
-	Describe("installation and unistallation of the istio resource", func() {
+	Describe("Istio install/uninstall", func() {
 		for _, version := range istioVersions {
 			// Note: This var version is needed to avoid the closure of the loop
 			version := version
@@ -131,15 +131,15 @@ spec:
 						istioYAML = fmt.Sprintf(istioYAML, version, controlPlaneNamespace)
 						fmt.Printf("Istio CR YAML: %s\n", istioYAML)
 						Expect(kubectl.ApplyString(istioYAML)).
-							Should(Succeed(), "Istio CR failed to be created")
+							To(Succeed(), "Istio CR failed to be created")
 						Success("Istio CR created")
 					})
 
-					It("updates the Istio resource status to Reconcilied", func() {
+					It("updates the Istio resource status to Reconciled", func() {
 						Eventually(kubectl.GetConditions).
 							WithArguments(controlPlaneNamespace, "istio", istioName).
-							Should(ContainElement(resourceReconcilied), "Istio is not Reconcilied; unexpected Condition")
-						Success("Istio resource is Reconcilied")
+							Should(ContainElement(resourceReconciled), "Istio is not Reconciled; unexpected Condition")
+						Success("Istio resource is Reconciled")
 					})
 
 					It("updates the Istio resource status to Ready", func() {
@@ -166,7 +166,7 @@ spec:
 								WithArguments(namespace).
 								Should(ContainElement("istio-cni-node"), "CNI DaemonSet is not deployed; expected list to contain element")
 
-							Expect(kubectl.GetPodPhase(namespace, "k8s-app=istio-cni-node")).Should(Equal("Running"), "CNI Daemon is not running; unexpected Phase")
+							Expect(kubectl.GetPodPhase(namespace, "k8s-app=istio-cni-node")).To(Equal("Running"), "CNI Daemon is not running; unexpected Phase")
 							Success("CNI DaemonSet is deployed in the namespace and Running")
 						} else {
 							Consistently(kubectl.GetDaemonSets).
@@ -206,7 +206,7 @@ spec:
 			}
 			By("Cleaning up the namespace")
 			Expect(kubectl.DeleteNamespace(controlPlaneNamespace)).
-				Should(Succeed(), "Namespace failed to be deleted")
+				To(Succeed(), "Namespace failed to be deleted")
 
 			Eventually(kubectl.CheckNamespaceExist).
 				WithArguments(controlPlaneNamespace).
@@ -218,7 +218,7 @@ spec:
 	AfterAll(func() {
 		By("Cleaning up the operator")
 		Expect(helm.Uninstall("sail-operator", "--namespace "+namespace)).
-			Should(Succeed(), "Operator failed to be deleted")
+			To(Succeed(), "Operator failed to be deleted")
 		Expect(kubectl.DeleteCRDs(crds)).To(Succeed(), "CRDs failed to be deleted")
 		Success("Operator is deleted")
 	})
