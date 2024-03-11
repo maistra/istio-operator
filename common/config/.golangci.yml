@@ -52,6 +52,7 @@ linters:
     - unused
     - gci
     - gosec
+    - ginkgolinter
   fast: false
 linters-settings:
   errcheck:
@@ -243,6 +244,8 @@ linters-settings:
       - G401
       - G402
       - G404
+  ginkgolinter:
+    force-expect-to: true
 issues:
   # List of regexps of issue texts to exclude, empty list by default.
   # But independently from this option we use default exclude patterns,
