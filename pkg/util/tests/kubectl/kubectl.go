@@ -196,24 +196,17 @@ func GetPodName(ns, label string) (string, error) {
 }
 
 // GetPodsNames returns the pods names from a given label
-func GetPodsNames(ns, label string) ([]string, error) {
-	cmd := kubectl("get pods -n %s -l %s -o name", ns, label)
-	output, err := shell.ExecuteCommand(cmd)
+func GetPodsNames(ns, selector string) ([]string, error) {
+	output, err := GetPods(ns, "-l", selector, "-o name")
 	if err != nil {
-		return nil, fmt.Errorf("error getting pods names: %v, output: %s", err, output)
+		return nil, err
 	}
-
 	return extractNames(output), nil
 }
 
 // GetPods returns the pods of a namespace
 func GetPods(ns string, args ...string) (string, error) {
-	// If args are equal -o wide, it will return the wide output
-	extraArg := ""
-	if len(args) > 0 && args[0] == "-o wide" {
-		extraArg = args[0]
-	}
-	cmd := kubectl("get pods -n %s %s", ns, extraArg)
+	cmd := kubectl("get pods -n %s %s", ns, strings.Join(args, " "))
 	output, err := shell.ExecuteCommand(cmd)
 	if err != nil {
 		return "", fmt.Errorf("error getting pods: %v, output: %s", err, output)
