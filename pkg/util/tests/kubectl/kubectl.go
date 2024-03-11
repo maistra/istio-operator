@@ -127,10 +127,10 @@ func GetCRDs() ([]string, error) {
 	return extractNames(output), nil
 }
 
-// GetResourceList returns a json list of the resources of a namespace
-func GetResourceList(ns string) (r.ResourceList, error) {
+// GetResourceList returns a json list of the resources of a namespace by resource name
+func GetResourceList(ns, kind string) (r.ResourceList, error) {
 	// TODO: improve the function to get all the resources
-	output, err := GetJSON(ns, "all", "")
+	output, err := GetJSON(ns, kind, "")
 	if err != nil {
 		return EmptyResourceList, err
 	}
@@ -155,7 +155,11 @@ func GetResourceList(ns string) (r.ResourceList, error) {
 // - kind: type of the resource
 // - name: name of the resource
 func GetJSON(ns, kind, name string) (string, error) {
-	cmd := kubectl("get %s %s -n %s -o json", kind, name, ns)
+	nsflag := "-n"
+	if ns == "" {
+		nsflag = "--all-namespaces"
+	}
+	cmd := kubectl("get %s %s %s %s -o json", kind, name, nsflag, ns)
 	json, err := shell.ExecuteCommand(cmd)
 	if err != nil {
 		return "", err
@@ -179,23 +183,23 @@ func GetYAML(ns, kind, name string) (string, error) {
 	return json, nil
 }
 
-// GetPodName returns the pod name from a label, if there is more than one pod, it will return an error
-func GetPodName(ns, label string) (string, error) {
-	podList, err := GetPodsNames(ns, label)
+// GetPodName returns the pod name from a selector, if there is more than one pod, it will return an error
+func GetPodName(ns, selector string) (string, error) {
+	podList, err := GetPodsNames(ns, selector)
 	if err != nil {
 		return "", err
 	}
 	if len(podList) > 1 {
-		return "", fmt.Errorf("more than one pod found with label %s", label)
+		return "", fmt.Errorf("more than one pod found with selector %s", selector)
 	}
 	if len(podList) == 0 {
-		return "", fmt.Errorf("no pod found with label %s", label)
+		return "", fmt.Errorf("no pod found with selector %s", selector)
 	}
 
 	return podList[0], nil
 }
 
-// GetPodsNames returns the pods names from a given label
+// GetPodsNames returns the pods names from a given selector
 func GetPodsNames(ns, selector string) ([]string, error) {
 	output, err := GetPods(ns, "-l", selector, "-o name")
 	if err != nil {

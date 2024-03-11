@@ -189,7 +189,7 @@ if [ "${OCP}" == "true" ]; then
     # To avoid errors of certificates meanwhile we are pulling the operator image from the internal registry
     # We need to set image $HUB to a fixed known value after the push
     # This value always will be equal to the svc url of the internal registry
-  HUB="image-registry.openshift-image-registry.svc:5000/istio-operator"
+  HUB="image-registry.openshift-image-registry.svc:5000/sail-operator"
 fi
 
 # Run the go test passing the env variables defined that are going to be used in the operator tests

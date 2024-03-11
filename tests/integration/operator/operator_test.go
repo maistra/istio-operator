@@ -45,6 +45,11 @@ var _ = Describe("Operator", Ordered, func() {
 			Status: "True",
 		}
 
+		crdEstablished = r.Condition{
+			Type:   "Established",
+			Status: "True",
+		}
+
 		crds = []string{
 			// TODO: Find an alternative to this list
 			"authorizationpolicies.security.istio.io",
@@ -91,6 +96,20 @@ var _ = Describe("Operator", Ordered, func() {
 			Success("Istio CRDs are present")
 		})
 
+		It("updates the CRDs status to Established", func() {
+			for _, crd := range crds {
+				Eventually(kubectl.GetConditions).WithArguments(namespace, "crd", crd).Should(ContainElement(crdEstablished), "CRD is not Established")
+			}
+			Success("CRDs are Established")
+		})
+
+		It("istio crd is present", func() {
+			Eventually(kubectl.GetResourceList).
+				WithArguments("", "istio").
+				Should(Equal(kubectl.EmptyResourceList), "Istio CRD is not present; expected to not fail and return empty list of Istio CR")
+			Success("Istio CRD is present")
+		})
+
 		It("starts successfully", func() {
 			Eventually(kubectl.GetConditions).
 				WithArguments(namespace, "deployment", deploymentName).
@@ -108,7 +127,7 @@ var _ = Describe("Operator", Ordered, func() {
 		})
 	})
 
-	Describe("installation and unistallation of the istio resource", func() {
+	Describe("installation and unistallation of the Istio CR", func() {
 		for _, version := range istioVersions {
 			// Note: This var version is needed to avoid the closure of the loop
 			version := version
@@ -135,18 +154,18 @@ spec:
 						Success("Istio CR created")
 					})
 
-					It("updates the Istio resource status to Reconcilied", func() {
+					It("updates the Istio CR status to Reconcilied", func() {
 						Eventually(kubectl.GetConditions).
 							WithArguments(controlPlaneNamespace, "istio", istioName).
 							Should(ContainElement(resourceReconcilied), "Istio is not Reconcilied; unexpected Condition")
-						Success("Istio resource is Reconcilied")
+						Success("Istio CR is Reconcilied")
 					})
 
-					It("updates the Istio resource status to Ready", func() {
+					It("updates the Istio CR status to Ready", func() {
 						Eventually(kubectl.GetConditions).
 							WithArguments(controlPlaneNamespace, "istio", istioName).
 							Should(ContainElement(resourceReady), "Istio is not Ready; unexpected Condition")
-						Success("Istio resource is Ready")
+						Success("Istio CR is Ready")
 					})
 
 					It("deploys istiod", func() {
@@ -176,7 +195,7 @@ spec:
 						}
 					})
 
-					It("doesn't continuously reconcile the istio resource", func() {
+					It("doesn't continuously reconcile the Istio CR", func() {
 						Eventually(kubectl.Logs).
 							WithArguments(controlPlaneNamespace, "app=istiod", 30*time.Second).
 							ShouldNot(ContainSubstring("Reconciliation done"), "Istio Operator is continuously reconciling")
@@ -192,7 +211,7 @@ spec:
 
 					It("removes everything from the namespace", func() {
 						Eventually(kubectl.GetResourceList).
-							WithArguments(controlPlaneNamespace).
+							WithArguments(controlPlaneNamespace, "all").
 							Should(Equal(kubectl.EmptyResourceList), "Namespace should be empty")
 						Success("Namespace is empty")
 					})
@@ -229,15 +248,15 @@ func LogDebugInfo() {
 	GinkgoWriter.Println("********* Failed specs while running: ", CurrentSpecReport().FailureLocation())
 	resource, err := kubectl.GetYAML(controlPlaneNamespace, "istio", istioName)
 	if err != nil {
-		GinkgoWriter.Println("Error getting Istio resource: ", err)
+		GinkgoWriter.Println("Error getting Istio CR: ", err)
 	}
-	GinkgoWriter.Println("Istio resource: \n", resource)
+	GinkgoWriter.Println("Istio CR: \n", resource)
 
 	output, err := kubectl.GetPods(controlPlaneNamespace, "-o wide")
 	if err != nil {
 		GinkgoWriter.Println("Error getting pods: ", err)
 	}
-	GinkgoWriter.Println("Pods in istio resource namespace: \n", output)
+	GinkgoWriter.Println("Pods in Istio CR namespace: \n", output)
 
 	logs, err := kubectl.Logs(namespace, "control-plane=sail-operator", 120*time.Second)
 	if err != nil {
