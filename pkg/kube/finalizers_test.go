@@ -139,12 +139,12 @@ func TestAddRemoveFinalizer(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		Expect(k8sClient.Create(context.TODO(), tc.obj)).Should(Succeed())
+		Expect(k8sClient.Create(context.TODO(), tc.obj)).To(Succeed())
 		Expect(AddFinalizer(context.TODO(), tc.obj, k8sClient)).NotTo(HaveOccurred())
 		obj := &v1alpha1.Istio{}
 		Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: tc.obj.GetNamespace(), Name: tc.obj.GetName()}, obj)).To(Succeed())
 		Expect(obj.ObjectMeta.Finalizers).To(Equal(tc.resultFinalizers))
 		Expect(RemoveFinalizer(context.TODO(), tc.obj, k8sClient)).NotTo(HaveOccurred())
-		Expect(k8sClient.Delete(context.TODO(), tc.obj)).Should(Succeed())
+		Expect(k8sClient.Delete(context.TODO(), tc.obj)).To(Succeed())
 	}
 }
