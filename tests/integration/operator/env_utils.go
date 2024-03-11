@@ -23,18 +23,18 @@ import (
 )
 
 var (
-	ocp                   = getBoolEnvOrDefault("OCP", false)
-	skipDeploy            = getBoolEnvOrDefault("SKIP_DEPLOY", false)
-	image                 = getEnvOrDefault("IMAGE", "quay.io/maistra-dev/istio-operator:latest")
-	namespace             = getEnvOrDefault("NAMESPACE", "sail-operator")
-	deploymentName        = getEnvOrDefault("DEPLOYMENT_NAME", "sail-operator")
-	controlPlaneNamespace = getEnvOrDefault("CONTROL_PLANE_NS", "istio-system")
+	ocp                   = getBoolEnv("OCP", false)
+	skipDeploy            = getBoolEnv("SKIP_DEPLOY", false)
+	image                 = getEnv("IMAGE", "quay.io/maistra-dev/istio-operator:latest")
+	namespace             = getEnv("NAMESPACE", "sail-operator")
+	deploymentName        = getEnv("DEPLOYMENT_NAME", "sail-operator")
+	controlPlaneNamespace = getEnv("CONTROL_PLANE_NS", "istio-system")
 	wd, _                 = os.Getwd()
-	istioName             = getEnvOrDefault("ISTIO_NAME", "default")
+	istioName             = getEnv("ISTIO_NAME", "default")
 	baseDir               = filepath.Join(wd, "../../..")
 )
 
-func getEnvOrDefault(key, defaultValue string) string {
+func getEnv(key, defaultValue string) string {
 	value := os.Getenv(key)
 	if value == "" {
 		return defaultValue
@@ -45,8 +45,8 @@ func getEnvOrDefault(key, defaultValue string) string {
 	return value
 }
 
-func getBoolEnvOrDefault(key string, defaultValue bool) bool {
-	value := getEnvOrDefault(key, strconv.FormatBool(defaultValue))
+func getBoolEnv(key string, defaultValue bool) bool {
+	value := getEnv(key, strconv.FormatBool(defaultValue))
 	boolValue, err := strconv.ParseBool(value)
 	if err != nil {
 		return defaultValue

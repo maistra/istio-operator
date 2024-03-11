@@ -73,40 +73,38 @@ var _ = Describe("Operator", Ordered, func() {
 			Skip("Skipping the deployment of the operator")
 		}
 
-		When("installed via helm install", func() {
-			BeforeAll(func() {
-				Expect(kubectl.CreateNamespace(namespace)).To(Succeed(), "Namespace failed to be created")
+		BeforeAll(func() {
+			Expect(kubectl.CreateNamespace(namespace)).To(Succeed(), "Namespace failed to be created")
 
-				extraArg := ""
-				if ocp {
-					extraArg = "--set=platform=openshift"
-				}
+			extraArg := ""
+			if ocp {
+				extraArg = "--set=platform=openshift"
+			}
 
-				Expect(helm.Install("sail-operator", filepath.Join(baseDir, "chart"), "--namespace "+namespace, "--set=image="+image, extraArg)).
-					Should(Succeed(), "Operator failed to be deployed")
-			})
+			Expect(helm.Install("sail-operator", filepath.Join(baseDir, "chart"), "--namespace "+namespace, "--set=image="+image, extraArg)).
+				Should(Succeed(), "Operator failed to be deployed")
+		})
 
-			It("starts successfully", func() {
-				Eventually(kubectl.GetConditions).
-					WithArguments(namespace, "deployment", deploymentName).
-					Should(ContainElement(resourceAvailable), "Operator deployment is not Available; unexpected Condition")
-				Success("Operator deployment is Available")
+		It("deploys all the CRDs", func() {
+			Eventually(kubectl.GetCRDs).
+				Should(ContainElements(crds), "Istio CRDs are not present; expected list to contain all elements")
+			Success("Istio CRDs are present")
+		})
 
-				Expect(kubectl.GetPodPhase(namespace, "control-plane=sail-operator")).Should(Equal("Running"), "Operator failed to start; unexpected pod Phase")
-				Success("sail-operator pod is Running")
-			})
+		It("starts successfully", func() {
+			Eventually(kubectl.GetConditions).
+				WithArguments(namespace, "deployment", deploymentName).
+				Should(ContainElement(resourceAvailable), "Operator deployment is not Available; unexpected Condition")
+			Success("Operator deployment is Available")
 
-			It("deploys all the CRDs", func() {
-				Eventually(kubectl.GetCRDs).
-					Should(ContainElements(crds), "Istio CRDs are not present; expected list to contain all elements")
-				Success("Istio CRDs are present")
-			})
+			Expect(kubectl.GetPodPhase(namespace, "control-plane=sail-operator")).Should(Equal("Running"), "Operator failed to start; unexpected pod Phase")
+			Success("sail-operator pod is Running")
+		})
 
-			AfterAll(func() {
-				if CurrentSpecReport().Failed() {
-					LogFailure()
-				}
-			})
+		AfterAll(func() {
+			if CurrentSpecReport().Failed() {
+				LogDebugInfo()
+			}
 		})
 	})
 
@@ -137,16 +135,18 @@ spec:
 						Success("Istio CR created")
 					})
 
-					It("updates the Istio resource status to Reconcilied and Ready", func() {
+					It("updates the Istio resource status to Reconcilied", func() {
 						Eventually(kubectl.GetConditions).
 							WithArguments(controlPlaneNamespace, "istio", istioName).
 							Should(ContainElement(resourceReconcilied), "Istio is not Reconcilied; unexpected Condition")
+						Success("Istio resource is Reconcilied")
+					})
 
+					It("updates the Istio resource status to Ready", func() {
 						Eventually(kubectl.GetConditions).
 							WithArguments(controlPlaneNamespace, "istio", istioName).
 							Should(ContainElement(resourceReady), "Istio is not Ready; unexpected Condition")
-
-						Success("Istio resource is Reconcilied and Ready")
+						Success("Istio resource is Ready")
 					})
 
 					It("deploys istiod", func() {
@@ -186,7 +186,7 @@ spec:
 
 				When("the Istio CR is deleted", func() {
 					BeforeEach(func() {
-						Expect(kubectl.Delete(controlPlaneNamespace, "istio", istioName)).To(Succeed(), "Istiod deployment failed to be deleted")
+						Expect(kubectl.Delete(controlPlaneNamespace, "istio", istioName)).To(Succeed(), "Istio CR failed to be deleted")
 						Success("Istio CR deleted")
 					})
 
@@ -202,7 +202,7 @@ spec:
 
 		AfterAll(func() {
 			if CurrentSpecReport().Failed() {
-				LogFailure()
+				LogDebugInfo()
 			}
 			By("Cleaning up the namespace")
 			Expect(kubectl.DeleteNamespace(controlPlaneNamespace)).
@@ -223,3 +223,31 @@ spec:
 		Success("Operator is deleted")
 	})
 })
+
+func LogDebugInfo() {
+	// General debugging information to help diagnose the failure
+	GinkgoWriter.Println("********* Failed specs while running: ", CurrentSpecReport().FailureLocation())
+	resource, err := kubectl.GetYAML(controlPlaneNamespace, "istio", istioName)
+	if err != nil {
+		GinkgoWriter.Println("Error getting Istio resource: ", err)
+	}
+	GinkgoWriter.Println("Istio resource: \n", resource)
+
+	output, err := kubectl.GetPods(controlPlaneNamespace, "-o wide")
+	if err != nil {
+		GinkgoWriter.Println("Error getting pods: ", err)
+	}
+	GinkgoWriter.Println("Pods in istio resource namespace: \n", output)
+
+	logs, err := kubectl.Logs(namespace, "control-plane=sail-operator", 120*time.Second)
+	if err != nil {
+		GinkgoWriter.Println("Error getting logs from the operator: ", err)
+	}
+	GinkgoWriter.Println("Logs from sail-operator pod: \n", logs)
+
+	logs, err = kubectl.Logs(controlPlaneNamespace, "app=istiod", 120*time.Second)
+	if err != nil {
+		GinkgoWriter.Println("Error getting logs from the istiod: ", err)
+	}
+	GinkgoWriter.Println("Logs from istiod pod: \n", logs)
+}

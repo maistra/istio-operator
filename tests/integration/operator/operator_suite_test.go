@@ -66,16 +66,13 @@ func fillIstioVersions() {
 		Fail("Error unmarshalling the versions.yaml file")
 	}
 
+	GinkgoWriter.Println("Istio versions in yaml file:")
 	for _, v := range config.Versions {
+		GinkgoWriter.Println(v.Name)
 		istioVersions = append(istioVersions, v.Name)
 	}
 
 	if len(istioVersions) == 0 {
 		Fail("No istio versions found in the versions.yaml file")
-	}
-
-	GinkgoWriter.Println("Istio versions in yaml file:")
-	for _, name := range istioVersions {
-		GinkgoWriter.Println(name)
 	}
 }

@@ -279,7 +279,6 @@ deploy-olm: bundle bundle-build bundle-push ## Build and push the operator OLM b
 .PHONY: undeploy
 undeploy: ## Undeploy controller from an existing cluster. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	kubectl delete istios.operator.istio.io --all --all-namespaces --wait=true
-
 	$(MAKE) -e HELM_TEMPL_DEF_FLAGS="$(HELM_TEMPL_DEF_FLAGS)" deploy-yaml | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 	kubectl delete ns ${NAMESPACE} --ignore-not-found=$(ignore-not-found)
 	$(HELM) template chart chart $(HELM_TEMPL_DEF_FLAGS) --set image='$(IMAGE)' --namespace $(NAMESPACE) | kubectl delete --ignore-not-found=$(ignore-not-found) -f -

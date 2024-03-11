@@ -75,15 +75,14 @@ func DeleteString(yamlString string) error {
 		}
 
 		return fmt.Errorf("error deleting yaml: %v", err)
-
 	}
 
 	return nil
 }
 
 // GetConditions returns the condition of a resource
-func GetConditions(ns, resourceType, resourceName string) ([]r.Condition, error) {
-	output, err := GetJSON(ns, resourceType, resourceName)
+func GetConditions(ns, kind, name string) ([]r.Condition, error) {
+	output, err := GetJSON(ns, kind, name)
 	if err != nil {
 		return []r.Condition{}, err
 	}
@@ -99,7 +98,7 @@ func GetConditions(ns, resourceType, resourceName string) ([]r.Condition, error)
 
 // GetPodPhase returns the phase of a pod
 func GetPodPhase(ns, selector string) (string, error) {
-	podName, err := GetPod(ns, selector)
+	podName, err := GetPodName(ns, selector)
 	if err != nil {
 		return "", err
 	}
@@ -125,7 +124,7 @@ func GetCRDs() ([]string, error) {
 	if err != nil {
 		return []string{}, fmt.Errorf("error getting crds: %v", err)
 	}
-	return split(output), nil
+	return extractNames(output), nil
 }
 
 // GetResourceList returns a json list of the resources of a namespace
@@ -153,10 +152,10 @@ func GetResourceList(ns string) (r.ResourceList, error) {
 // GetJSON returns the json of a resource
 // Arguments:
 // - ns: namespace
-// - resourceType: type of the resource
-// - resourceName: name of the resource
-func GetJSON(ns, resourceType, resourceName string) (string, error) {
-	cmd := kubectl("get %s %s -n %s -o json", resourceType, resourceName, ns)
+// - kind: type of the resource
+// - name: name of the resource
+func GetJSON(ns, kind, name string) (string, error) {
+	cmd := kubectl("get %s %s -n %s -o json", kind, name, ns)
 	json, err := shell.ExecuteCommand(cmd)
 	if err != nil {
 		return "", err
@@ -168,10 +167,10 @@ func GetJSON(ns, resourceType, resourceName string) (string, error) {
 // GetYAML returns the yaml of a resource
 // Arguments:
 // - ns: namespace
-// - resourceType: type of the resource
-// - resourceName: name of the resource
-func GetYAML(ns, resourceType, resourceName string) (string, error) {
-	cmd := kubectl("get %s %s -n %s -o yaml", resourceType, resourceName, ns)
+// - kind: type of the resource
+// - name: name of the resource
+func GetYAML(ns, kind, name string) (string, error) {
+	cmd := kubectl("get %s %s -n %s -o yaml", kind, name, ns)
 	json, err := shell.ExecuteCommand(cmd)
 	if err != nil {
 		return "", err
@@ -180,9 +179,9 @@ func GetYAML(ns, resourceType, resourceName string) (string, error) {
 	return json, nil
 }
 
-// GetPod returns the pod name from a label, if there is more than one pod, it will return an error
-func GetPod(ns, label string) (string, error) {
-	podList, err := GetPods(ns, label)
+// GetPodName returns the pod name from a label, if there is more than one pod, it will return an error
+func GetPodName(ns, label string) (string, error) {
+	podList, err := GetPodsNames(ns, label)
 	if err != nil {
 		return "", err
 	}
@@ -196,14 +195,31 @@ func GetPod(ns, label string) (string, error) {
 	return podList[0], nil
 }
 
-// GetPods returns the pod name from a label
-func GetPods(ns, label string) ([]string, error) {
+// GetPodsNames returns the pods names from a given label
+func GetPodsNames(ns, label string) ([]string, error) {
 	cmd := kubectl("get pods -n %s -l %s -o name", ns, label)
 	output, err := shell.ExecuteCommand(cmd)
 	if err != nil {
 		return nil, fmt.Errorf("error getting pods names: %v, output: %s", err, output)
 	}
-	return split(output), nil
+
+	return extractNames(output), nil
+}
+
+// GetPods returns the pods of a namespace
+func GetPods(ns string, args ...string) (string, error) {
+	// If args are equal -o wide, it will return the wide output
+	extraArg := ""
+	if len(args) > 0 && args[0] == "-o wide" {
+		extraArg = args[0]
+	}
+	cmd := kubectl("get pods -n %s %s", ns, extraArg)
+	output, err := shell.ExecuteCommand(cmd)
+	if err != nil {
+		return "", fmt.Errorf("error getting pods: %v, output: %s", err, output)
+	}
+
+	return output, nil
 }
 
 // CreateNamespace creates a namespace
@@ -257,12 +273,12 @@ func GetDeployments(ns string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting deployments names: %v, output: %s", err, output)
 	}
-	return split(output), nil
+	return extractNames(output), nil
 }
 
 // Delete deletes a resource based on the namespace, kind and the name
-func Delete(ns, kind, resourcename string) error {
-	cmd := kubectl("delete %s %s -n %s", kind, resourcename, ns)
+func Delete(ns, kind, name string) error {
+	cmd := kubectl("delete %s %s -n %s", kind, name, ns)
 	_, err := shell.ExecuteCommand(cmd)
 	if err != nil {
 		return fmt.Errorf("error deleting deployment: %v", err)
@@ -293,10 +309,10 @@ func GetDaemonSets(ns string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting daemonsets names: %v, output: %s", err, output)
 	}
-	return split(output), nil
+	return extractNames(output), nil
 }
 
-func split(str string) []string {
+func extractNames(str string) []string {
 	var names []string
 	for _, name := range strings.Split(str, "\n") {
 		if name != "" {
