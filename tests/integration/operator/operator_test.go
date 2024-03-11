@@ -127,11 +127,7 @@ var _ = Describe("Operator", Ordered, func() {
 		})
 	})
 
-<<<<<<< HEAD
-	Describe("installation and unistallation of the Istio CR", func() {
-=======
 	Describe("Istio install/uninstall", func() {
->>>>>>> 24d876ade8a944956dd35ca4b14651d2ea6db9d3
 		for _, version := range istioVersions {
 			// Note: This var version is needed to avoid the closure of the loop
 			version := version
@@ -158,19 +154,11 @@ spec:
 						Success("Istio CR created")
 					})
 
-<<<<<<< HEAD
-					It("updates the Istio CR status to Reconcilied", func() {
-						Eventually(kubectl.GetConditions).
-							WithArguments(controlPlaneNamespace, "istio", istioName).
-							Should(ContainElement(resourceReconcilied), "Istio is not Reconcilied; unexpected Condition")
-						Success("Istio CR is Reconcilied")
-=======
 					It("updates the Istio resource status to Reconciled", func() {
 						Eventually(kubectl.GetConditions).
 							WithArguments(controlPlaneNamespace, "istio", istioName).
 							Should(ContainElement(resourceReconciled), "Istio is not Reconciled; unexpected Condition")
 						Success("Istio resource is Reconciled")
->>>>>>> 24d876ade8a944956dd35ca4b14651d2ea6db9d3
 					})
 
 					It("updates the Istio CR status to Ready", func() {
