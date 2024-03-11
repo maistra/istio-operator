@@ -81,8 +81,8 @@ func DeleteString(yamlString string) error {
 	return nil
 }
 
-// GetCondition returns the condition of a resource
-func GetCondition(ns, resourceType, resourceName string) ([]r.Condition, error) {
+// GetConditions returns the condition of a resource
+func GetConditions(ns, resourceType, resourceName string) ([]r.Condition, error) {
 	output, err := GetJSON(ns, resourceType, resourceName)
 	if err != nil {
 		return []r.Condition{}, err
@@ -165,6 +165,21 @@ func GetJSON(ns, resourceType, resourceName string) (string, error) {
 	return json, nil
 }
 
+// GetYAML returns the yaml of a resource
+// Arguments:
+// - ns: namespace
+// - resourceType: type of the resource
+// - resourceName: name of the resource
+func GetYAML(ns, resourceType, resourceName string) (string, error) {
+	cmd := kubectl("get %s %s -n %s -o yaml", resourceType, resourceName, ns)
+	json, err := shell.ExecuteCommand(cmd)
+	if err != nil {
+		return "", err
+	}
+
+	return json, nil
+}
+
 // GetPod returns the pod name from a label, if there is more than one pod, it will return an error
 func GetPod(ns, label string) (string, error) {
 	podList, err := GetPods(ns, label)
@@ -235,7 +250,7 @@ func CheckNamespaceExist(ns string) error {
 	return nil
 }
 
-// GetDeploymentNames returns the deployments of a namespace
+// GetDeployments returns the deployments of a namespace
 func GetDeployments(ns string) ([]string, error) {
 	cmd := kubectl("get deployments -n %s -o jsonpath={.items[*].metadata.name}", ns)
 	output, err := shell.ExecuteCommand(cmd)
@@ -245,7 +260,7 @@ func GetDeployments(ns string) ([]string, error) {
 	return split(output), nil
 }
 
-// DeleteResource deletes a resource
+// Delete deletes a resource based on the namespace, kind and the name
 func Delete(ns, kind, resourcename string) error {
 	cmd := kubectl("delete %s %s -n %s", kind, resourcename, ns)
 	_, err := shell.ExecuteCommand(cmd)

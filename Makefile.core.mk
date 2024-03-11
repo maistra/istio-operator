@@ -255,6 +255,7 @@ uninstall: ## Uninstall CRDs from an existing cluster. Call with ignore-not-foun
 .PHONY: deploy
 deploy: helm ## Deploy controller to an existing cluster.
 	$(info NAMESPACE: $(NAMESPACE))
+	kubectl create ns ${NAMESPACE} || echo "namespace ${NAMESPACE} already exists"
 	$(MAKE) -e HELM_TEMPL_DEF_FLAGS="$(HELM_TEMPL_DEF_FLAGS)" -s deploy-yaml | kubectl apply --server-side=true -f -
 
 .PHONY: deploy-yaml
@@ -279,6 +280,7 @@ deploy-olm: bundle bundle-build bundle-push ## Build and push the operator OLM b
 undeploy: ## Undeploy controller from an existing cluster. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	kubectl delete istios.operator.istio.io --all --all-namespaces --wait=true
 	$(MAKE) -e HELM_TEMPL_DEF_FLAGS="$(HELM_TEMPL_DEF_FLAGS)" deploy-yaml | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+	kubectl delete ns ${NAMESPACE} --ignore-not-found=$(ignore-not-found)
 
 .PHONY: undeploy-olm
 undeploy-olm: operator-sdk ## Undeploy the operator from an existing cluster (used only if operator was installed via OLM).

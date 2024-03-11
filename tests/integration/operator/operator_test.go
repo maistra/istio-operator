@@ -87,7 +87,7 @@ var _ = Describe("Operator", Ordered, func() {
 			})
 
 			It("starts successfully", func() {
-				Eventually(kubectl.GetCondition).
+				Eventually(kubectl.GetConditions).
 					WithArguments(namespace, "deployment", deploymentName).
 					Should(ContainElement(resourceAvailable), "Operator deployment is not Available; unexpected Condition")
 				Success("Operator deployment is Available")
@@ -100,6 +100,12 @@ var _ = Describe("Operator", Ordered, func() {
 				Eventually(kubectl.GetCRDs).
 					Should(ContainElements(crds), "Istio CRDs are not present; expected list to contain all elements")
 				Success("Istio CRDs are present")
+			})
+
+			AfterAll(func() {
+				if CurrentSpecReport().Failed() {
+					LogFailure()
+				}
 			})
 		})
 	})
@@ -132,11 +138,11 @@ spec:
 					})
 
 					It("updates the Istio resource status to Reconcilied and Ready", func() {
-						Eventually(kubectl.GetCondition).
+						Eventually(kubectl.GetConditions).
 							WithArguments(controlPlaneNamespace, "istio", istioName).
 							Should(ContainElement(resourceReconcilied), "Istio is not Reconcilied; unexpected Condition")
 
-						Eventually(kubectl.GetCondition).
+						Eventually(kubectl.GetConditions).
 							WithArguments(controlPlaneNamespace, "istio", istioName).
 							Should(ContainElement(resourceReady), "Istio is not Ready; unexpected Condition")
 
@@ -144,12 +150,10 @@ spec:
 					})
 
 					It("deploys istiod", func() {
-						Expect(kubectl.GetDeploymentNames(controlPlaneNamespace)).
-							To(Equal([]string{"istiod"}), "Istiod deployment is not present; expected list to be equal")
+						Expect(kubectl.GetDeployments(controlPlaneNamespace)).
+							To(Equal([]string{"istiod"}), "Istiod deployment is not present; unexpected list of deployments")
 						Success("Istiod deployment is present")
-					})
 
-					It("deploys correct istiod image tag according to the version in the Istio CR", func() {
 						// TODO: we need to add a function to get the istio version from the control panel directly
 						// and compare it with the applied version
 						// This is a TODO because actual version.yaml contains for example latest and not the actual version
@@ -158,14 +162,14 @@ spec:
 
 					It("deploys the CNI DaemonSet when running on OpenShift", func() {
 						if ocp {
-							Eventually(kubectl.GetDaemonSetNames).
+							Eventually(kubectl.GetDaemonSets).
 								WithArguments(namespace).
 								Should(ContainElement("istio-cni-node"), "CNI DaemonSet is not deployed; expected list to contain element")
 
 							Expect(kubectl.GetPodPhase(namespace, "k8s-app=istio-cni-node")).Should(Equal("Running"), "CNI Daemon is not running; unexpected Phase")
 							Success("CNI DaemonSet is deployed in the namespace and Running")
 						} else {
-							Consistently(kubectl.GetDaemonSetNames).
+							Consistently(kubectl.GetDaemonSets).
 								WithArguments(namespace).WithTimeout(30*time.Second).
 								Should(BeEmpty(), "CNI DaemonSet is present; expected list to be empty")
 							Success("CNI DaemonSet is not deployed in the namespace because it's not OpenShift")
@@ -182,7 +186,7 @@ spec:
 
 				When("the Istio CR is deleted", func() {
 					BeforeEach(func() {
-						Expect(kubectl.DeleteResource(controlPlaneNamespace, "istio", istioName)).To(Succeed(), "Istiod deployment failed to be deleted")
+						Expect(kubectl.Delete(controlPlaneNamespace, "istio", istioName)).To(Succeed(), "Istiod deployment failed to be deleted")
 						Success("Istio CR deleted")
 					})
 
@@ -197,6 +201,9 @@ spec:
 		}
 
 		AfterAll(func() {
+			if CurrentSpecReport().Failed() {
+				LogFailure()
+			}
 			By("Cleaning up the namespace")
 			Expect(kubectl.DeleteNamespace(controlPlaneNamespace)).
 				Should(Succeed(), "Namespace failed to be deleted")
