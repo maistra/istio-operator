@@ -29,7 +29,12 @@ var (
 )
 
 func init() {
-	versionsFile := filepath.Join("..", "..", "..", "versions.yaml")
+	versionsFile := os.Getenv("VERSIONS_YAML_FILE")
+	if len(versionsFile) == 0 {
+		versionsFile = "versions.yaml"
+	}
+	versionsFile = filepath.Join("..", "..", "..", versionsFile)
+
 	versionsBytes, err := os.ReadFile(versionsFile)
 	if err != nil {
 		panic(err)

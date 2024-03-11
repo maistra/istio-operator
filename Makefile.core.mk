@@ -12,16 +12,18 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 
-# VERSION defines the project version for the bundle.
-# Update this value when you upgrade the version of your project.
-# To re-generate a bundle for another specific version without changing the standard setup, you can:
-# - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
-# - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
+# Save the current, builtin variables so we can filter them out in the `print-variables` target
+OLD_VARS := $(.VARIABLES)
+
+# Most variables defined in this Makefile can be overriden in Makefile.vendor.mk
+# Use `make print-variables` to inspect the values of the variables
+-include Makefile.vendor.mk
+
 VERSION ?= 3.0.0
 MINOR_VERSION := $(shell v='$(VERSION)'; echo "$${v%.*}")
 
 OPERATOR_NAME ?= sailoperator
-
+VERSIONS_YAML_FILE ?= versions.yaml
 
 # Istio images names
 ISTIO_CNI_IMAGE_NAME ?= install-cni
@@ -64,7 +66,7 @@ IMAGE ?= ${HUB}/${IMAGE_BASE}:${TAG}
 # Namespace to deploy the controller in
 NAMESPACE ?= sail-operator
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.26.0
+ENVTEST_K8S_VERSION ?= 1.29.0
 
 # Set DOCKER_BUILD_FLAGS to specify flags to pass to 'docker build', default to empty. Example: --platform=linux/arm64
 DOCKER_BUILD_FLAGS ?= "--platform=$(TARGET_OS)/$(TARGET_ARCH)"
@@ -113,13 +115,9 @@ ifeq ($(USE_IMAGE_DIGESTS), true)
 	BUNDLE_GEN_FLAGS += --use-image-digests
 endif
 
-# Default flags used when rendering chart templates locally
-HELM_TEMPL_DEF_FLAGS = --include-crds
-
-# VALUES_FILE defines a values file to be used to overwrite default values from chart
-ifdef VALUES_FILE
-	HELM_TEMPL_DEF_FLAGS += --values $(VALUES_FILE)
-endif
+# Default values and flags used when rendering chart templates locally
+HELM_VALUES_FILE ?= chart/values.yaml
+HELM_TEMPL_DEF_FLAGS ?= --include-crds --values $(HELM_VALUES_FILE)
 
 TODAY ?= $(shell date -I)
 
@@ -306,14 +304,15 @@ API_REPO_BASE=https://raw.githubusercontent.com/istio/api/ccd5cd40965ccba232d1f7
 .PHONY: gen-api
 gen-api: ## Generate API types from upstream files.
 	# TODO: should we get these files from the local filesystem by inspecting go.mod?
-	curl -o /tmp/values_types.pb.go $(ISTIO_REPO_BASE)/operator/pkg/apis/istio/v1alpha1/values_types.pb.go
-	curl -o /tmp/config.pb.go $(API_REPO_BASE)/mesh/v1alpha1/config.pb.go
-	curl -o /tmp/network.pb.go $(API_REPO_BASE)/mesh/v1alpha1/network.pb.go
-	curl -o /tmp/proxy.pb.go $(API_REPO_BASE)/mesh/v1alpha1/proxy.pb.go
-	curl -o /tmp/proxy_config.pb.go $(API_REPO_BASE)/networking/v1beta1/proxy_config.pb.go
-	curl -o /tmp/selector.pb.go $(API_REPO_BASE)/type/v1beta1/selector.pb.go
-	curl -o /tmp/destination_rule.pb.go $(API_REPO_BASE)/networking/v1alpha3/destination_rule.pb.go
-	curl -o /tmp/virtual_service.pb.go $(API_REPO_BASE)/networking/v1alpha3/virtual_service.pb.go
+	echo Generating API types from upstream files
+	curl -sSLfo /tmp/values_types.pb.go $(ISTIO_REPO_BASE)/operator/pkg/apis/istio/v1alpha1/values_types.pb.go
+	curl -sSLfo /tmp/config.pb.go $(API_REPO_BASE)/mesh/v1alpha1/config.pb.go
+	curl -sSLfo /tmp/network.pb.go $(API_REPO_BASE)/mesh/v1alpha1/network.pb.go
+	curl -sSLfo /tmp/proxy.pb.go $(API_REPO_BASE)/mesh/v1alpha1/proxy.pb.go
+	curl -sSLfo /tmp/proxy_config.pb.go $(API_REPO_BASE)/networking/v1beta1/proxy_config.pb.go
+	curl -sSLfo /tmp/selector.pb.go $(API_REPO_BASE)/type/v1beta1/selector.pb.go
+	curl -sSLfo /tmp/destination_rule.pb.go $(API_REPO_BASE)/networking/v1alpha3/destination_rule.pb.go
+	curl -sSLfo /tmp/virtual_service.pb.go $(API_REPO_BASE)/networking/v1alpha3/virtual_service.pb.go
 	go run hack/api_transformer/main.go hack/api_transformer/transform.yaml
 
 .PHONY: gen-code
@@ -325,7 +324,7 @@ gen-charts: ## Pull charts from istio repository.
 	@# use yq to generate a list of download-charts.sh commands for each version in versions.yaml; these commands are
 	@# passed to sh and executed; in a nutshell, the yq command generates commands like:
 	@# ./hack/download-charts.sh <version> <git repo> <commit> [chart1] [chart2] ...
-	@yq eval '.versions[] | "./hack/download-charts.sh " + .name + " " + .repo + " " + .commit + " " + ((.charts // []) | join(" "))' < versions.yaml | sh
+	@yq eval '.versions[] | "./hack/download-charts.sh " + .name + " " + .repo + " " + .commit + " " + ((.charts // []) | join(" "))' < $(VERSIONS_YAML_FILE) | sh
 
 	@# remove old version directories
 	@hack/remove-old-versions.sh
@@ -337,7 +336,7 @@ gen-charts: ## Pull charts from istio repository.
 	@hack/update-version-list.sh
 
 	@# calls copy-crds.sh with the version specified in the .crdSourceVersion field in versions.yaml
-	@hack/copy-crds.sh "resources/$$(yq eval '.crdSourceVersion' versions.yaml)/charts"
+	@hack/copy-crds.sh "resources/$$(yq eval '.crdSourceVersion' $(VERSIONS_YAML_FILE))/charts"
 
 .PHONY: gen
 gen: controller-gen gen-api gen-charts gen-manifests gen-code bundle ## Generate everything.
@@ -355,6 +354,13 @@ endif
 update-istio: ## Update the Istio commit hash in the 'latest' entry in versions.yaml to the latest commit in the branch.
 	@hack/update-istio.sh
 
+.PHONY: print-variables
+print-variables: ## Print all Makefile variables; Useful to inspect overrides of variables.
+	$(foreach v,                                        \
+  $(filter-out $(OLD_VARS) OLD_VARS,$(.VARIABLES)), \
+  $(info $(v) = $($(v))))
+	@echo
+
 ##@ Build Dependencies
 
 ## Location to install dependencies to
@@ -370,10 +376,10 @@ ENVTEST ?= $(LOCALBIN)/setup-envtest
 OPM ?= $(LOCALBIN)/opm
 
 ## Tool Versions
-  OPERATOR_SDK_VERSION ?= v1.34.1
-  HELM_VERSION ?= v3.14.2
-  CONTROLLER_TOOLS_VERSION ?= v0.14.0
-  OPM_VERSION ?= v1.36.0
+OPERATOR_SDK_VERSION ?= v1.34.1
+HELM_VERSION ?= v3.14.2
+CONTROLLER_TOOLS_VERSION ?= v0.14.0
+OPM_VERSION ?= v1.36.0
 
 .PHONY: helm $(HELM)
 helm: $(HELM) ## Download helm to bin directory. If wrong version is installed, it will be overwritten.
@@ -405,7 +411,7 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 .PHONY: envtest
 envtest: $(ENVTEST) ## Download envtest-setup to bin directory.
 $(ENVTEST): $(LOCALBIN)
-	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+	@test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 
 .PHONY: bundle
 bundle: gen helm operator-sdk ## Generate bundle manifests and metadata, then validate generated files.
@@ -514,9 +520,9 @@ lint: lint-scripts lint-copyright-banner lint-go lint-yaml lint-helm lint-bundle
 .PHONY: format
 format: format-go tidy-go ## Auto-format all code. This should be run before sending a PR.
 
-.SILENT: helm $(HELM) $(LOCALBIN) deploy-yaml
+.SILENT: helm $(HELM) $(LOCALBIN) deploy-yaml gen-api
 
-COMMON_IMPORTS = lint-all lint-scripts lint-copyright-banner lint-go lint-yaml lint-helm format-go tidy-go check-clean-repo update-common
+COMMON_IMPORTS ?= lint-all lint-scripts lint-copyright-banner lint-go lint-yaml lint-helm format-go tidy-go check-clean-repo update-common
 .PHONY: $(COMMON_IMPORTS)
 $(COMMON_IMPORTS):
 	@$(MAKE) --no-print-directory -f common/Makefile.common.mk $@

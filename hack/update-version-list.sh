@@ -1,4 +1,4 @@
-#!/bin/env bash
+#!/bin/bash
 
 # Copyright Istio Authors
 #
@@ -14,10 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -euo pipefail
+
+VERSIONS_YAML_FILE=${VERSIONS_YAML_FILE:-"versions.yaml"}
+HELM_VALUES_FILE=${HELM_VALUES_FILE:-"chart/values.yaml"}
+
 function updateVersionsInIstioTypeComment() {
-    selectValues=$(yq '.versions[].name | ", \"urn:alm:descriptor:com.tectonic.ui:select:" + . + "\""' versions.yaml | tr -d '\n')
-    versionsEnum=$(yq '.versions[].name' versions.yaml | tr '\n' ';' | sed 's/;$//g')
-    versions=$(yq '.versions[].name' versions.yaml | tr '\n' ',' | sed -e 's/,/, /g' -e 's/, $//g')
+    selectValues=$(yq '.versions[].name | ", \"urn:alm:descriptor:com.tectonic.ui:select:" + . + "\""' "${VERSIONS_YAML_FILE}" | tr -d '\n')
+    versionsEnum=$(yq '.versions[].name' "${VERSIONS_YAML_FILE}" | tr '\n' ';' | sed 's/;$//g')
+    versions=$(yq '.versions[].name' "${VERSIONS_YAML_FILE}" | tr '\n' ',' | sed -e 's/,/, /g' -e 's/, $//g')
 
     sed -i -E \
       -e "/\+sail:version/,/Version string/ s/(\/\/ \+operator-sdk:csv:customresourcedefinitions:type=spec,order=1,displayName=\"Istio Version\",xDescriptors=\{.*fieldGroup:General\")[^}]*(})/\1$selectValues}/g" \
@@ -34,13 +39,12 @@ function updateVersionsInCSVDescription() {
     # - stores latest commit in $latestCommit
     # - iterates over keys and prints them; if the key is "latest", appends the hash stored in $latestCommit
     # shellcheck disable=SC2016
-    yq '(.versions[] | select(.name == "latest") | .commit) as $latestCommit | .versions[].name | (select(. == "latest") | . + " (" + $latestCommit + ")") // .' versions.yaml > "$tmpFile"
+    yq '(.versions[] | select(.name == "latest") | .commit) as $latestCommit | .versions[].name | (select(. == "latest") | . + " (" + $latestCommit + ")") // .' "${VERSIONS_YAML_FILE}" > "$tmpFile"
 
     # truncate the latest commit hash to 8 characters
     sed -i -E 's/(latest \(.{8}).*\)/\1\)/g' "$tmpFile"
 
     # 2. replace the version list in the CSV description
-    csvDescription="chart/values.yaml"
     awk '
         /This version of the operator supports the following Istio versions:/ {
             in_version_list = 1;
@@ -57,7 +61,7 @@ function updateVersionsInCSVDescription() {
         !in_version_list {
             print;
         }
-    ' "$csvDescription" > "$csvDescription.tmp" && mv "$csvDescription.tmp" "$csvDescription"
+    ' "${HELM_VALUES_FILE}" > "${HELM_VALUES_FILE}.tmp" && mv "${HELM_VALUES_FILE}.tmp" "${HELM_VALUES_FILE}"
 
     rm "$tmpFile"
 }
