@@ -1,3 +1,9 @@
+linters:
+  enable:
+  - ginkgolinter
+linters-settings:
+  ginkgolinter:
+    force-expect-to: true
 issues:
   exclude-rules:
   - path: ^tests/integration/
