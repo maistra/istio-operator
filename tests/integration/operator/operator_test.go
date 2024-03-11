@@ -83,7 +83,7 @@ var _ = Describe("Operator", Ordered, func() {
 				}
 
 				Expect(helm.Install("sail-operator", filepath.Join(baseDir, "chart"), "--namespace "+namespace, "--set=image="+image, extraArg)).
-					Should(Succeed(), "Operator failed to be deployed; unexpected error")
+					Should(Succeed(), "Operator failed to be deployed")
 			})
 
 			It("starts successfully", func() {
@@ -111,7 +111,7 @@ var _ = Describe("Operator", Ordered, func() {
 
 			Context(fmt.Sprintf("version %s", version), func() {
 				BeforeAll(func() {
-					Expect(kubectl.CreateNamespace(controlPlaneNamespace)).To(Succeed(), "Namespace failed to be created; unexpected error")
+					Expect(kubectl.CreateNamespace(controlPlaneNamespace)).To(Succeed(), "Namespace failed to be created")
 				})
 
 				When("the resource is created", func() {
@@ -127,7 +127,7 @@ spec:
 						istioYAML = fmt.Sprintf(istioYAML, version, controlPlaneNamespace)
 						fmt.Printf("Istio CR YAML: %s\n", istioYAML)
 						Expect(kubectl.ApplyString(istioYAML)).
-							Should(Succeed(), "Istio CR failed to be created; unexpected error")
+							Should(Succeed(), "Istio CR failed to be created")
 						Success("Istio CR created")
 					})
 
@@ -182,7 +182,7 @@ spec:
 
 				When("the Istio CR is deleted", func() {
 					BeforeEach(func() {
-						Expect(kubectl.DeleteResource(controlPlaneNamespace, "istio", istioName)).To(Succeed(), "Istiod deployment failed to be deleted; unexpected error")
+						Expect(kubectl.DeleteResource(controlPlaneNamespace, "istio", istioName)).To(Succeed(), "Istiod deployment failed to be deleted")
 						Success("Istio CR deleted")
 					})
 
@@ -199,11 +199,11 @@ spec:
 		AfterAll(func() {
 			By("Cleaning up the namespace")
 			Expect(kubectl.DeleteNamespace(controlPlaneNamespace)).
-				Should(Succeed(), "Namespace failed to be deleted; unexpected error")
+				Should(Succeed(), "Namespace failed to be deleted")
 
 			Eventually(kubectl.CheckNamespaceExist).
 				WithArguments(controlPlaneNamespace).
-				Should(MatchError(kubectl.ErrNotFound), "Namespace should not exist; unexpected error")
+				Should(MatchError(kubectl.ErrNotFound), "Namespace should not exist")
 			Success("Cleanup done")
 		})
 	})
@@ -211,7 +211,7 @@ spec:
 	AfterAll(func() {
 		By("Cleaning up the operator")
 		Expect(helm.Uninstall("sail-operator", "--namespace "+namespace)).
-			Should(Succeed(), "Operator failed to be deleted; unexpected error")
+			Should(Succeed(), "Operator failed to be deleted")
 		Expect(kubectl.DeleteCRDs(crds)).To(Succeed(), "CRDs failed to be deleted")
 		Success("Operator is deleted")
 	})

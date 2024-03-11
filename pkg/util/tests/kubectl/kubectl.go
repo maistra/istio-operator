@@ -83,13 +83,12 @@ func DeleteString(yamlString string) error {
 
 // GetCondition returns the condition of a resource
 func GetCondition(ns, resourceType, resourceName string) ([]r.Condition, error) {
-	var resource r.Resource
-
 	output, err := GetJSON(ns, resourceType, resourceName)
 	if err != nil {
 		return []r.Condition{}, err
 	}
 
+	var resource r.Resource
 	err = json.Unmarshal([]byte(output), &resource)
 	if err != nil {
 		return []r.Condition{}, err
@@ -100,8 +99,6 @@ func GetCondition(ns, resourceType, resourceName string) ([]r.Condition, error) 
 
 // GetPodPhase returns the phase of a pod
 func GetPodPhase(ns, selector string) (string, error) {
-	var resource r.Resource
-
 	podName, err := GetPod(ns, selector)
 	if err != nil {
 		return "", err
@@ -112,6 +109,7 @@ func GetPodPhase(ns, selector string) (string, error) {
 		return "", err
 	}
 
+	var resource r.Resource
 	err = json.Unmarshal([]byte(output), &resource)
 	if err != nil {
 		return "", err
@@ -127,8 +125,7 @@ func GetCRDs() ([]string, error) {
 	if err != nil {
 		return []string{}, fmt.Errorf("error getting crds: %v", err)
 	}
-
-	return strings.Split(output, " "), nil
+	return split(output), nil
 }
 
 // GetResourceList returns a json list of the resources of a namespace
@@ -170,7 +167,6 @@ func GetJSON(ns, resourceType, resourceName string) (string, error) {
 
 // GetPod returns the pod name from a label, if there is more than one pod, it will return an error
 func GetPod(ns, label string) (string, error) {
-	var podList []string
 	podList, err := GetPods(ns, label)
 	if err != nil {
 		return "", err
@@ -187,14 +183,12 @@ func GetPod(ns, label string) (string, error) {
 
 // GetPods returns the pod name from a label
 func GetPods(ns, label string) ([]string, error) {
-	var podList []string
 	cmd := kubectl("get pods -n %s -l %s -o jsonpath={.items[*].metadata.name}", ns, label)
 	output, err := shell.ExecuteCommand(cmd)
-	podList = strings.Split(output, " ")
 	if err != nil {
-		return podList, fmt.Errorf("error getting pods names: %v, output: %s", err, output)
+		return nil, fmt.Errorf("error getting pods names: %v, output: %s", err, output)
 	}
-	return podList, nil
+	return split(output), nil
 }
 
 // CreateNamespace creates a namespace
@@ -242,19 +236,17 @@ func CheckNamespaceExist(ns string) error {
 }
 
 // GetDeploymentNames returns the deployments of a namespace
-func GetDeploymentNames(ns string) ([]string, error) {
-	var deployments []string
+func GetDeployments(ns string) ([]string, error) {
 	cmd := kubectl("get deployments -n %s -o jsonpath={.items[*].metadata.name}", ns)
 	output, err := shell.ExecuteCommand(cmd)
-	deployments = strings.Split(output, " ")
 	if err != nil {
-		return deployments, fmt.Errorf("error getting deployments names: %v, output: %s", err, output)
+		return nil, fmt.Errorf("error getting deployments names: %v, output: %s", err, output)
 	}
-	return deployments, nil
+	return split(output), nil
 }
 
 // DeleteResource deletes a resource
-func DeleteResource(ns, kind, resourcename string) error {
+func Delete(ns, kind, resourcename string) error {
 	cmd := kubectl("delete %s %s -n %s", kind, resourcename, ns)
 	_, err := shell.ExecuteCommand(cmd)
 	if err != nil {
@@ -270,35 +262,30 @@ func DeleteResource(ns, kind, resourcename string) error {
 // - selector: selector of the pod
 // - Since: time range
 func Logs(ns, selector string, since time.Duration) (string, error) {
-	podName, err := GetPod(ns, selector)
-	if err != nil {
-		return "", err
-	}
-	cmd := kubectl("logs %s -n %s  --since=%s", podName, ns, since)
+	cmd := kubectl("logs -l %s -n %s  --since=%s", selector, ns, since)
 	output, err := shell.ExecuteCommand(cmd)
 	if err != nil {
 		return "", err
 	}
-
 	return output, nil
 }
 
 // GetDaemonSets returns the daemonsets of a namespace
 // Return a list of daemonsets
-func GetDaemonSetNames(ns string) ([]string, error) {
-	var daemonsets []string
+func GetDaemonSets(ns string) ([]string, error) {
 	cmd := kubectl("get daemonsets -n %s -o jsonpath={.items[*].metadata.name}", ns)
 	output, err := shell.ExecuteCommand(cmd)
-	// If output is empty, return an empty list
-	if output == "" {
-		return daemonsets, nil
-	}
-
-	daemonsets = strings.Split(output, " ")
 	if err != nil {
-		return daemonsets, fmt.Errorf("error getting daemonsets names: %v, output: %s", err, output)
+		return nil, fmt.Errorf("error getting daemonsets names: %v, output: %s", err, output)
 	}
-	return daemonsets, nil
+	return split(output), nil
+}
+
+func split(str string) []string {
+	if str == "" {
+		return nil
+	}
+	return strings.Split(str, " ")
 }
 
 // DeleteCRDs deletes the CRDs by given list of crds names
