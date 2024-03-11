@@ -154,11 +154,11 @@ spec:
 						Success("Istio CR created")
 					})
 
-					It("updates the Istio resource status to Reconciled", func() {
+					It("updates the Istio CR status to Reconciled", func() {
 						Eventually(kubectl.GetConditions).
 							WithArguments(controlPlaneNamespace, "istio", istioName).
 							Should(ContainElement(resourceReconciled), "Istio is not Reconciled; unexpected Condition")
-						Success("Istio resource is Reconciled")
+						Success("Istio CR is Reconciled")
 					})
 
 					It("updates the Istio CR status to Ready", func() {
