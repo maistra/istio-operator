@@ -120,7 +120,7 @@ func GetPodPhase(ns, selector string) (string, error) {
 
 // GetCRDs returns all the CRDs names in a list
 func GetCRDs() ([]string, error) {
-	cmd := kubectl("get crds -o jsonpath={.items[*].metadata.name}")
+	cmd := kubectl("get crds -o name")
 	output, err := shell.ExecuteCommand(cmd)
 	if err != nil {
 		return []string{}, fmt.Errorf("error getting crds: %v", err)
@@ -198,7 +198,7 @@ func GetPod(ns, label string) (string, error) {
 
 // GetPods returns the pod name from a label
 func GetPods(ns, label string) ([]string, error) {
-	cmd := kubectl("get pods -n %s -l %s -o jsonpath={.items[*].metadata.name}", ns, label)
+	cmd := kubectl("get pods -n %s -l %s -o name", ns, label)
 	output, err := shell.ExecuteCommand(cmd)
 	if err != nil {
 		return nil, fmt.Errorf("error getting pods names: %v, output: %s", err, output)
@@ -252,7 +252,7 @@ func CheckNamespaceExist(ns string) error {
 
 // GetDeployments returns the deployments of a namespace
 func GetDeployments(ns string) ([]string, error) {
-	cmd := kubectl("get deployments -n %s -o jsonpath={.items[*].metadata.name}", ns)
+	cmd := kubectl("get deployments -n %s -o name", ns)
 	output, err := shell.ExecuteCommand(cmd)
 	if err != nil {
 		return nil, fmt.Errorf("error getting deployments names: %v, output: %s", err, output)
@@ -288,7 +288,7 @@ func Logs(ns, selector string, since time.Duration) (string, error) {
 // GetDaemonSets returns the daemonsets of a namespace
 // Return a list of daemonsets
 func GetDaemonSets(ns string) ([]string, error) {
-	cmd := kubectl("get daemonsets -n %s -o jsonpath={.items[*].metadata.name}", ns)
+	cmd := kubectl("get daemonsets -n %s -o name", ns)
 	output, err := shell.ExecuteCommand(cmd)
 	if err != nil {
 		return nil, fmt.Errorf("error getting daemonsets names: %v, output: %s", err, output)
@@ -297,10 +297,15 @@ func GetDaemonSets(ns string) ([]string, error) {
 }
 
 func split(str string) []string {
-	if str == "" {
-		return nil
+	var names []string
+	for _, name := range strings.Split(str, "\n") {
+		if name != "" {
+			// -o name return the resource name with the kind, for example: deployment.apps/istiod
+			names = append(names, strings.Split(name, "/")[1])
+		}
 	}
-	return strings.Split(str, " ")
+
+	return names
 }
 
 // DeleteCRDs deletes the CRDs by given list of crds names
