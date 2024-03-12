@@ -222,7 +222,7 @@ defaults:
     # Dev builds from prow are on gcr.io
     hub: gcr.io/istio-testing
     # Default tag for Istio images.
-    tag: 1.22-alpha.503c3c25acece2826d11f2cfcb0a1de58d310bf8
+    tag: 1.22-alpha.6a4324beb850af2400bee647ede8fb82ecbb7d1a
     # Variant of the image to use.
     # Currently supported are: [debug, distroless]
     variant: ""
@@ -382,6 +382,9 @@ defaults:
 
     # Configure a remote cluster as the config cluster for an external istiod.
     configCluster: false
+
+    # configValidation enables the validation webhook for Istio configuration.
+    configValidation: true
 
     # Mesh ID means Mesh Identifier. It should be unique within the scope where
     # meshes will interact with each other, but it is not required to be

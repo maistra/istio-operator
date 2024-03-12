@@ -35,8 +35,10 @@ spec:
                 items:
                   properties:
                     applyTo:
-                      description: Specifies where in the Envoy configuration, the
-                        patch should be applied.
+                      description: |-
+                        Specifies where in the Envoy configuration, the patch should be applied.
+
+                        Valid Options: LISTENER, FILTER_CHAIN, NETWORK_FILTER, HTTP_FILTER, ROUTE_CONFIGURATION, VIRTUAL_HOST, HTTP_ROUTE, CLUSTER, EXTENSION_CONFIG, BOOTSTRAP, LISTENER_FILTER
                       enum:
                       - INVALID
                       - LISTENER
@@ -88,8 +90,10 @@ spec:
                               type: string
                           type: object
                         context:
-                          description: The specific config generation context to match
-                            on.
+                          description: |-
+                            The specific config generation context to match on.
+
+                            Valid Options: ANY, SIDECAR_INBOUND, SIDECAR_OUTBOUND, GATEWAY
                           enum:
                           - ANY
                           - SIDECAR_INBOUND
@@ -198,8 +202,10 @@ spec:
                                     host.
                                   properties:
                                     action:
-                                      description: Match a route with specific action
-                                        type.
+                                      description: |-
+                                        Match a route with specific action type.
+
+                                        Valid Options: ANY, ROUTE, REDIRECT, DIRECT_RESPONSE
                                       enum:
                                       - ANY
                                       - ROUTE
@@ -218,7 +224,10 @@ spec:
                       description: The patch to apply along with the operation.
                       properties:
                         filterClass:
-                          description: Determines the filter insertion order.
+                          description: |-
+                            Determines the filter insertion order.
+
+                            Valid Options: AUTHN, AUTHZ, STATS
                           enum:
                           - UNSPECIFIED
                           - AUTHN
@@ -226,7 +235,10 @@ spec:
                           - STATS
                           type: string
                         operation:
-                          description: Determines how the patch should be applied.
+                          description: |-
+                            Determines how the patch should be applied.
+
+                            Valid Options: MERGE, ADD, REMOVE, INSERT_BEFORE, INSERT_AFTER, INSERT_FIRST, REPLACE
                           enum:
                           - INVALID
                           - MERGE
