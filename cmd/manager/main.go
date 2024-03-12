@@ -75,6 +75,9 @@ func main() {
 	var logAPIRequests bool
 	pflag.BoolVar(&logAPIRequests, "logAPIRequests", false, "Log API requests performed by the operator.")
 
+	var runLocalBuild bool
+	pflag.BoolVar(&runLocalBuild, "runLocalBuild", false, "Run the operator locally.")
+
 	// config file
 	configFile := ""
 	pflag.StringVar(&configFile, "config", "/etc/istio-operator/config.properties", "The root location of the user supplied templates.")
@@ -145,6 +148,11 @@ func main() {
 	if strings.Contains(namespace, ",") {
 		options.Namespace = ""
 		options.NewCache = cache.MultiNamespacedCacheBuilder(strings.Split(namespace, ","))
+	}
+
+	// When you run the operator locally in debug mode, turn off the leader election.
+	if runLocalBuild {
+		options.LeaderElection = false
 	}
 
 	// Create a new Cmd to provide shared dependencies and start components
