@@ -170,7 +170,7 @@ func GetJSON(ns, kind, name string) (string, error) {
 // - kind: type of the resource
 // - name: name of the resource
 func GetYAML(ns, kind, name string) (string, error) {
-	cmd := kubectl("get %s %s -n %s -o yaml", kind, name, ns)
+	cmd := kubectl("get %s %s %s -o yaml", kind, name, nsflag(ns))
 	json, err := shell.ExecuteCommand(cmd)
 	if err != nil {
 		return "", err
@@ -271,7 +271,7 @@ func GetDeployments(ns string) ([]string, error) {
 
 // Delete deletes a resource based on the namespace, kind and the name
 func Delete(ns, kind, name string) error {
-	cmd := kubectl("delete %s %s -n %s", kind, name, ns)
+	cmd := kubectl("delete %s %s %s", kind, name, nsflag(ns))
 	_, err := shell.ExecuteCommand(cmd)
 	if err != nil {
 		return fmt.Errorf("error deleting deployment: %v", err)
@@ -286,7 +286,7 @@ func Delete(ns, kind, name string) error {
 // - selector: selector of the pod
 // - Since: time range
 func Logs(ns, selector string, since time.Duration) (string, error) {
-	cmd := kubectl("logs -l %s -n %s  --since=%s", selector, ns, since)
+	cmd := kubectl("logs -l %s %s  --since=%s", selector, nsflag(ns), since)
 	output, err := shell.ExecuteCommand(cmd)
 	if err != nil {
 		return "", err
@@ -318,14 +318,10 @@ func extractNames(str string) []string {
 }
 
 func nsflag(ns string) string {
-	nsflag := "-n"
 	if ns == "" {
-		nsflag = "--all-namespaces"
-
-		return nsflag
+		return "--all-namespaces"
 	}
-
-	return nsflag + " " + ns
+	return "-n " + ns
 }
 
 // DeleteCRDs deletes the CRDs by given list of crds names
