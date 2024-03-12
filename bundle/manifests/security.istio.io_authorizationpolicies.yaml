@@ -54,7 +54,10 @@ spec:
               - provider
             properties:
               action:
-                description: Optional.
+                description: |-
+                  Optional.
+
+                  Valid Options: ALLOW, DENY, AUDIT, CUSTOM
                 enum:
                 - ALLOW
                 - DENY
@@ -269,7 +272,10 @@ spec:
               - provider
             properties:
               action:
-                description: Optional.
+                description: |-
+                  Optional.
+
+                  Valid Options: ALLOW, DENY, AUDIT, CUSTOM
                 enum:
                 - ALLOW
                 - DENY

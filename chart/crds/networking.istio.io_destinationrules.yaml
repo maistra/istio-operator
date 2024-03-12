@@ -76,8 +76,10 @@ spec:
                               description: HTTP connection pool settings.
                               properties:
                                 h2UpgradePolicy:
-                                  description: Specify if http1.1 connection should
-                                    be upgraded to http2 for the associated destination.
+                                  description: |-
+                                    Specify if http1.1 connection should be upgraded to http2 for the associated destination.
+
+                                    Valid Options: DEFAULT, DO_NOT_UPGRADE, UPGRADE
                                   enum:
                                   - DEFAULT
                                   - DO_NOT_UPGRADE
@@ -300,6 +302,10 @@ spec:
                                   type: array
                               type: object
                             simple:
+                              description: |2-
+
+
+                                Valid Options: LEAST_CONN, RANDOM, PASSTHROUGH, ROUND_ROBIN, LEAST_REQUEST
                               enum:
                               - UNSPECIFIED
                               - LEAST_CONN
@@ -364,9 +370,10 @@ spec:
                                     description: HTTP connection pool settings.
                                     properties:
                                       h2UpgradePolicy:
-                                        description: Specify if http1.1 connection
-                                          should be upgraded to http2 for the associated
-                                          destination.
+                                        description: |-
+                                          Specify if http1.1 connection should be upgraded to http2 for the associated destination.
+
+                                          Valid Options: DEFAULT, DO_NOT_UPGRADE, UPGRADE
                                         enum:
                                         - DEFAULT
                                         - DO_NOT_UPGRADE
@@ -595,6 +602,10 @@ spec:
                                         type: array
                                     type: object
                                   simple:
+                                    description: |2-
+
+
+                                      Valid Options: LEAST_CONN, RANDOM, PASSTHROUGH, ROUND_ROBIN, LEAST_REQUEST
                                     enum:
                                     - UNSPECIFIED
                                     - LEAST_CONN
@@ -690,8 +701,10 @@ spec:
                                     nullable: true
                                     type: boolean
                                   mode:
-                                    description: Indicates whether connections to
-                                      this port should be secured using TLS.
+                                    description: |-
+                                      Indicates whether connections to this port should be secured using TLS.
+
+                                      Valid Options: DISABLE, SIMPLE, MUTUAL, ISTIO_MUTUAL
                                     enum:
                                     - DISABLE
                                     - SIMPLE
@@ -718,7 +731,10 @@ spec:
                           description: The upstream PROXY protocol settings.
                           properties:
                             version:
-                              description: The PROXY protocol version to use.
+                              description: |-
+                                The PROXY protocol version to use.
+
+                                Valid Options: V1, V2
                               enum:
                               - V1
                               - V2
@@ -753,8 +769,10 @@ spec:
                               nullable: true
                               type: boolean
                             mode:
-                              description: Indicates whether connections to this port
-                                should be secured using TLS.
+                              description: |-
+                                Indicates whether connections to this port should be secured using TLS.
+
+                                Valid Options: DISABLE, SIMPLE, MUTUAL, ISTIO_MUTUAL
                               enum:
                               - DISABLE
                               - SIMPLE
@@ -810,8 +828,10 @@ spec:
                         description: HTTP connection pool settings.
                         properties:
                           h2UpgradePolicy:
-                            description: Specify if http1.1 connection should be upgraded
-                              to http2 for the associated destination.
+                            description: |-
+                              Specify if http1.1 connection should be upgraded to http2 for the associated destination.
+
+                              Valid Options: DEFAULT, DO_NOT_UPGRADE, UPGRADE
                             enum:
                             - DEFAULT
                             - DO_NOT_UPGRADE
@@ -1028,6 +1048,10 @@ spec:
                             type: array
                         type: object
                       simple:
+                        description: |2-
+
+
+                          Valid Options: LEAST_CONN, RANDOM, PASSTHROUGH, ROUND_ROBIN, LEAST_REQUEST
                         enum:
                         - UNSPECIFIED
                         - LEAST_CONN
@@ -1092,8 +1116,10 @@ spec:
                               description: HTTP connection pool settings.
                               properties:
                                 h2UpgradePolicy:
-                                  description: Specify if http1.1 connection should
-                                    be upgraded to http2 for the associated destination.
+                                  description: |-
+                                    Specify if http1.1 connection should be upgraded to http2 for the associated destination.
+
+                                    Valid Options: DEFAULT, DO_NOT_UPGRADE, UPGRADE
                                   enum:
                                   - DEFAULT
                                   - DO_NOT_UPGRADE
@@ -1316,6 +1342,10 @@ spec:
                                   type: array
                               type: object
                             simple:
+                              description: |2-
+
+
+                                Valid Options: LEAST_CONN, RANDOM, PASSTHROUGH, ROUND_ROBIN, LEAST_REQUEST
                               enum:
                               - UNSPECIFIED
                               - LEAST_CONN
@@ -1406,8 +1436,10 @@ spec:
                               nullable: true
                               type: boolean
                             mode:
-                              description: Indicates whether connections to this port
-                                should be secured using TLS.
+                              description: |-
+                                Indicates whether connections to this port should be secured using TLS.
+
+                                Valid Options: DISABLE, SIMPLE, MUTUAL, ISTIO_MUTUAL
                               enum:
                               - DISABLE
                               - SIMPLE
@@ -1434,7 +1466,10 @@ spec:
                     description: The upstream PROXY protocol settings.
                     properties:
                       version:
-                        description: The PROXY protocol version to use.
+                        description: |-
+                          The PROXY protocol version to use.
+
+                          Valid Options: V1, V2
                         enum:
                         - V1
                         - V2
@@ -1468,8 +1503,10 @@ spec:
                         nullable: true
                         type: boolean
                       mode:
-                        description: Indicates whether connections to this port should
-                          be secured using TLS.
+                        description: |-
+                          Indicates whether connections to this port should be secured using TLS.
+
+                          Valid Options: DISABLE, SIMPLE, MUTUAL, ISTIO_MUTUAL
                         enum:
                         - DISABLE
                         - SIMPLE
@@ -1586,8 +1623,10 @@ spec:
                               description: HTTP connection pool settings.
                               properties:
                                 h2UpgradePolicy:
-                                  description: Specify if http1.1 connection should
-                                    be upgraded to http2 for the associated destination.
+                                  description: |-
+                                    Specify if http1.1 connection should be upgraded to http2 for the associated destination.
+
+                                    Valid Options: DEFAULT, DO_NOT_UPGRADE, UPGRADE
                                   enum:
                                   - DEFAULT
                                   - DO_NOT_UPGRADE
@@ -1810,6 +1849,10 @@ spec:
                                   type: array
                               type: object
                             simple:
+                              description: |2-
+
+
+                                Valid Options: LEAST_CONN, RANDOM, PASSTHROUGH, ROUND_ROBIN, LEAST_REQUEST
                               enum:
                               - UNSPECIFIED
                               - LEAST_CONN
@@ -1874,9 +1917,10 @@ spec:
                                     description: HTTP connection pool settings.
                                     properties:
                                       h2UpgradePolicy:
-                                        description: Specify if http1.1 connection
-                                          should be upgraded to http2 for the associated
-                                          destination.
+                                        description: |-
+                                          Specify if http1.1 connection should be upgraded to http2 for the associated destination.
+
+                                          Valid Options: DEFAULT, DO_NOT_UPGRADE, UPGRADE
                                         enum:
                                         - DEFAULT
                                         - DO_NOT_UPGRADE
@@ -2105,6 +2149,10 @@ spec:
                                         type: array
                                     type: object
                                   simple:
+                                    description: |2-
+
+
+                                      Valid Options: LEAST_CONN, RANDOM, PASSTHROUGH, ROUND_ROBIN, LEAST_REQUEST
                                     enum:
                                     - UNSPECIFIED
                                     - LEAST_CONN
@@ -2200,8 +2248,10 @@ spec:
                                     nullable: true
                                     type: boolean
                                   mode:
-                                    description: Indicates whether connections to
-                                      this port should be secured using TLS.
+                                    description: |-
+                                      Indicates whether connections to this port should be secured using TLS.
+
+                                      Valid Options: DISABLE, SIMPLE, MUTUAL, ISTIO_MUTUAL
                                     enum:
                                     - DISABLE
                                     - SIMPLE
@@ -2228,7 +2278,10 @@ spec:
                           description: The upstream PROXY protocol settings.
                           properties:
                             version:
-                              description: The PROXY protocol version to use.
+                              description: |-
+                                The PROXY protocol version to use.
+
+                                Valid Options: V1, V2
                               enum:
                               - V1
                               - V2
@@ -2263,8 +2316,10 @@ spec:
                               nullable: true
                               type: boolean
                             mode:
-                              description: Indicates whether connections to this port
-                                should be secured using TLS.
+                              description: |-
+                                Indicates whether connections to this port should be secured using TLS.
+
+                                Valid Options: DISABLE, SIMPLE, MUTUAL, ISTIO_MUTUAL
                               enum:
                               - DISABLE
                               - SIMPLE
@@ -2320,8 +2375,10 @@ spec:
                         description: HTTP connection pool settings.
                         properties:
                           h2UpgradePolicy:
-                            description: Specify if http1.1 connection should be upgraded
-                              to http2 for the associated destination.
+                            description: |-
+                              Specify if http1.1 connection should be upgraded to http2 for the associated destination.
+
+                              Valid Options: DEFAULT, DO_NOT_UPGRADE, UPGRADE
                             enum:
                             - DEFAULT
                             - DO_NOT_UPGRADE
@@ -2538,6 +2595,10 @@ spec:
                             type: array
                         type: object
                       simple:
+                        description: |2-
+
+
+                          Valid Options: LEAST_CONN, RANDOM, PASSTHROUGH, ROUND_ROBIN, LEAST_REQUEST
                         enum:
                         - UNSPECIFIED
                         - LEAST_CONN
@@ -2602,8 +2663,10 @@ spec:
                               description: HTTP connection pool settings.
                               properties:
                                 h2UpgradePolicy:
-                                  description: Specify if http1.1 connection should
-                                    be upgraded to http2 for the associated destination.
+                                  description: |-
+                                    Specify if http1.1 connection should be upgraded to http2 for the associated destination.
+
+                                    Valid Options: DEFAULT, DO_NOT_UPGRADE, UPGRADE
                                   enum:
                                   - DEFAULT
                                   - DO_NOT_UPGRADE
@@ -2826,6 +2889,10 @@ spec:
                                   type: array
                               type: object
                             simple:
+                              description: |2-
+
+
+                                Valid Options: LEAST_CONN, RANDOM, PASSTHROUGH, ROUND_ROBIN, LEAST_REQUEST
                               enum:
                               - UNSPECIFIED
                               - LEAST_CONN
@@ -2916,8 +2983,10 @@ spec:
                               nullable: true
                               type: boolean
                             mode:
-                              description: Indicates whether connections to this port
-                                should be secured using TLS.
+                              description: |-
+                                Indicates whether connections to this port should be secured using TLS.
+
+                                Valid Options: DISABLE, SIMPLE, MUTUAL, ISTIO_MUTUAL
                               enum:
                               - DISABLE
                               - SIMPLE
@@ -2944,7 +3013,10 @@ spec:
                     description: The upstream PROXY protocol settings.
                     properties:
                       version:
-                        description: The PROXY protocol version to use.
+                        description: |-
+                          The PROXY protocol version to use.
+
+                          Valid Options: V1, V2
                         enum:
                         - V1
                         - V2
@@ -2978,8 +3050,10 @@ spec:
                         nullable: true
                         type: boolean
                       mode:
-                        description: Indicates whether connections to this port should
-                          be secured using TLS.
+                        description: |-
+                          Indicates whether connections to this port should be secured using TLS.
+
+                          Valid Options: DISABLE, SIMPLE, MUTUAL, ISTIO_MUTUAL
                         enum:
                         - DISABLE
                         - SIMPLE

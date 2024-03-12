@@ -103,8 +103,10 @@ spec:
                   type: string
                 type: array
               location:
-                description: Specify whether the service should be considered external
-                  to the mesh or part of the mesh.
+                description: |-
+                  Specify whether the service should be considered external to the mesh or part of the mesh.
+
+                  Valid Options: MESH_EXTERNAL, MESH_INTERNAL
                 enum:
                 - MESH_EXTERNAL
                 - MESH_INTERNAL
@@ -132,7 +134,10 @@ spec:
                   type: object
                 type: array
               resolution:
-                description: Service resolution mode for the hosts.
+                description: |-
+                  Service resolution mode for the hosts.
+
+                  Valid Options: NONE, STATIC, DNS, DNS_ROUND_ROBIN
                 enum:
                 - NONE
                 - STATIC
@@ -246,8 +251,10 @@ spec:
                   type: string
                 type: array
               location:
-                description: Specify whether the service should be considered external
-                  to the mesh or part of the mesh.
+                description: |-
+                  Specify whether the service should be considered external to the mesh or part of the mesh.
+
+                  Valid Options: MESH_EXTERNAL, MESH_INTERNAL
                 enum:
                 - MESH_EXTERNAL
                 - MESH_INTERNAL
@@ -275,7 +282,10 @@ spec:
                   type: object
                 type: array
               resolution:
-                description: Service resolution mode for the hosts.
+                description: |-
+                  Service resolution mode for the hosts.
+
+                  Valid Options: NONE, STATIC, DNS, DNS_ROUND_ROBIN
                 enum:
                 - NONE
                 - STATIC

@@ -105,7 +105,10 @@ spec:
                             to use HTTPS.
                           type: boolean
                         maxProtocolVersion:
-                          description: 'Optional: Maximum TLS protocol version.'
+                          description: |-
+                            Optional: Maximum TLS protocol version.
+
+                            Valid Options: TLS_AUTO, TLSV1_0, TLSV1_1, TLSV1_2, TLSV1_3
                           enum:
                           - TLS_AUTO
                           - TLSV1_0
@@ -114,7 +117,10 @@ spec:
                           - TLSV1_3
                           type: string
                         minProtocolVersion:
-                          description: 'Optional: Minimum TLS protocol version.'
+                          description: |-
+                            Optional: Minimum TLS protocol version.
+
+                            Valid Options: TLS_AUTO, TLSV1_0, TLSV1_1, TLSV1_2, TLSV1_3
                           enum:
                           - TLS_AUTO
                           - TLSV1_0
@@ -123,8 +129,10 @@ spec:
                           - TLSV1_3
                           type: string
                         mode:
-                          description: 'Optional: Indicates whether connections to
-                            this port should be secured using TLS.'
+                          description: |-
+                            Optional: Indicates whether connections to this port should be secured using TLS.
+
+                            Valid Options: PASSTHROUGH, SIMPLE, MUTUAL, AUTO_PASSTHROUGH, ISTIO_MUTUAL, OPTIONAL_MUTUAL
                           enum:
                           - PASSTHROUGH
                           - SIMPLE
@@ -254,7 +262,10 @@ spec:
                             to use HTTPS.
                           type: boolean
                         maxProtocolVersion:
-                          description: 'Optional: Maximum TLS protocol version.'
+                          description: |-
+                            Optional: Maximum TLS protocol version.
+
+                            Valid Options: TLS_AUTO, TLSV1_0, TLSV1_1, TLSV1_2, TLSV1_3
                           enum:
                           - TLS_AUTO
                           - TLSV1_0
@@ -263,7 +274,10 @@ spec:
                           - TLSV1_3
                           type: string
                         minProtocolVersion:
-                          description: 'Optional: Minimum TLS protocol version.'
+                          description: |-
+                            Optional: Minimum TLS protocol version.
+
+                            Valid Options: TLS_AUTO, TLSV1_0, TLSV1_1, TLSV1_2, TLSV1_3
                           enum:
                           - TLS_AUTO
                           - TLSV1_0
@@ -272,8 +286,10 @@ spec:
                           - TLSV1_3
                           type: string
                         mode:
-                          description: 'Optional: Indicates whether connections to
-                            this port should be secured using TLS.'
+                          description: |-
+                            Optional: Indicates whether connections to this port should be secured using TLS.
+
+                            Valid Options: PASSTHROUGH, SIMPLE, MUTUAL, AUTO_PASSTHROUGH, ISTIO_MUTUAL, OPTIONAL_MUTUAL
                           enum:
                           - PASSTHROUGH
                           - SIMPLE
