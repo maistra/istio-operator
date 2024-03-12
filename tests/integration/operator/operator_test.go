@@ -198,7 +198,7 @@ spec:
 
 					It("doesn't continuously reconcile the Istio CR", func() {
 						Eventually(kubectl.Logs).
-							WithArguments(controlPlaneNamespace, "app=istiod", 30*time.Second).
+							WithArguments(namespace, "control-plane=sail-operator", 30*time.Second).
 							ShouldNot(ContainSubstring("Reconciliation done"), "Istio Operator is continuously reconciling")
 						Success("Istio Operator stopped reconciling")
 					})
