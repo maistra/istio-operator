@@ -76,7 +76,8 @@ func main() {
 	pflag.BoolVar(&logAPIRequests, "logAPIRequests", false, "Log API requests performed by the operator.")
 
 	var leaderElect bool
-	pflag.BoolVar(&leaderElect, "leader-elect", true, "Enable leader election for this operator. Enabling this will ensure there is only one active controller manager.")
+	pflag.BoolVar(&leaderElect, "leader-elect", true, "Enable leader election for this operator. "+
+		"Enabling this will ensure there is only one active controller manager.")
 
 	// config file
 	configFile := ""
