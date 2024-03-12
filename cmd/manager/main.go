@@ -76,7 +76,7 @@ func main() {
 	pflag.BoolVar(&logAPIRequests, "logAPIRequests", false, "Log API requests performed by the operator.")
 
 	var leaderElect bool
-	pflag.BoolVar(&leaderElect, "leader-elect", true, "Enable a leader election option in the operator manager.")
+	pflag.BoolVar(&leaderElect, "leader-elect", true, "Enable leader election for this operator. Enabling this will ensure there is only one active controller manager.")
 
 	// config file
 	configFile := ""
@@ -137,7 +137,7 @@ func main() {
 		Port:                   admissionControllerPort,
 		MetricsBindAddress:     net.JoinHostPort(metricsHost, fmt.Sprint(metricsPort)),
 		HealthProbeBindAddress: healthProbeBindAddress,
-		LeaderElection:         true,
+		LeaderElection:         leaderElect,
 		LeaderElectionID:       "istio-operator-lock",
 	}
 
@@ -148,11 +148,6 @@ func main() {
 	if strings.Contains(namespace, ",") {
 		options.Namespace = ""
 		options.NewCache = cache.MultiNamespacedCacheBuilder(strings.Split(namespace, ","))
-	}
-
-	// When you run the operator locally in debug mode, turn off the leader election.
-	if !leaderElect {
-		options.LeaderElection = false
 	}
 
 	// Create a new Cmd to provide shared dependencies and start components
