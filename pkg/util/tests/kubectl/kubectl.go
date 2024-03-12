@@ -155,11 +155,7 @@ func GetResourceList(ns, kind string) (r.ResourceList, error) {
 // - kind: type of the resource
 // - name: name of the resource
 func GetJSON(ns, kind, name string) (string, error) {
-	nsflag := "-n"
-	if ns == "" {
-		nsflag = "--all-namespaces"
-	}
-	cmd := kubectl("get %s %s %s %s -o json", kind, name, nsflag, ns)
+	cmd := kubectl("get %s %s %s -o json", kind, name, nsflag(ns))
 	json, err := shell.ExecuteCommand(cmd)
 	if err != nil {
 		return "", err
@@ -210,7 +206,7 @@ func GetPodsNames(ns, selector string) ([]string, error) {
 
 // GetPods returns the pods of a namespace
 func GetPods(ns string, args ...string) (string, error) {
-	cmd := kubectl("get pods -n %s %s", ns, strings.Join(args, " "))
+	cmd := kubectl("get pods %s %s", nsflag(ns), strings.Join(args, " "))
 	output, err := shell.ExecuteCommand(cmd)
 	if err != nil {
 		return "", fmt.Errorf("error getting pods: %v, output: %s", err, output)
@@ -265,7 +261,7 @@ func CheckNamespaceExist(ns string) error {
 
 // GetDeployments returns the deployments of a namespace
 func GetDeployments(ns string) ([]string, error) {
-	cmd := kubectl("get deployments -n %s -o name", ns)
+	cmd := kubectl("get deployments %s -o name", nsflag(ns))
 	output, err := shell.ExecuteCommand(cmd)
 	if err != nil {
 		return nil, fmt.Errorf("error getting deployments names: %v, output: %s", err, output)
@@ -301,7 +297,7 @@ func Logs(ns, selector string, since time.Duration) (string, error) {
 // GetDaemonSets returns the daemonsets of a namespace
 // Return a list of daemonsets
 func GetDaemonSets(ns string) ([]string, error) {
-	cmd := kubectl("get daemonsets -n %s -o name", ns)
+	cmd := kubectl("get daemonsets %s -o name", nsflag(ns))
 	output, err := shell.ExecuteCommand(cmd)
 	if err != nil {
 		return nil, fmt.Errorf("error getting daemonsets names: %v, output: %s", err, output)
@@ -319,6 +315,17 @@ func extractNames(str string) []string {
 	}
 
 	return names
+}
+
+func nsflag(ns string) string {
+	nsflag := "-n"
+	if ns == "" {
+		nsflag = "--all-namespaces"
+
+		return nsflag
+	}
+
+	return nsflag + " " + ns
 }
 
 // DeleteCRDs deletes the CRDs by given list of crds names

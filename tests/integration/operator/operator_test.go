@@ -103,10 +103,11 @@ var _ = Describe("Operator", Ordered, func() {
 			Success("CRDs are Established")
 		})
 
-		It("istio crd is present", func() {
+		Specify("istio crd is present", func() {
+			// When the operator runs in OCP cluster, the CRD is created but not available at the moment
 			Eventually(kubectl.GetResourceList).
 				WithArguments("", "istio").
-				Should(Equal(kubectl.EmptyResourceList), "Istio CRD is not present; expected to not fail and return empty list of Istio CR")
+				Should(Equal(kubectl.EmptyResourceList), "Istio CRD is not present; expected to not fail and return an empty list of Istio CR")
 			Success("Istio CRD is present")
 		})
 
@@ -137,7 +138,7 @@ var _ = Describe("Operator", Ordered, func() {
 					Expect(kubectl.CreateNamespace(controlPlaneNamespace)).To(Succeed(), "Namespace failed to be created")
 				})
 
-				When("the resource is created", func() {
+				When("the Istio CR is created", func() {
 					BeforeAll(func() {
 						istioYAML := `
 apiVersion: operator.istio.io/v1alpha1
