@@ -74,6 +74,7 @@ initialize_variables() {
   WD=$(dirname "$0")
   WD=$(cd "${WD}" || exit; pwd)
 
+  VERSIONS_YAML_FILE=${VERSIONS_YAML_FILE:-"versions.yaml"}
   NAMESPACE="${NAMESPACE:-sail-operator}"
   DEPLOYMENT_NAME="${DEPLOYMENT_NAME:-sail-operator}"
   CONTROL_PLANE_NS="${CONTROL_PLANE_NS:-istio-system}"
@@ -193,4 +194,4 @@ if [ "${OCP}" == "true" ]; then
 fi
 
 # Run the go test passing the env variables defined that are going to be used in the operator tests
-IMAGE="${HUB}/${IMAGE_BASE}:${TAG}" SKIP_DEPLOY="${SKIP_DEPLOY}" OCP="${OCP}" ISTIO_MANIFEST="${ISTIO_MANIFEST}" NAMESPACE="${NAMESPACE}" CONTROL_PLANE_NS="${CONTROL_PLANE_NS}" DEPLOYMENT_NAME="${DEPLOYMENT_NAME}" ISTIO_NAME="${ISTIO_NAME}" COMMAND="${COMMAND}" go run github.com/onsi/ginkgo/v2/ginkgo -v --timeout 30m --junit-report=report.xml "${WD}"/operator/...
+IMAGE="${HUB}/${IMAGE_BASE}:${TAG}" SKIP_DEPLOY="${SKIP_DEPLOY}" OCP="${OCP}" ISTIO_MANIFEST="${ISTIO_MANIFEST}" NAMESPACE="${NAMESPACE}" CONTROL_PLANE_NS="${CONTROL_PLANE_NS}" DEPLOYMENT_NAME="${DEPLOYMENT_NAME}" ISTIO_NAME="${ISTIO_NAME}" COMMAND="${COMMAND}" VERSIONS_YAML_FILE="${VERSIONS_YAML_FILE}" go run github.com/onsi/ginkgo/v2/ginkgo -v --timeout 30m --junit-report=report.xml "${WD}"/operator/...

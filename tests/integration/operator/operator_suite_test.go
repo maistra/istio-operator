@@ -55,7 +55,7 @@ func fillIstioVersions() {
 		Versions []Version `yaml:"versions"`
 	}
 
-	yamlFile, err := os.ReadFile(filepath.Join(baseDir, "versions.yaml"))
+	yamlFile, err := os.ReadFile(filepath.Join(baseDir, istioVersionsFile))
 	if err != nil {
 		Fail("Error reading the versions.yaml file")
 	}
