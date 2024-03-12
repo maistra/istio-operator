@@ -317,6 +317,7 @@ func nsflag(ns string) string {
 // DeleteCRDs deletes the CRDs by given list of crds names
 func DeleteCRDs(crds []string) error {
 	for _, crd := range crds {
+		fmt.Printf("Deleting CRD: %s\n", crd)
 		cmd := kubectl("delete crd %s", crd)
 		_, err := shell.ExecuteCommand(cmd)
 		if err != nil {

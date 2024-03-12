@@ -17,6 +17,7 @@ package integrationoperator
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
 	. "github.com/istio-ecosystem/sail-operator/pkg/util/tests/ginkgo"
@@ -236,6 +237,7 @@ spec:
 	})
 
 	AfterAll(func() {
+		Expect(ensureIstioCRsDeleted()).To(Succeed(), "Istio CRs are present; expected to not fail")
 		By("Cleaning up the operator")
 		Expect(helm.Uninstall("sail-operator", "--namespace "+namespace)).
 			To(Succeed(), "Operator failed to be deleted")
@@ -243,6 +245,20 @@ spec:
 		Success("Operator is deleted")
 	})
 })
+
+func ensureIstioCRsDeleted() error {
+	// This is a workaround to delete the Istio CRs that are left in the cluster
+	// This will be improved by splitting the tests into different Nodes with their independent setups and cleanups
+	crsToDelete := []string{"istio", "istiorevision"}
+	for _, cr := range crsToDelete {
+		err := kubectl.Delete(controlPlaneNamespace, cr, istioName)
+		if err != nil && !strings.Contains(err.Error(), "not found") {
+			return fmt.Errorf("failed to delete %s CR: %v", cr, err)
+		}
+	}
+
+	return nil
+}
 
 func LogDebugInfo() {
 	// General debugging information to help diagnose the failure
