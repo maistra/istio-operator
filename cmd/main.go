@@ -63,6 +63,7 @@ func main() {
 	var defaultProfiles string
 	var logAPIRequests bool
 	var printVersion bool
+	var leaderElectionEnabled bool
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.StringVar(&configFile, "config-file", "/etc/sail-operator/config.properties", "Location of the config file, propagated by k8s downward APIs")
@@ -70,6 +71,8 @@ func main() {
 	flag.StringVar(&defaultProfiles, "default-profiles", "default", "One or more comma-separated profile names that are always applied to each Istio resource")
 	flag.BoolVar(&logAPIRequests, "log-api-requests", false, "Whether to log each request sent to the Kubernetes API server")
 	flag.BoolVar(&printVersion, "version", printVersion, "Prints version information and exits")
+	flag.BoolVar(&leaderElectionEnabled, "leader-elect", true,
+		"Enable leader election for this operator. Enabling this will ensure there is only one active controller manager.")
 
 	opts := zap.Options{
 		Development: true,
@@ -119,8 +122,8 @@ func main() {
 		Scheme:                  scheme,
 		Metrics:                 metricsserver.Options{BindAddress: metricsAddr},
 		HealthProbeBindAddress:  probeAddr,
-		LeaderElection:          true,
-		LeaderElectionID:        "8d20bb54.istio.io",
+		LeaderElection:          leaderElectionEnabled,
+		LeaderElectionID:        "sail-operator-lock",
 		LeaderElectionNamespace: operatorNamespace,
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
