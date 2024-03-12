@@ -187,7 +187,9 @@ spec:
 								WithArguments(namespace).
 								Should(ContainElement("istio-cni-node"), "CNI DaemonSet is not deployed; expected list to contain element")
 
-							Expect(kubectl.GetPodPhase(namespace, "k8s-app=istio-cni-node")).To(Equal("Running"), "CNI Daemon is not running; unexpected Phase")
+							Eventually(kubectl.DaemonSetPodsAllAvailable).
+								WithArguments(namespace, "istio-cni-node").
+								Should(Succeed(), "CNI Daemon Pods are not Available; expected currentNumberScheduled to be equal to numberAvailable")
 							Success("CNI DaemonSet is deployed in the namespace and Running")
 						} else {
 							Consistently(kubectl.GetDaemonSets).

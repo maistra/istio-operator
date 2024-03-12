@@ -295,6 +295,21 @@ func GetDaemonSets(ns string) ([]string, error) {
 	return extractNames(output), nil
 }
 
+// DaemonSetPodsAllAvailable returns true if all the pods of the daemonset are available
+func DaemonSetPodsAllAvailable(ns string, daemonsetName string) error {
+	cmd := kubectl("get daemonset %s %s -o jsonpath='{.status.numberAvailable} {.status.currentNumberScheduled}'", daemonsetName, nsflag(ns))
+	output, err := shell.ExecuteCommand(cmd)
+	if err != nil {
+		return fmt.Errorf("error getting daemonset %s: %v", daemonsetName, err)
+	}
+
+	if strings.Split(output, " ")[0] == strings.Split(output, " ")[1] {
+		return nil
+	}
+
+	return fmt.Errorf("not all pods of daemonset %s are available", daemonsetName)
+}
+
 func extractNames(str string) []string {
 	var names []string
 	for _, name := range strings.Split(str, "\n") {
@@ -317,7 +332,6 @@ func nsflag(ns string) string {
 // DeleteCRDs deletes the CRDs by given list of crds names
 func DeleteCRDs(crds []string) error {
 	for _, crd := range crds {
-		fmt.Printf("Deleting CRD: %s\n", crd)
 		cmd := kubectl("delete crd %s", crd)
 		_, err := shell.ExecuteCommand(cmd)
 		if err != nil {
