@@ -318,14 +318,10 @@ func extractNames(str string) []string {
 }
 
 func nsflag(ns string) string {
-	nsflag := "-n"
 	if ns == "" {
-		nsflag = "--all-namespaces"
-
-		return nsflag
+		return "--all-namespaces"
 	}
-
-	return nsflag + " " + ns
+	return "-n " + ns
 }
 
 // DeleteCRDs deletes the CRDs by given list of crds names
