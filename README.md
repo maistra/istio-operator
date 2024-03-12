@@ -12,7 +12,6 @@ You’ll need a Kubernetes cluster to run against. You can use [KIND](https://si
 
 ### Running on the cluster
 1. Deploy the operator to the cluster:
-**Note:** You will need to have the namespace `sail-operator` created in the cluster before deploying the operator via the following command.
 ```sh
 make deploy
 ```
