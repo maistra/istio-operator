@@ -75,8 +75,8 @@ func main() {
 	var logAPIRequests bool
 	pflag.BoolVar(&logAPIRequests, "logAPIRequests", false, "Log API requests performed by the operator.")
 
-	var runLocalBuild bool
-	pflag.BoolVar(&runLocalBuild, "runLocalBuild", false, "Run the operator locally.")
+	var leaderElect bool
+	pflag.BoolVar(&leaderElect, "leader-elect", true, "Enable a leader election option in the operator manager.")
 
 	// config file
 	configFile := ""
@@ -151,7 +151,7 @@ func main() {
 	}
 
 	// When you run the operator locally in debug mode, turn off the leader election.
-	if runLocalBuild {
+	if !leaderElect {
 		options.LeaderElection = false
 	}
 
