@@ -156,12 +156,7 @@ func GetResourceList(ns, kind string) (r.ResourceList, error) {
 // - name: name of the resource
 func GetJSON(ns, kind, name string) (string, error) {
 	cmd := kubectl("get %s %s %s -o json", kind, name, nsflag(ns))
-	json, err := shell.ExecuteCommand(cmd)
-	if err != nil {
-		return "", err
-	}
-
-	return json, nil
+	return shell.ExecuteCommand(cmd)
 }
 
 // GetYAML returns the yaml of a resource
@@ -171,12 +166,7 @@ func GetJSON(ns, kind, name string) (string, error) {
 // - name: name of the resource
 func GetYAML(ns, kind, name string) (string, error) {
 	cmd := kubectl("get %s %s %s -o yaml", kind, name, nsflag(ns))
-	json, err := shell.ExecuteCommand(cmd)
-	if err != nil {
-		return "", err
-	}
-
-	return json, nil
+	return shell.ExecuteCommand(cmd)
 }
 
 // GetPodName returns the pod name from a selector, if there is more than one pod, it will return an error
