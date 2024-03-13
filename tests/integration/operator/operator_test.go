@@ -192,7 +192,8 @@ spec:
 								g.Expect(err).ToNot(HaveOccurred(), "Error getting numberAvailable field from istio-cni-node DaemonSet")
 								currentNumberScheduled, err := kubectl.GetDaemonSetStatusField(namespace, "istio-cni-node", "currentNumberScheduled")
 								g.Expect(err).ToNot(HaveOccurred(), "Error getting currentNumberScheduled field from istio-cni-node DaemonSet")
-								g.Expect(numberAvailable).To(Equal(currentNumberScheduled), "CNI DaemonSet Pods are not Available; expected numberAvailable to be equal to currentNumberScheduled")
+								g.Expect(numberAvailable).
+									To(Equal(currentNumberScheduled), "CNI DaemonSet Pods not Available; expected numberAvailable to be equal to currentNumberScheduled")
 							}).Should(Succeed(), "CNI DaemonSet Pods are not Available")
 							Success("CNI DaemonSet is deployed in the namespace and Running")
 						} else {
