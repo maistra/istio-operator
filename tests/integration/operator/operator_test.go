@@ -187,9 +187,13 @@ spec:
 								WithArguments(namespace).
 								Should(ContainElement("istio-cni-node"), "CNI DaemonSet is not deployed; expected list to contain element")
 
-							Eventually(kubectl.DaemonSetPodsAllAvailable).
-								WithArguments(namespace, "istio-cni-node").
-								Should(Succeed(), "CNI Daemon Pods are not Available; expected currentNumberScheduled to be equal to numberAvailable")
+							Eventually(func() {
+								numberAvailable, err := kubectl.GetDaemonSetStatusField(controlPlaneNamespace, "istio-cni-node", "numberAvailable")
+								Expect(err).ToNot(HaveOccurred(), "Error getting numberAvailable field from istio-cni-node DaemonSet")
+								currentNumberScheduled, err := kubectl.GetDaemonSetStatusField(controlPlaneNamespace, "istio-cni-node", "currentNumberScheduled")
+								Expect(err).ToNot(HaveOccurred(), "Error getting currentNumberScheduled field from istio-cni-node DaemonSet")
+								Expect(numberAvailable).To(Equal(currentNumberScheduled), "CNI DaemonSet Pods are not Available; expected numberAvailable to be equal to currentNumberScheduled")
+							}).Should(Succeed(), "CNI DaemonSet Pods are not Available")
 							Success("CNI DaemonSet is deployed in the namespace and Running")
 						} else {
 							Consistently(kubectl.GetDaemonSets).
@@ -239,7 +243,7 @@ spec:
 	})
 
 	AfterAll(func() {
-		Expect(ensureIstioCRsDeleted()).To(Succeed(), "Istio CRs are present; expected to not fail")
+		Expect(deleteIstioResources()).To(Succeed(), "Istio CRs are present; expected to not fail")
 		By("Cleaning up the operator")
 		Expect(helm.Uninstall("sail-operator", "--namespace "+namespace)).
 			To(Succeed(), "Operator failed to be deleted")
@@ -248,15 +252,17 @@ spec:
 	})
 })
 
-func ensureIstioCRsDeleted() error {
+func deleteIstioResources() error {
 	// This is a workaround to delete the Istio CRs that are left in the cluster
 	// This will be improved by splitting the tests into different Nodes with their independent setups and cleanups
-	crsToDelete := []string{"istio", "istiorevision"}
-	for _, cr := range crsToDelete {
-		err := kubectl.Delete(controlPlaneNamespace, cr, istioName)
-		if err != nil && !strings.Contains(err.Error(), "not found") {
-			return fmt.Errorf("failed to delete %s CR: %v", cr, err)
-		}
+	err := kubectl.Delete("", "istio", istioName)
+	if err != nil && !strings.Contains(err.Error(), "not found") {
+		return fmt.Errorf("failed to delete %s CR: %v", "istio", err)
+	}
+
+	err = kubectl.Delete("", "istiorevision", "default")
+	if err != nil && !strings.Contains(err.Error(), "not found") {
+		return fmt.Errorf("failed to delete %s CR: %v", "istiorevision", err)
 	}
 
 	return nil

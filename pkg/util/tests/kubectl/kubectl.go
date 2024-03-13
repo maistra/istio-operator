@@ -295,19 +295,19 @@ func GetDaemonSets(ns string) ([]string, error) {
 	return extractNames(output), nil
 }
 
-// DaemonSetPodsAllAvailable returns true if all the pods of the daemonset are available
-func DaemonSetPodsAllAvailable(ns string, daemonsetName string) error {
-	cmd := kubectl("get daemonset %s %s -o jsonpath='{.status.numberAvailable} {.status.currentNumberScheduled}'", daemonsetName, nsflag(ns))
+// GetDaemonSetStatusField returns the status field requested of a daemonset
+// Parameters examples:
+// - numberAvailable
+// - currentNumberScheduled
+// - desiredNumberScheduled
+func GetDaemonSetStatusField(ns, daemonsetName, field string) (string, error) {
+	cmd := kubectl("get daemonset %s %s -o jsonpath='{.status.%s}'", daemonsetName, nsflag(ns), field)
 	output, err := shell.ExecuteCommand(cmd)
 	if err != nil {
-		return fmt.Errorf("error getting daemonset %s: %v", daemonsetName, err)
+		return "", fmt.Errorf("error getting daemonset %s: %v", daemonsetName, err)
 	}
 
-	if strings.Split(output, " ")[0] == strings.Split(output, " ")[1] {
-		return nil
-	}
-
-	return fmt.Errorf("not all pods of daemonset %s are available", daemonsetName)
+	return output, nil
 }
 
 func extractNames(str string) []string {
