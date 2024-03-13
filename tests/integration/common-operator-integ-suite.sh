@@ -15,7 +15,7 @@
 # limitations under the License.
 
 # To be able to run this script, it's needed to pass the flag --ocp or --kind
-set -euo pipefail
+set -eu -o pipefail
 
 check_arguments() {
   if [ $# -eq 0 ]; then
@@ -26,6 +26,8 @@ check_arguments() {
 
 parse_flags() {
   SKIP_BUILD=false
+  SKIP_DEPLOY=false
+  DESCRIBE=false
   while [ $# -gt 0 ]; do
     case "$1" in
       --ocp)
@@ -40,12 +42,26 @@ parse_flags() {
         shift
         SKIP_BUILD=true
         ;;
+      --skip-deploy)
+        shift
+        SKIP_DEPLOY=true
+        ;;
+      --describe)
+        shift
+        DESCRIBE=true
+        ;;
       *)
         echo "Invalid flag: $1"
         exit 1
         ;;
     esac
   done
+
+  if [ "${DESCRIBE}" == "true" ]; then
+    WD=$(dirname "$0")
+    go run github.com/onsi/ginkgo/v2/ginkgo outline -format indent "${WD}"/operator/operator_test.go 
+    exit 0
+  fi
 
   if [ "${OCP}" == "true" ]; then
     echo "Running on OCP"
@@ -71,18 +87,19 @@ initialize_variables() {
   echo "Using command: ${COMMAND}"
 
   if [ "${OCP}" == "true" ]; then
-    ISTIO_MANIFEST="${WD}/../../chart/samples/istio-sample-openshift.yaml"
+    ISTIO_MANIFEST="chart/samples/istio-sample-openshift.yaml"
   else
-    ISTIO_MANIFEST="${WD}/../../chart/samples/istio-sample-kubernetes.yaml"
+    ISTIO_MANIFEST="chart/samples/istio-sample-kubernetes.yaml"
   fi
 
-  ISTIO_NAME=$(yq eval '.metadata.name' "$ISTIO_MANIFEST")
+  echo "Setting Istio manifest file: ${ISTIO_MANIFEST}"
+  ISTIO_NAME=$(yq eval '.metadata.name' "${WD}/../../$ISTIO_MANIFEST")
 
   TIMEOUT="3m"
 }
 
 get_internal_registry() {
-  # Validate that the internal registry is running, configure the variable to be used in the Makefile. 
+  # Validate that the internal registry is running in the OCP Cluster, configure the variable to be used in the make target. 
   # If there is no internal registry, the test can't be executed targeting to the internal registry
 
   # Check if the registry pods are running
@@ -152,134 +169,6 @@ build_and_push_image() {
   BUILD_WITH_CONTAINER=0 DOCKER_BUILD_FLAGS=${DOCKER_BUILD_FLAGS} IMAGE=${HUB}/${IMAGE_BASE}:${TAG} TARGET_ARCH=${TARGET_ARCH} make docker-build docker-push
 }
 
-deploy_operator() {
-  echo "Deploying Operator"
-  local TARGET="deploy"
-  if [ "${OCP}" == "true" ]; then
-    # This is a workaround
-    # To avoid errors of certificates meanwhile we are pulling the operator image from the internal registry
-    # We need to set image $HUB to a fixed known value
-    # This value always will be equal to the svc url of the internal registry
-    HUB="image-registry.openshift-image-registry.svc:5000/sail-operator"
-
-    TARGET="deploy-openshift"
-  fi
-  # running docker build inside another container layer causes issues with bind mounts
-  BUILD_WITH_CONTAINER=0 IMAGE=${HUB}/${IMAGE_BASE}:${TAG} make -s --no-print-directory ${TARGET}
-}
-
-check_ready() {
-  local NS=$1
-  local POD_NAME=$2
-  local DEPLOYMENT_NAME=$3
-
-  echo "Check POD: NAMESPACE: \"${NS}\"   POD NAME: \"${POD_NAME}\""
-  timeout --foreground -v -s SIGHUP -k ${TIMEOUT} ${TIMEOUT} bash --verbose -c \
-    "until ${COMMAND} get pod --field-selector=status.phase=Running -n ${NS} | grep ${POD_NAME}; do sleep 5; done"
-
-  echo "Check Deployment Available: NAMESPACE: \"${NS}\"   DEPLOYMENT NAME: \"${DEPLOYMENT_NAME}\""
-  ${COMMAND} wait deployment "${DEPLOYMENT_NAME}" -n "${NS}" --for condition=Available=True --timeout=${TIMEOUT}
-}
-
-logFailure() {
-  echo
-  echo "FAIL: $*"
-}
-
-main_test() {
-  # Add here all the validation tests for the operator
-  echo "Check that istio operator is running"
-  check_ready "${NAMESPACE}" "${DEPLOYMENT_NAME}" "${DEPLOYMENT_NAME}"
-  
-  # Deploy and test every istio version inside versions.yaml
-  versions=$(yq eval '.versions[].name' "${VERSIONS_YAML_FILE}")
-  echo "Versions to test: ${versions//$'\n'/ }"
-  for ver in ${versions}; do
-    echo "--------------------------------------------------------------"
-    echo "Deploy Istio version '${ver}'"
-    ${COMMAND} get ns "${CONTROL_PLANE_NS}" >/dev/null 2>&1 || ${COMMAND} create namespace "${CONTROL_PLANE_NS}"
-    sed -e "s/version:.*/version: ${ver}/g" "${ISTIO_MANIFEST}" | ${COMMAND} apply -f -
-
-    echo "Wait for Istio to be Reconciled"
-    if ! ${COMMAND} wait "istio/${ISTIO_NAME}" --for condition=Reconciled=True --timeout=${TIMEOUT}; then
-      logFailure "Operator failed to reconcile Istio CR"
-      echo
-      echo "Istio resource:"
-      ${COMMAND} get istio "${ISTIO_NAME}" -n "${CONTROL_PLANE_NS}" -oyaml
-      echo
-      echo "Pods:"
-      ${COMMAND} get pods -n "${CONTROL_PLANE_NS}" -o wide
-      echo
-      echo "Operator logs:"
-      ${COMMAND} logs "deploy/${DEPLOYMENT_NAME}" -n "${NAMESPACE}"
-      exit 1
-    fi
-
-    echo "Wait for Istio to be Ready"
-    if ! ${COMMAND} wait "istio/${ISTIO_NAME}" --for condition=Ready=True --timeout=${TIMEOUT}; then
-      logFailure "Istio CR failed to become ready"
-      echo
-      echo "Istio resource:"
-      ${COMMAND} get istio "${ISTIO_NAME}" -n "${CONTROL_PLANE_NS}" -oyaml
-      echo
-      echo "Pods:"
-      ${COMMAND} get pods -n "${CONTROL_PLANE_NS}" -o wide
-      echo
-      echo "Istiod logs:"
-      ${COMMAND} logs deploy/istiod -n "${CONTROL_PLANE_NS}"
-      exit 1
-    fi
-
-    echo "Give the operator 30s to settle down"
-    sleep 30
-
-    echo "Check that the operator has stopped reconciling the resource (waiting 30s)"
-    # wait for 30s, then check the last 30s of the log
-    sleep 30
-    last30secondsOfLog=$(${COMMAND} logs "deploy/${DEPLOYMENT_NAME}" -n "${NAMESPACE}" --since 30s)
-    if echo "$last30secondsOfLog" | grep "Reconciliation done" >/dev/null 2>&1; then
-        logFailure "Expected sail-operator to stop reconciling the resource, but it didn't:"
-        echo "$last30secondsOfLog"
-        echo "Note: The above log was captured at $(date)"
-        exit 1
-    fi
-
-    echo "Check that Istio is running"
-    check_ready "${CONTROL_PLANE_NS}" "istiod" "istiod"
-
-    echo "Make sure only istiod got deployed and nothing else"
-    res=$(${COMMAND}  -n "${CONTROL_PLANE_NS}" get deploy -o json | jq -j '.items | length')
-    if [ "${res}" != "1" ]; then
-      logFailure "Expected just istiod deployment, got:"
-      ${COMMAND}  -n "${CONTROL_PLANE_NS}" get deploy
-      exit 1
-    fi
-
-    if [ "${OCP}" == "true" ]; then
-      echo "Check that CNI deamonset is ready"
-      timeout --foreground -v -s SIGHUP -k ${TIMEOUT} ${TIMEOUT} bash --verbose -c \
-        "until ${COMMAND}  rollout status ds/istio-cni-node -n ${NAMESPACE}; do sleep 5; done"
-    else
-      echo "Check that CNI daemonset was not deployed"
-      if ${COMMAND} get ds/istio-cni-node -n "${NAMESPACE}" > /dev/null 2>&1; then
-        logFailure "Expected CNI daemonset to not exist, but it does:"
-        ${COMMAND} get ds/istio-cni-node -n "${NAMESPACE}"
-        exit 1
-      fi
-    fi
-
-    echo "Undeploy Istio"
-    ${COMMAND} delete -f "${ISTIO_MANIFEST}"
-
-    echo "Check that istiod deployment has been deleted (waiting $TIMEOUT)"
-    timeout --foreground -v -s SIGHUP -k ${TIMEOUT} ${TIMEOUT} bash --verbose -c \
-      "until ! ${COMMAND} get deployment istiod -n ${CONTROL_PLANE_NS}; do sleep 5; done"
-
-    echo "Delete namespace ${CONTROL_PLANE_NS}"
-    ${COMMAND} delete ns "${CONTROL_PLANE_NS}"
-  done
-}
-
 # PRE SETUP: Get arguments and initialize variables
 check_arguments "$@"
 parse_flags "$@"
@@ -296,7 +185,13 @@ if [ "${SKIP_BUILD}" == "false" ]; then
   build_and_push_image
 fi
 
-# Deploy the operator
-deploy_operator
-# RUNNING TEST VALIDATIONS
-main_test
+if [ "${OCP}" == "true" ]; then
+    # This is a workaround
+    # To avoid errors of certificates meanwhile we are pulling the operator image from the internal registry
+    # We need to set image $HUB to a fixed known value after the push
+    # This value always will be equal to the svc url of the internal registry
+  HUB="image-registry.openshift-image-registry.svc:5000/sail-operator"
+fi
+
+# Run the go test passing the env variables defined that are going to be used in the operator tests
+IMAGE="${HUB}/${IMAGE_BASE}:${TAG}" SKIP_DEPLOY="${SKIP_DEPLOY}" OCP="${OCP}" ISTIO_MANIFEST="${ISTIO_MANIFEST}" NAMESPACE="${NAMESPACE}" CONTROL_PLANE_NS="${CONTROL_PLANE_NS}" DEPLOYMENT_NAME="${DEPLOYMENT_NAME}" ISTIO_NAME="${ISTIO_NAME}" COMMAND="${COMMAND}" VERSIONS_YAML_FILE="${VERSIONS_YAML_FILE}" go run github.com/onsi/ginkgo/v2/ginkgo -v --timeout 30m --junit-report=report.xml --no-color "${WD}"/operator/...

@@ -12,7 +12,6 @@ You’ll need a Kubernetes cluster to run against. You can use [KIND](https://si
 
 ### Running on the cluster
 1. Deploy the operator to the cluster:
-
 ```sh
 make deploy
 ```

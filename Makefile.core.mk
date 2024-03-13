@@ -142,7 +142,7 @@ export
 
 .PHONY: test
 test: envtest ## Run unit tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test ./... -coverprofile cover.out
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test `go list ./... |grep -v tests/integration/operator` -coverprofile cover.out
 
 .PHONY: test.scorecard
 test.scorecard: operator-sdk ## Run the operator scorecard test.
@@ -155,6 +155,10 @@ test.integration.ocp: ## Run the integration tests against an existing OCP clust
 .PHONY: test.integration.kind
 test.integration.kind: ## Deploy a KinD cluster and run the integration tests against it.
 	${SOURCE_DIR}/tests/integration/integ-suite-kind.sh
+
+.PHONY: test.integration.describe
+test.integration.describe:
+	${SOURCE_DIR}/tests/integration/common-operator-integ-suite.sh --describe
 
 ##@ Build
 
@@ -249,6 +253,7 @@ uninstall: ## Uninstall CRDs from an existing cluster. Call with ignore-not-foun
 .PHONY: deploy
 deploy: helm ## Deploy controller to an existing cluster.
 	$(info NAMESPACE: $(NAMESPACE))
+	kubectl create ns ${NAMESPACE} || echo "namespace ${NAMESPACE} already exists"
 	$(HELM) template chart chart $(HELM_TEMPL_DEF_FLAGS) --set image='$(IMAGE)' --namespace $(NAMESPACE) | kubectl apply --server-side=true -f -
 
 .PHONY: deploy-yaml
@@ -272,6 +277,8 @@ deploy-olm: bundle bundle-build bundle-push ## Build and push the operator OLM b
 .PHONY: undeploy
 undeploy: ## Undeploy controller from an existing cluster. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	kubectl delete istios.operator.istio.io --all --all-namespaces --wait=true
+	$(MAKE) -e HELM_TEMPL_DEF_FLAGS="$(HELM_TEMPL_DEF_FLAGS)" deploy-yaml | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+	kubectl delete ns ${NAMESPACE} --ignore-not-found=$(ignore-not-found)
 	$(HELM) template chart chart $(HELM_TEMPL_DEF_FLAGS) --set image='$(IMAGE)' --namespace $(NAMESPACE) | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
 .PHONY: undeploy-olm
