@@ -17,6 +17,7 @@ package integrationoperator
 import (
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -24,9 +25,14 @@ import (
 	"github.com/istio-ecosystem/sail-operator/pkg/util/tests/helm"
 	"github.com/istio-ecosystem/sail-operator/pkg/util/tests/kubectl"
 	r "github.com/istio-ecosystem/sail-operator/pkg/util/tests/types"
+	"github.com/istio-ecosystem/sail-operator/tests/integration/supportedversion"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"istio.io/istio/pkg/ptr"
 )
+
+var istiodVersionRegex = regexp.MustCompile(`Version:"(\d+\.\d+(\.\d+|-\w+))`)
 
 var _ = Describe("Operator", Ordered, func() {
 	SetDefaultEventuallyTimeout(120 * time.Second)
@@ -130,11 +136,11 @@ var _ = Describe("Operator", Ordered, func() {
 	})
 
 	Describe("Istio install/uninstall", func() {
-		for _, version := range istioVersions {
+		for _, version := range supportedversion.List {
 			// Note: This var version is needed to avoid the closure of the loop
 			version := version
 
-			Context(fmt.Sprintf("version %s", version), func() {
+			Context(fmt.Sprintf("version %s", version.Name), func() {
 				BeforeAll(func() {
 					Expect(kubectl.CreateNamespace(controlPlaneNamespace)).To(Succeed(), "Namespace failed to be created")
 				})
@@ -149,8 +155,8 @@ metadata:
 spec:
   version: %s
   namespace: %s`
-						istioYAML = fmt.Sprintf(istioYAML, version, controlPlaneNamespace)
-						fmt.Printf("Istio CR YAML: %s\n", istioYAML)
+						istioYAML = fmt.Sprintf(istioYAML, version.Name, controlPlaneNamespace)
+						GinkgoWriter.Printf("Istio CR YAML: %s\n", istioYAML)
 						Expect(kubectl.ApplyString(istioYAML)).
 							To(Succeed(), "Istio CR failed to be created")
 						Success("Istio CR created")
@@ -175,10 +181,7 @@ spec:
 							To(Equal([]string{"istiod"}), "Istiod deployment is not present; unexpected list of deployments")
 						Success("Istiod deployment is present")
 
-						// TODO: we need to add a function to get the istio version from the control panel directly
-						// and compare it with the applied version
-						// This is a TODO because actual version.yaml contains for example latest and not the actual version
-						// Posible solution is to add actual version to the version.yaml
+						Expect(getVersionFromIstiod()).To(Equal(version.Version), "Unexpected istiod version")
 					})
 
 					It("deploys the CNI DaemonSet when running on OpenShift", func() {
@@ -206,7 +209,7 @@ spec:
 
 					It("doesn't continuously reconcile the Istio CR", func() {
 						Eventually(kubectl.Logs).
-							WithArguments(namespace, "control-plane=sail-operator", 30*time.Second).
+							WithArguments(namespace, "deploy/sail-operator", ptr.Of(30*time.Second)).
 							ShouldNot(ContainSubstring("Reconciliation done"), "Istio Operator is continuously reconciling")
 						Success("Istio Operator stopped reconciling")
 					})
@@ -253,6 +256,19 @@ spec:
 	})
 })
 
+func getVersionFromIstiod() (string, error) {
+	output, err := kubectl.Exec(controlPlaneNamespace, "deploy/istiod", "pilot-discovery version")
+	if err != nil {
+		return "", fmt.Errorf("error getting version from istiod: %v", err)
+	}
+
+	matches := istiodVersionRegex.FindStringSubmatch(output)
+	if len(matches) > 1 && matches[1] != "" {
+		return matches[1], nil
+	}
+	return "", fmt.Errorf("error getting version from istiod: version not found in output: %s", output)
+}
+
 func deleteIstioResources() error {
 	// This is a workaround to delete the Istio CRs that are left in the cluster
 	// This will be improved by splitting the tests into different Nodes with their independent setups and cleanups
@@ -271,7 +287,6 @@ func deleteIstioResources() error {
 
 func LogDebugInfo() {
 	// General debugging information to help diagnose the failure
-	GinkgoWriter.Println("********* Failed specs while running: ", CurrentSpecReport().FailureLocation())
 	resource, err := kubectl.GetYAML(controlPlaneNamespace, "istio", istioName)
 	if err != nil {
 		GinkgoWriter.Println("Error getting Istio CR: ", err)
@@ -284,13 +299,13 @@ func LogDebugInfo() {
 	}
 	GinkgoWriter.Println("Pods in Istio CR namespace: \n", output)
 
-	logs, err := kubectl.Logs(namespace, "control-plane=sail-operator", 120*time.Second)
+	logs, err := kubectl.Logs(namespace, "deploy/sail-operator", ptr.Of(120*time.Second))
 	if err != nil {
 		GinkgoWriter.Println("Error getting logs from the operator: ", err)
 	}
 	GinkgoWriter.Println("Logs from sail-operator pod: \n", logs)
 
-	logs, err = kubectl.Logs(controlPlaneNamespace, "app=istiod", 120*time.Second)
+	logs, err = kubectl.Logs(controlPlaneNamespace, "deploy/istiod", ptr.Of(120*time.Second))
 	if err != nil {
 		GinkgoWriter.Println("Error getting logs from the istiod: ", err)
 	}

@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
+	"github.com/istio-ecosystem/sail-operator/tests/integration/supportedversion"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
@@ -86,7 +87,7 @@ var _ = Describe("IstioRevision resource", Ordered, func() {
 					Name: revName,
 				},
 				Spec: v1alpha1.IstioRevisionSpec{
-					Version:   defaultVersion,
+					Version:   supportedversion.Default,
 					Namespace: istioNamespace,
 					Values: &v1alpha1.Values{
 						Revision: revName,
@@ -105,7 +106,7 @@ var _ = Describe("IstioRevision resource", Ordered, func() {
 					Name: revName,
 				},
 				Spec: v1alpha1.IstioRevisionSpec{
-					Version:   defaultVersion,
+					Version:   supportedversion.Default,
 					Namespace: istioNamespace,
 					Values: &v1alpha1.Values{
 						Revision: "is-not-" + revName,
@@ -124,7 +125,7 @@ var _ = Describe("IstioRevision resource", Ordered, func() {
 					Name: "default",
 				},
 				Spec: v1alpha1.IstioRevisionSpec{
-					Version:   defaultVersion,
+					Version:   supportedversion.Default,
 					Namespace: istioNamespace,
 					Values: &v1alpha1.Values{
 						Revision: "default", // this must be rejected, because revision needs to be '' when metadata.name is 'default'
@@ -143,7 +144,7 @@ var _ = Describe("IstioRevision resource", Ordered, func() {
 					Name: "default",
 				},
 				Spec: v1alpha1.IstioRevisionSpec{
-					Version:   defaultVersion,
+					Version:   supportedversion.Default,
 					Namespace: istioNamespace,
 					Values: &v1alpha1.Values{
 						Revision: "",
@@ -164,7 +165,7 @@ var _ = Describe("IstioRevision resource", Ordered, func() {
 				Name: revName,
 			},
 			Spec: v1alpha1.IstioRevisionSpec{
-				Version:   defaultVersion,
+				Version:   supportedversion.Default,
 				Namespace: istioNamespace,
 				Values: &v1alpha1.Values{
 					Global: &v1alpha1.GlobalConfig{
@@ -316,7 +317,7 @@ var _ = Describe("IstioRevision resource", Ordered, func() {
 				Name: rev2Key.Name,
 			},
 			Spec: v1alpha1.IstioRevisionSpec{
-				Version:   defaultVersion,
+				Version:   supportedversion.Default,
 				Namespace: istioNamespace,
 				Values: &v1alpha1.Values{
 					Global: &v1alpha1.GlobalConfig{

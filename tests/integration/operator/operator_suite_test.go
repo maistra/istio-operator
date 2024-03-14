@@ -15,16 +15,11 @@
 package integrationoperator
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"sigs.k8s.io/yaml"
 )
-
-var istioVersions []string
 
 func TestInstall(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -34,45 +29,11 @@ func TestInstall(t *testing.T) {
 
 func setup() {
 	GinkgoWriter.Println("************ Running Setup ************")
-
-	fillIstioVersions()
-
 	if ocp {
 		GinkgoWriter.Println("Running on OCP cluster")
 		GinkgoWriter.Printf("Absolute Path: %s\n", wd)
 	} else {
 		GinkgoWriter.Println("Running on Kubernetes")
 		GinkgoWriter.Printf("Absolute Path: %s\n", wd)
-	}
-}
-
-func fillIstioVersions() {
-	type Version struct {
-		Name string `yaml:"name"`
-	}
-
-	type IstioVersion struct {
-		Versions []Version `yaml:"versions"`
-	}
-
-	yamlFile, err := os.ReadFile(filepath.Join(baseDir, istioVersionsFile))
-	if err != nil {
-		Fail("Error reading the versions.yaml file")
-	}
-
-	var config IstioVersion
-	err = yaml.Unmarshal(yamlFile, &config)
-	if err != nil {
-		Fail("Error unmarshalling the versions.yaml file")
-	}
-
-	GinkgoWriter.Println("Istio versions in yaml file:")
-	for _, v := range config.Versions {
-		GinkgoWriter.Println(v.Name)
-		istioVersions = append(istioVersions, v.Name)
-	}
-
-	if len(istioVersions) == 0 {
-		Fail("No istio versions found in the versions.yaml file")
 	}
 }

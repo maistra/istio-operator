@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package integration
+package supportedversion
 
 import (
 	"os"
@@ -22,10 +22,10 @@ import (
 )
 
 var (
-	versions       Versions
-	defaultVersion string
-	oldVersion     string
-	newVersion     string
+	List    []VersionInfo
+	Default string
+	Old     string
+	New     string
 )
 
 func init() {
@@ -39,14 +39,17 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
+	versions := Versions{}
 	err = yaml.Unmarshal(versionsBytes, &versions)
 	if err != nil {
 		panic(err)
 	}
 
-	defaultVersion = "latest"
-	oldVersion = versions.Versions[1].Name
-	newVersion = versions.Versions[0].Name
+	List = versions.Versions
+	Default = "latest"
+	Old = List[1].Name
+	New = List[0].Name
 }
 
 type Versions struct {
@@ -55,9 +58,10 @@ type Versions struct {
 }
 
 type VersionInfo struct {
-	Name   string   `json:"name"`
-	Repo   string   `json:"repo"`
-	Branch string   `json:"branch,omitempty"`
-	Commit string   `json:"commit"`
-	Charts []string `json:"charts,omitempty"`
+	Name    string   `json:"name"`
+	Version string   `json:"version"`
+	Repo    string   `json:"repo"`
+	Branch  string   `json:"branch,omitempty"`
+	Commit  string   `json:"commit"`
+	Charts  []string `json:"charts,omitempty"`
 }
