@@ -237,18 +237,14 @@ docker-buildx: test build-all ## Build and push docker image with cross-platform
 
 ##@ Deployment
 
-ifndef ignore-not-found
-  ignore-not-found = false
-endif
-
 .PHONY: install
 install: gen-manifests ## Install CRDs into an existing cluster.
 	kubectl create ns ${NAMESPACE} || echo "namespace ${NAMESPACE} already exists"
 	kubectl apply --server-side=true -f chart/crds
 
 .PHONY: uninstall
-uninstall: ## Uninstall CRDs from an existing cluster. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	kubectl delete --ignore-not-found=$(ignore-not-found) -f chart/crds
+uninstall: ## Uninstall CRDs from an existing cluster.
+	kubectl delete --ignore-not-found -f chart/crds
 
 .PHONY: deploy
 deploy: helm ## Deploy controller to an existing cluster.
@@ -275,11 +271,11 @@ deploy-olm: bundle bundle-build bundle-push ## Build and push the operator OLM b
 	$(OPERATOR_SDK) run bundle $(BUNDLE_IMG) -n ${NAMESPACE}
 
 .PHONY: undeploy
-undeploy: ## Undeploy controller from an existing cluster. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+undeploy: ## Undeploy controller from an existing cluster.
 	kubectl delete istios.operator.istio.io --all --all-namespaces --wait=true
-	$(MAKE) -e HELM_TEMPL_DEF_FLAGS="$(HELM_TEMPL_DEF_FLAGS)" deploy-yaml | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
-	kubectl delete ns ${NAMESPACE} --ignore-not-found=$(ignore-not-found)
-	$(HELM) template chart chart $(HELM_TEMPL_DEF_FLAGS) --set image='$(IMAGE)' --namespace $(NAMESPACE) | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+	$(MAKE) -e HELM_TEMPL_DEF_FLAGS="$(HELM_TEMPL_DEF_FLAGS)" deploy-yaml | kubectl delete --ignore-not-found -f -
+	kubectl delete ns ${NAMESPACE} --ignore-not-found
+	$(HELM) template chart chart $(HELM_TEMPL_DEF_FLAGS) --set image='$(IMAGE)' --namespace $(NAMESPACE) | kubectl delete --ignore-not-found -f -
 
 .PHONY: undeploy-olm
 undeploy-olm: operator-sdk ## Undeploy the operator from an existing cluster (used only if operator was installed via OLM).
