@@ -23,7 +23,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/sail-operator:3.0-latest
-    createdAt: "2024-03-14T03:25:39Z"
+    createdAt: "2024-03-14T13:00:22Z"
     description: Experimental operator for installing Istio service mesh
     features.operators.openshift.io/cnf: "false"
     features.operators.openshift.io/cni: "true"
@@ -126,14 +126,14 @@ spec:
       kind: IstioRevision
       name: istiorevisions.operator.istio.io
       specDescriptors:
-      - description: 'Defines the version of Istio to install. Must be one of: v1.20.3,
-          v1.19.7, latest.'
+      - description: 'Defines the version of Istio to install. Must be one of: v1.21.0,
+          v1.20.3, latest.'
         displayName: Istio Version
         path: version
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:General
+        - urn:alm:descriptor:com.tectonic.ui:select:v1.21.0
         - urn:alm:descriptor:com.tectonic.ui:select:v1.20.3
-        - urn:alm:descriptor:com.tectonic.ui:select:v1.19.7
         - urn:alm:descriptor:com.tectonic.ui:select:latest
       - description: Namespace to which the Istio components should be installed.
         displayName: Namespace
@@ -169,14 +169,14 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:select:InPlace
         - urn:alm:descriptor:com.tectonic.ui:select:RevisionBased
-      - description: 'Defines the version of Istio to install. Must be one of: v1.20.3,
-          v1.19.7, latest.'
+      - description: 'Defines the version of Istio to install. Must be one of: v1.21.0,
+          v1.20.3, latest.'
         displayName: Istio Version
         path: version
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:General
+        - urn:alm:descriptor:com.tectonic.ui:select:v1.21.0
         - urn:alm:descriptor:com.tectonic.ui:select:v1.20.3
-        - urn:alm:descriptor:com.tectonic.ui:select:v1.19.7
         - urn:alm:descriptor:com.tectonic.ui:select:latest
       - description: Defines how many seconds the operator should wait before removing
           a non-active revision after all the workloads have stopped using it. You
@@ -223,8 +223,8 @@ spec:
 
     This version of the operator supports the following Istio versions:
 
+    - v1.21.0
     - v1.20.3
-    - v1.19.7
     - latest (44056bc3)
 
     [See this page](https://github.com/istio-ecosystem/sail-operator/blob/pre-main/bundle/README.md) for instructions on how to use it.

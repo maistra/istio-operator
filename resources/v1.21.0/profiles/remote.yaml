@@ -1,0 +1,5 @@
+# The remote profile is used to configure a mesh cluster without a locally deployed control plane.
+# Only the injector mutating webhook configuration is installed.
+apiVersion: operator.istio.io/v1alpha1
+kind: Istio
+spec: {}
