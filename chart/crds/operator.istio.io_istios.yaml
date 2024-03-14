@@ -9187,10 +9187,10 @@ spec:
               version:
                 description: |-
                   Defines the version of Istio to install.
-                  Must be one of: v1.20.3, v1.19.7, latest.
+                  Must be one of: v1.21.0, v1.20.3, latest.
                 enum:
+                - v1.21.0
                 - v1.20.3
-                - v1.19.7
                 - latest
                 type: string
             required:

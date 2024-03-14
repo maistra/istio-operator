@@ -1,0 +1,5 @@
+apiVersion: operator.istio.io/v1alpha1
+kind: Istio
+spec:
+  values:
+    profile: demo

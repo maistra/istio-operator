@@ -37,9 +37,9 @@ const (
 type IstioSpec struct {
 	// +sail:version
 	// Defines the version of Istio to install.
-	// Must be one of: v1.20.3, v1.19.7, latest.
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,order=1,displayName="Istio Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:General", "urn:alm:descriptor:com.tectonic.ui:select:v1.20.3", "urn:alm:descriptor:com.tectonic.ui:select:v1.19.7", "urn:alm:descriptor:com.tectonic.ui:select:latest"}
-	// +kubebuilder:validation:Enum=v1.20.3;v1.19.7;latest
+	// Must be one of: v1.21.0, v1.20.3, latest.
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,order=1,displayName="Istio Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:General", "urn:alm:descriptor:com.tectonic.ui:select:v1.21.0", "urn:alm:descriptor:com.tectonic.ui:select:v1.20.3", "urn:alm:descriptor:com.tectonic.ui:select:latest"}
+	// +kubebuilder:validation:Enum=v1.21.0;v1.20.3;latest
 	Version string `json:"version"`
 
 	// Defines the update strategy to use when the version in the Istio CR is updated.
