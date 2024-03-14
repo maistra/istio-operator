@@ -275,8 +275,25 @@ func Delete(ns, kind, name string) error {
 // - ns: namespace
 // - selector: selector of the pod
 // - Since: time range
-func Logs(ns, selector string, since time.Duration) (string, error) {
-	cmd := kubectl("logs -l %s %s  --since=%s", selector, nsflag(ns), since)
+func Logs(ns, selector string, since *time.Duration) (string, error) {
+	cmd := kubectl("logs %s %s %s", selector, nsflag(ns), sinceFlag(since))
+	output, err := shell.ExecuteCommand(cmd)
+	if err != nil {
+		return "", err
+	}
+	return output, nil
+}
+
+func sinceFlag(since *time.Duration) string {
+	if since == nil {
+		return ""
+	}
+	return "--since=" + since.String()
+}
+
+// Exec executes a command in the pod.
+func Exec(ns, pod string, command string) (string, error) {
+	cmd := kubectl("exec %s %s -- %s", pod, nsflag(ns), command)
 	output, err := shell.ExecuteCommand(cmd)
 	if err != nil {
 		return "", err

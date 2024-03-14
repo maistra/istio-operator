@@ -10,6 +10,7 @@ crdSourceVersion: latest
 # a list of URLs for retrieving the charts.
 versions:
   - name: v1.21.0
+    version: 1.21.0
     repo: https://github.com/istio/istio
     commit: 1.21.0
     charts:
@@ -19,6 +20,7 @@ versions:
       - https://istio-release.storage.googleapis.com/charts/cni-1.21.0.tgz
       - https://istio-release.storage.googleapis.com/charts/ztunnel-1.21.0.tgz
   - name: v1.20.3
+    version: 1.20.3
     repo: https://github.com/istio/istio
     commit: 1.20.3
     charts:
@@ -28,6 +30,7 @@ versions:
       - https://istio-release.storage.googleapis.com/charts/cni-1.20.3.tgz
       - https://istio-release.storage.googleapis.com/charts/ztunnel-1.20.3.tgz
   - name: latest
+    version: 1.22-alpha
     repo: https://github.com/istio/istio
     branch: master
     commit: 44056bc33df10623819256d847848c27066b3279

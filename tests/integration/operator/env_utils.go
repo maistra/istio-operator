@@ -32,7 +32,6 @@ var (
 	wd, _                 = os.Getwd()
 	istioName             = getEnv("ISTIO_NAME", "default")
 	baseDir               = filepath.Join(wd, "../../..")
-	istioVersionsFile     = getEnv("VERSIONS_YAML_FILE", "versions.yaml")
 )
 
 func getEnv(key, defaultValue string) string {
