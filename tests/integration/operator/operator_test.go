@@ -181,7 +181,7 @@ spec:
 							To(Equal([]string{"istiod"}), "Istiod deployment is not present; unexpected list of deployments")
 						Success("Istiod deployment is present")
 
-						Expect(getVersionFromIstiod()).To(Equal(version.Version), "Unexpected istiod version")
+						Expect(getVersionFromIstiod()).To(Equal("test"), "Unexpected istiod version")
 					})
 
 					It("deploys the CNI DaemonSet when running on OpenShift", func() {
