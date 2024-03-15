@@ -145,7 +145,7 @@ export
 .PHONY: test
 test: envtest ## Run unit tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" \
-	go test $(VERBOSE_FLAG) `go list ./... |grep -v tests/integration/operator` -coverprofile cover.out
+	go test $(VERBOSE_FLAG) ./... -coverprofile cover.out
 
 .PHONY: test.scorecard
 test.scorecard: operator-sdk ## Run the operator scorecard test.
