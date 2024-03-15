@@ -96,6 +96,8 @@ initialize_variables() {
   ISTIO_NAME=$(yq eval '.metadata.name' "${WD}/../../$ISTIO_MANIFEST")
 
   TIMEOUT="3m"
+
+  VERBOSE=${VERBOSE:-"false"}
 }
 
 get_internal_registry() {
@@ -200,5 +202,10 @@ if [ -t 1 ]; then
   NOCOLOR=""
 fi
 
+VERBOSE_FLAG=""
+if [ "${VERBOSE}" == "true" ]; then
+  VERBOSE_FLAG="-v"
+fi
+
 # Run the go test passing the env variables defined that are going to be used in the operator tests
-IMAGE="${HUB}/${IMAGE_BASE}:${TAG}" SKIP_DEPLOY="${SKIP_DEPLOY}" OCP="${OCP}" ISTIO_MANIFEST="${ISTIO_MANIFEST}" NAMESPACE="${NAMESPACE}" CONTROL_PLANE_NS="${CONTROL_PLANE_NS}" DEPLOYMENT_NAME="${DEPLOYMENT_NAME}" ISTIO_NAME="${ISTIO_NAME}" COMMAND="${COMMAND}" VERSIONS_YAML_FILE="${VERSIONS_YAML_FILE}" go run github.com/onsi/ginkgo/v2/ginkgo -v --timeout 30m --junit-report=report.xml "${NOCOLOR}" "${WD}"/operator/...
+IMAGE="${HUB}/${IMAGE_BASE}:${TAG}" SKIP_DEPLOY="${SKIP_DEPLOY}" OCP="${OCP}" ISTIO_MANIFEST="${ISTIO_MANIFEST}" NAMESPACE="${NAMESPACE}" CONTROL_PLANE_NS="${CONTROL_PLANE_NS}" DEPLOYMENT_NAME="${DEPLOYMENT_NAME}" ISTIO_NAME="${ISTIO_NAME}" COMMAND="${COMMAND}" VERSIONS_YAML_FILE="${VERSIONS_YAML_FILE}" go run github.com/onsi/ginkgo/v2/ginkgo "${VERBOSE_FLAG}" --timeout 30m --junit-report=report.xml "${NOCOLOR}" "${WD}"/operator/...
