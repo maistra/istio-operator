@@ -66,5 +66,14 @@ function updateVersionsInCSVDescription() {
     rm "$tmpFile"
 }
 
+function updateVersionInSamples() {
+    defaultVersion=$(yq '.versions[0].name' "${VERSIONS_YAML_FILE}")
+
+    sed -i -E \
+      -e "s/version: .*/version: $defaultVersion/g" \
+      chart/samples/istio-sample-kubernetes.yaml chart/samples/istio-sample-openshift.yaml
+}
+
 updateVersionsInIstioTypeComment
 updateVersionsInCSVDescription
+updateVersionInSamples

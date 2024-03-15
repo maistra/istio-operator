@@ -8,6 +8,7 @@ crdSourceVersion: latest
 # The list of versions to support. Each item specifies the name of the version,
 # the Git repository and commit hash for retrieving the profiles, and
 # a list of URLs for retrieving the charts.
+# The first item in the list is the default version.
 versions:
   - name: v1.21.0
     version: 1.21.0
