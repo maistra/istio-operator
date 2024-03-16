@@ -385,7 +385,7 @@ OPM ?= $(LOCALBIN)/opm
 OPERATOR_SDK_VERSION ?= v1.34.1
 HELM_VERSION ?= v3.14.3
 CONTROLLER_TOOLS_VERSION ?= v0.14.0
-OPM_VERSION ?= v1.36.0
+OPM_VERSION ?= v1.37.0
 
 .PHONY: helm $(HELM)
 helm: $(HELM) ## Download helm to bin directory. If wrong version is installed, it will be overwritten.
