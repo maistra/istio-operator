@@ -23,7 +23,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/sail-operator:3.0-latest
-    createdAt: "2024-03-15T12:41:12Z"
+    createdAt: "2024-03-16T03:43:18Z"
     description: Experimental operator for installing Istio service mesh
     features.operators.openshift.io/cnf: "false"
     features.operators.openshift.io/cni: "true"
@@ -51,6 +51,9 @@ spec:
       version: v1alpha1
     - kind: DestinationRule
       name: destinationrules.networking.istio.io
+      version: v1
+    - kind: DestinationRule
+      name: destinationrules.networking.istio.io
       version: v1alpha3
     - kind: DestinationRule
       name: destinationrules.networking.istio.io
@@ -58,6 +61,9 @@ spec:
     - kind: EnvoyFilter
       name: envoyfilters.networking.istio.io
       version: v1alpha3
+    - kind: Gateway
+      name: gateways.networking.istio.io
+      version: v1
     - kind: Gateway
       name: gateways.networking.istio.io
       version: v1alpha3
@@ -69,28 +75,43 @@ spec:
       version: v1beta1
     - kind: ServiceEntry
       name: serviceentries.networking.istio.io
+      version: v1
+    - kind: ServiceEntry
+      name: serviceentries.networking.istio.io
       version: v1alpha3
     - kind: ServiceEntry
       name: serviceentries.networking.istio.io
       version: v1beta1
     - kind: Sidecar
       name: sidecars.networking.istio.io
+      version: v1
+    - kind: Sidecar
+      name: sidecars.networking.istio.io
       version: v1alpha3
     - kind: Sidecar
       name: sidecars.networking.istio.io
       version: v1beta1
     - kind: VirtualService
       name: virtualservices.networking.istio.io
+      version: v1
+    - kind: VirtualService
+      name: virtualservices.networking.istio.io
       version: v1alpha3
     - kind: VirtualService
       name: virtualservices.networking.istio.io
       version: v1beta1
     - kind: WorkloadEntry
       name: workloadentries.networking.istio.io
+      version: v1
+    - kind: WorkloadEntry
+      name: workloadentries.networking.istio.io
       version: v1alpha3
     - kind: WorkloadEntry
       name: workloadentries.networking.istio.io
       version: v1beta1
+    - kind: WorkloadGroup
+      name: workloadgroups.networking.istio.io
+      version: v1
     - kind: WorkloadGroup
       name: workloadgroups.networking.istio.io
       version: v1alpha3
@@ -225,7 +246,7 @@ spec:
 
     - v1.21.0
     - v1.20.3
-    - latest (9248bff1)
+    - latest (923ebd09)
 
     [See this page](https://github.com/istio-ecosystem/sail-operator/blob/pre-main/bundle/README.md) for instructions on how to use it.
   displayName: Sail Operator
