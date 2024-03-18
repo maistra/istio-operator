@@ -37,8 +37,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -63,18 +61,18 @@ const (
 
 // IstioRevisionReconciler reconciles an IstioRevision object
 type IstioRevisionReconciler struct {
-	CNINamespace     string
-	RestClientGetter genericclioptions.RESTClientGetter
+	CNINamespace string
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme     *runtime.Scheme
+	HelmClient *helm.Client
 }
 
-func NewIstioRevisionReconciler(client client.Client, scheme *runtime.Scheme, restConfig *rest.Config, cniNamespace string) *IstioRevisionReconciler {
+func NewIstioRevisionReconciler(client client.Client, scheme *runtime.Scheme, helmClient *helm.Client, cniNamespace string) *IstioRevisionReconciler {
 	return &IstioRevisionReconciler{
-		CNINamespace:     cniNamespace,
-		RestClientGetter: helm.NewRESTClientGetter(restConfig),
-		Client:           client,
-		Scheme:           scheme,
+		CNINamespace: cniNamespace,
+		Client:       client,
+		Scheme:       scheme,
+		HelmClient:   helmClient,
 	}
 }
 
@@ -186,7 +184,7 @@ func (r *IstioRevisionReconciler) installHelmCharts(ctx context.Context, rev *v1
 
 	if isCNIEnabled(rev.Spec.Values) {
 		if shouldInstallCNI, err := r.isOldestRevisionWithCNI(ctx, rev); shouldInstallCNI {
-			if err := helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, []string{"cni"}, values,
+			if err := r.HelmClient.UpgradeOrInstallCharts(ctx, []string{"cni"}, values,
 				rev.Spec.Version, cniReleaseNameBase, r.CNINamespace, ownerReference); err != nil {
 				return err
 			}
@@ -198,7 +196,7 @@ func (r *IstioRevisionReconciler) installHelmCharts(ctx context.Context, rev *v1
 		}
 	}
 
-	if err := helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, userCharts, values,
+	if err := r.HelmClient.UpgradeOrInstallCharts(ctx, userCharts, values,
 		rev.Spec.Version, rev.Name, rev.Spec.Namespace, ownerReference); err != nil {
 		return err
 	}
@@ -206,11 +204,11 @@ func (r *IstioRevisionReconciler) installHelmCharts(ctx context.Context, rev *v1
 }
 
 func (r *IstioRevisionReconciler) uninstallHelmCharts(ctx context.Context, rev *v1alpha1.IstioRevision) error {
-	if err := helm.UninstallCharts(ctx, r.RestClientGetter, []string{"cni"}, cniReleaseNameBase, r.CNINamespace); err != nil {
+	if err := r.HelmClient.UninstallCharts(ctx, []string{"cni"}, cniReleaseNameBase, r.CNINamespace); err != nil {
 		return err
 	}
 
-	if err := helm.UninstallCharts(ctx, r.RestClientGetter, userCharts, rev.Name, rev.Spec.Namespace); err != nil {
+	if err := r.HelmClient.UninstallCharts(ctx, userCharts, rev.Name, rev.Spec.Namespace); err != nil {
 		return err
 	}
 	return nil
