@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path"
 
 	"helm.sh/helm/v3/pkg/action"
 	chartLoader "helm.sh/helm/v3/pkg/chart/loader"
@@ -30,45 +29,13 @@ import (
 )
 
 type Client struct {
-	ResourceDirectory string
-	restClientGetter  genericclioptions.RESTClientGetter
+	restClientGetter genericclioptions.RESTClientGetter
 }
 
-func NewClient(resourceDirectory string, cfg *rest.Config) *Client {
+func NewClient(cfg *rest.Config) *Client {
 	return &Client{
-		ResourceDirectory: resourceDirectory,
-		restClientGetter:  NewRESTClientGetter(cfg),
+		restClientGetter: NewRESTClientGetter(cfg),
 	}
-}
-
-func (h *Client) UninstallCharts(ctx context.Context, charts []string, releaseNameBase, ns string) error {
-	actionConfig, err := h.newActionConfig(ctx, ns)
-	if err != nil {
-		return err
-	}
-	for _, chartName := range charts {
-		releaseName := fmt.Sprintf("%s-%s", releaseNameBase, chartName)
-		_, err = h.uninstallChart(actionConfig, ns, releaseName)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (h *Client) UpgradeOrInstallCharts(ctx context.Context, charts []string, values HelmValues, chartVersion, releaseNameBase, ns string, ownerReference metav1.OwnerReference) error {
-	actionConfig, err := h.newActionConfig(ctx, ns)
-	if err != nil {
-		return err
-	}
-	for _, chartName := range charts {
-		releaseName := fmt.Sprintf("%s-%s", releaseNameBase, chartName)
-		_, err = h.upgradeOrInstallChart(ctx, actionConfig, chartName, chartVersion, ns, releaseName, ownerReference, values)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // newActionConfig Create a new Helm action config from in-cluster service account
@@ -87,12 +54,17 @@ func (h *Client) newActionConfig(ctx context.Context, namespace string) (*action
 	return actionConfig, nil
 }
 
-// upgradeOrInstallChart upgrades a chart in cluster or installs it new if it does not already exist
-func (h *Client) upgradeOrInstallChart(ctx context.Context, cfg *action.Configuration,
-	chartName, chartVersion, namespace, releaseName string,
-	ownerReference metav1.OwnerReference, values HelmValues,
+// UpgradeOrInstallChart upgrades a chart in cluster or installs it new if it does not already exist
+func (h *Client) UpgradeOrInstallChart(
+	ctx context.Context, chartDir string, values HelmValues,
+	namespace, releaseName string, ownerReference metav1.OwnerReference,
 ) (*release.Release, error) {
 	log := logf.FromContext(ctx)
+
+	cfg, err := h.newActionConfig(ctx, namespace)
+	if err != nil {
+		return nil, err
+	}
 
 	// Helm List Action
 	listAction := action.NewList(cfg)
@@ -108,7 +80,7 @@ func (h *Client) upgradeOrInstallChart(ctx context.Context, cfg *action.Configur
 		}
 	}
 
-	chart, err := chartLoader.Load(path.Join(h.ResourceDirectory, chartVersion, "charts", chartName))
+	chart, err := chartLoader.Load(chartDir)
 	if err != nil {
 		return nil, err
 	}
@@ -139,8 +111,13 @@ func (h *Client) upgradeOrInstallChart(ctx context.Context, cfg *action.Configur
 	return rel, nil
 }
 
-// uninstallChart removes a chart from the cluster
-func (h *Client) uninstallChart(cfg *action.Configuration, namespace, releaseName string) (*release.UninstallReleaseResponse, error) {
+// UninstallChart removes a chart from the cluster
+func (h *Client) UninstallChart(ctx context.Context, releaseName, namespace string) (*release.UninstallReleaseResponse, error) {
+	cfg, err := h.newActionConfig(ctx, namespace)
+	if err != nil {
+		return nil, err
+	}
+
 	// Helm List Action
 	listAction := action.NewList(cfg)
 	releases, err := listAction.Run()

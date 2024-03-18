@@ -17,6 +17,7 @@ package istiorevision
 import (
 	"context"
 	"fmt"
+	"path"
 	"reflect"
 	"regexp"
 	"strings"
@@ -52,7 +53,7 @@ import (
 )
 
 const (
-	cniReleaseNameBase         = "istio"
+	cniReleaseName             = "istio-cni"
 	IstioInjectionLabel        = "istio-injection"
 	IstioInjectionEnabledValue = "enabled"
 	IstioRevLabel              = "istio.io/rev"
@@ -63,21 +64,23 @@ const (
 type IstioRevisionReconciler struct {
 	CNINamespace string
 	client.Client
-	Scheme     *runtime.Scheme
-	HelmClient *helm.Client
+	Scheme            *runtime.Scheme
+	ResourceDirectory string
+	HelmClient        *helm.Client
 }
 
-func NewIstioRevisionReconciler(client client.Client, scheme *runtime.Scheme, helmClient *helm.Client, cniNamespace string) *IstioRevisionReconciler {
+func NewIstioRevisionReconciler(
+	client client.Client, scheme *runtime.Scheme, resourceDir string,
+	helmClient *helm.Client, cniNamespace string,
+) *IstioRevisionReconciler {
 	return &IstioRevisionReconciler{
-		CNINamespace: cniNamespace,
-		Client:       client,
-		Scheme:       scheme,
-		HelmClient:   helmClient,
+		CNINamespace:      cniNamespace,
+		Client:            client,
+		Scheme:            scheme,
+		ResourceDirectory: resourceDir,
+		HelmClient:        helmClient,
 	}
 }
-
-// charts to deploy in the istio namespace
-var userCharts = []string{"istiod"}
 
 // +kubebuilder:rbac:groups=operator.istio.io,resources=istiorevisions,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.istio.io,resources=istiorevisions/status,verbs=get;update;patch
@@ -184,8 +187,8 @@ func (r *IstioRevisionReconciler) installHelmCharts(ctx context.Context, rev *v1
 
 	if isCNIEnabled(rev.Spec.Values) {
 		if shouldInstallCNI, err := r.isOldestRevisionWithCNI(ctx, rev); shouldInstallCNI {
-			if err := r.HelmClient.UpgradeOrInstallCharts(ctx, []string{"cni"}, values,
-				rev.Spec.Version, cniReleaseNameBase, r.CNINamespace, ownerReference); err != nil {
+			_, err := r.HelmClient.UpgradeOrInstallChart(ctx, r.getChartDir(rev, "cni"), values, r.CNINamespace, cniReleaseName, ownerReference)
+			if err != nil {
 				return err
 			}
 		} else if err != nil {
@@ -196,19 +199,24 @@ func (r *IstioRevisionReconciler) installHelmCharts(ctx context.Context, rev *v1
 		}
 	}
 
-	if err := r.HelmClient.UpgradeOrInstallCharts(ctx, userCharts, values,
-		rev.Spec.Version, rev.Name, rev.Spec.Namespace, ownerReference); err != nil {
-		return err
-	}
-	return nil
+	_, err := r.HelmClient.UpgradeOrInstallChart(ctx, r.getChartDir(rev, "istiod"), values, rev.Spec.Namespace, getReleaseName(rev, "istiod"), ownerReference)
+	return err
+}
+
+func getReleaseName(rev *v1alpha1.IstioRevision, chartName string) string {
+	return fmt.Sprintf("%s-%s", rev.Name, chartName)
+}
+
+func (r *IstioRevisionReconciler) getChartDir(rev *v1alpha1.IstioRevision, chartName string) string {
+	return path.Join(r.ResourceDirectory, rev.Spec.Version, "charts", chartName)
 }
 
 func (r *IstioRevisionReconciler) uninstallHelmCharts(ctx context.Context, rev *v1alpha1.IstioRevision) error {
-	if err := r.HelmClient.UninstallCharts(ctx, []string{"cni"}, cniReleaseNameBase, r.CNINamespace); err != nil {
+	if _, err := r.HelmClient.UninstallChart(ctx, cniReleaseName, r.CNINamespace); err != nil {
 		return err
 	}
 
-	if err := r.HelmClient.UninstallCharts(ctx, userCharts, rev.Name, rev.Spec.Namespace); err != nil {
+	if _, err := r.HelmClient.UninstallChart(ctx, getReleaseName(rev, "istiod"), rev.Spec.Namespace); err != nil {
 		return err
 	}
 	return nil
@@ -559,7 +567,7 @@ func (r *IstioRevisionReconciler) mapOwnerToReconcileRequest(ctx context.Context
 	// of all IstioRevisions that have CNI enabled whenever a CNI component changes so that their status is
 	// updated (e.g. readiness).
 	if obj.GetNamespace() == r.CNINamespace &&
-		annotations != nil && annotations["meta.helm.sh/release-name"] == cniReleaseNameBase+"-cni" {
+		annotations != nil && annotations["meta.helm.sh/release-name"] == cniReleaseName {
 
 		revList := v1alpha1.IstioRevisionList{}
 		if err := r.Client.List(ctx, &revList); err != nil {

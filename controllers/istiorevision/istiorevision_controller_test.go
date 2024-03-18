@@ -342,7 +342,7 @@ func TestDetermineReadyCondition(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(tt.clientObjects...).Build()
 
-			r := NewIstioRevisionReconciler(cl, scheme.Scheme, nil, operatorNamespace)
+			r := NewIstioRevisionReconciler(cl, scheme.Scheme, "no-resource-dir", nil, operatorNamespace)
 
 			rev := &v1alpha1.IstioRevision{
 				ObjectMeta: metav1.ObjectMeta{
@@ -541,7 +541,7 @@ func TestDetermineInUseCondition(t *testing.T) {
 					WithObjects(rev, ns, pod).
 					Build()
 
-				r := NewIstioRevisionReconciler(cl, scheme.Scheme, nil, operatorNamespace)
+				r := NewIstioRevisionReconciler(cl, scheme.Scheme, "no-resource-dir", nil, operatorNamespace)
 
 				result, err := r.determineInUseCondition(context.TODO(), rev)
 				if err != nil {

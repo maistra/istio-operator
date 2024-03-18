@@ -142,7 +142,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	helmClient := helm.NewClient(resourceDirectory, mgr.GetConfig())
+	helmClient := helm.NewClient(mgr.GetConfig())
 
 	err = istio.NewIstioReconciler(mgr.GetClient(), mgr.GetScheme(), resourceDirectory, strings.Split(defaultProfiles, ",")).
 		SetupWithManager(mgr)
@@ -151,7 +151,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = istiorevision.NewIstioRevisionReconciler(mgr.GetClient(), mgr.GetScheme(), helmClient, operatorNamespace).
+	err = istiorevision.NewIstioRevisionReconciler(mgr.GetClient(), mgr.GetScheme(), resourceDirectory, helmClient, operatorNamespace).
 		SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "IstioRevision")

@@ -68,12 +68,13 @@ var _ = BeforeSuite(func() {
 		panic(err)
 	}
 
-	helmClient := helm.NewClient(path.Join(common.RepositoryRoot, "resources"), mgr.GetConfig())
+	resourceDir := path.Join(common.RepositoryRoot, "resources")
+	helmClient := helm.NewClient(mgr.GetConfig())
 
-	Expect(istio.NewIstioReconciler(mgr.GetClient(), mgr.GetScheme(), path.Join(common.RepositoryRoot, "resources"), []string{"default"}).
+	Expect(istio.NewIstioReconciler(mgr.GetClient(), mgr.GetScheme(), resourceDir, []string{"default"}).
 		SetupWithManager(mgr)).To(Succeed())
 
-	Expect(istiorevision.NewIstioRevisionReconciler(mgr.GetClient(), mgr.GetScheme(), helmClient, operatorNamespace).
+	Expect(istiorevision.NewIstioRevisionReconciler(mgr.GetClient(), mgr.GetScheme(), resourceDir, helmClient, operatorNamespace).
 		SetupWithManager(mgr)).To(Succeed())
 
 	// create new cancellable context
