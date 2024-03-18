@@ -67,21 +67,12 @@ func (h *Client) UpgradeOrInstallChart(
 		return nil, err
 	}
 
-	// Helm List Action
-	listAction := action.NewList(cfg)
-	releases, err := listAction.Run()
-	if err != nil {
-		return nil, fmt.Errorf("failed to list installed helm releases: %v", err)
-	}
-
-	toUpgrade := false
-	for _, rel := range releases {
-		if rel.Name == releaseName && rel.Namespace == namespace {
-			toUpgrade = true
-		}
-	}
-
 	chart, err := chartLoader.Load(chartDir)
+	if err != nil {
+		return nil, err
+	}
+
+	toUpgrade, err := h.releaseExists(cfg, namespace, releaseName)
 	if err != nil {
 		return nil, err
 	}
@@ -119,21 +110,10 @@ func (h *Client) UninstallChart(ctx context.Context, releaseName, namespace stri
 		return nil, err
 	}
 
-	// Helm List Action
-	listAction := action.NewList(cfg)
-	releases, err := listAction.Run()
-	if err != nil {
-		return nil, err
-	}
-
-	found := false
-	for _, rel := range releases {
-		if rel.Name == releaseName && rel.Namespace == namespace {
-			found = true
-		}
-	}
-	if !found {
+	if exists, err := h.releaseExists(cfg, namespace, releaseName); !exists {
 		return nil, nil
+	} else if err != nil {
+		return nil, err
 	}
 
 	uninstallAction := action.NewUninstall(cfg)
@@ -143,4 +123,19 @@ func (h *Client) UninstallChart(ctx context.Context, releaseName, namespace stri
 	}
 
 	return response, nil
+}
+
+func (h *Client) releaseExists(cfg *action.Configuration, namespace string, name string) (bool, error) {
+	listAction := action.NewList(cfg)
+	releases, err := listAction.Run()
+	if err != nil {
+		return false, fmt.Errorf("failed to list installed helm releases: %v", err)
+	}
+
+	for _, rel := range releases {
+		if rel.Name == name && rel.Namespace == namespace {
+			return true, nil
+		}
+	}
+	return false, nil
 }
