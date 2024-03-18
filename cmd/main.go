@@ -142,7 +142,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	helmClient := helm.NewClient(mgr.GetConfig())
+	helmClient := helm.NewClient(mgr.GetConfig(), os.Getenv("HELM_DRIVER"))
 
 	err = istio.NewIstioReconciler(mgr.GetClient(), mgr.GetScheme(), resourceDirectory, strings.Split(defaultProfiles, ",")).
 		SetupWithManager(mgr)

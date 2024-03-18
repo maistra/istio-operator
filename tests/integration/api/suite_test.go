@@ -69,7 +69,7 @@ var _ = BeforeSuite(func() {
 	}
 
 	resourceDir := path.Join(common.RepositoryRoot, "resources")
-	helmClient := helm.NewClient(mgr.GetConfig())
+	helmClient := helm.NewClient(mgr.GetConfig(), "")
 
 	Expect(istio.NewIstioReconciler(mgr.GetClient(), mgr.GetScheme(), resourceDir, []string{"default"}).
 		SetupWithManager(mgr)).To(Succeed())

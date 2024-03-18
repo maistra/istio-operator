@@ -17,7 +17,6 @@ package helm
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"helm.sh/helm/v3/pkg/action"
 	chartLoader "helm.sh/helm/v3/pkg/chart/loader"
@@ -30,11 +29,13 @@ import (
 
 type Client struct {
 	restClientGetter genericclioptions.RESTClientGetter
+	driver           string
 }
 
-func NewClient(cfg *rest.Config) *Client {
+func NewClient(cfg *rest.Config, driver string) *Client {
 	return &Client{
 		restClientGetter: NewRESTClientGetter(cfg),
+		driver:           driver,
 	}
 }
 
@@ -48,7 +49,7 @@ func (h *Client) newActionConfig(ctx context.Context, namespace string) (*action
 			logv2.Info(fmt.Sprintf(format, v...))
 		}
 	}
-	if err := actionConfig.Init(h.restClientGetter, namespace, os.Getenv("HELM_DRIVER"), logAdapter); err != nil {
+	if err := actionConfig.Init(h.restClientGetter, namespace, h.driver, logAdapter); err != nil {
 		return nil, err
 	}
 	return actionConfig, nil
