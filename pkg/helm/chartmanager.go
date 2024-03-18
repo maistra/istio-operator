@@ -32,6 +32,10 @@ type ChartManager struct {
 	driver           string
 }
 
+// NewChartManager creates a new Helm chart manager using cfg as the configuration
+// that Helm will use to connect to the cluster when installing or uninstalling
+// charts, and using the specified driver to store information about releases
+// (one of: memory, secret, configmap, sql, or "" (same as "secret")).
 func NewChartManager(cfg *rest.Config, driver string) *ChartManager {
 	return &ChartManager{
 		restClientGetter: NewRESTClientGetter(cfg),
