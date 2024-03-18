@@ -66,19 +66,19 @@ type IstioRevisionReconciler struct {
 	client.Client
 	Scheme            *runtime.Scheme
 	ResourceDirectory string
-	HelmClient        *helm.Client
+	ChartManager      *helm.ChartManager
 }
 
 func NewIstioRevisionReconciler(
 	client client.Client, scheme *runtime.Scheme, resourceDir string,
-	helmClient *helm.Client, cniNamespace string,
+	chartManager *helm.ChartManager, cniNamespace string,
 ) *IstioRevisionReconciler {
 	return &IstioRevisionReconciler{
 		CNINamespace:      cniNamespace,
 		Client:            client,
 		Scheme:            scheme,
 		ResourceDirectory: resourceDir,
-		HelmClient:        helmClient,
+		ChartManager:      chartManager,
 	}
 }
 
@@ -187,7 +187,7 @@ func (r *IstioRevisionReconciler) installHelmCharts(ctx context.Context, rev *v1
 
 	if isCNIEnabled(rev.Spec.Values) {
 		if shouldInstallCNI, err := r.isOldestRevisionWithCNI(ctx, rev); shouldInstallCNI {
-			_, err := r.HelmClient.UpgradeOrInstallChart(ctx, r.getChartDir(rev, "cni"), values, r.CNINamespace, cniReleaseName, ownerReference)
+			_, err := r.ChartManager.UpgradeOrInstallChart(ctx, r.getChartDir(rev, "cni"), values, r.CNINamespace, cniReleaseName, ownerReference)
 			if err != nil {
 				return err
 			}
@@ -199,7 +199,7 @@ func (r *IstioRevisionReconciler) installHelmCharts(ctx context.Context, rev *v1
 		}
 	}
 
-	_, err := r.HelmClient.UpgradeOrInstallChart(ctx, r.getChartDir(rev, "istiod"), values, rev.Spec.Namespace, getReleaseName(rev, "istiod"), ownerReference)
+	_, err := r.ChartManager.UpgradeOrInstallChart(ctx, r.getChartDir(rev, "istiod"), values, rev.Spec.Namespace, getReleaseName(rev, "istiod"), ownerReference)
 	return err
 }
 
@@ -212,11 +212,11 @@ func (r *IstioRevisionReconciler) getChartDir(rev *v1alpha1.IstioRevision, chart
 }
 
 func (r *IstioRevisionReconciler) uninstallHelmCharts(ctx context.Context, rev *v1alpha1.IstioRevision) error {
-	if _, err := r.HelmClient.UninstallChart(ctx, cniReleaseName, r.CNINamespace); err != nil {
+	if _, err := r.ChartManager.UninstallChart(ctx, cniReleaseName, r.CNINamespace); err != nil {
 		return err
 	}
 
-	if _, err := r.HelmClient.UninstallChart(ctx, getReleaseName(rev, "istiod"), rev.Spec.Namespace); err != nil {
+	if _, err := r.ChartManager.UninstallChart(ctx, getReleaseName(rev, "istiod"), rev.Spec.Namespace); err != nil {
 		return err
 	}
 	return nil

@@ -27,20 +27,20 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-type Client struct {
+type ChartManager struct {
 	restClientGetter genericclioptions.RESTClientGetter
 	driver           string
 }
 
-func NewClient(cfg *rest.Config, driver string) *Client {
-	return &Client{
+func NewChartManager(cfg *rest.Config, driver string) *ChartManager {
+	return &ChartManager{
 		restClientGetter: NewRESTClientGetter(cfg),
 		driver:           driver,
 	}
 }
 
 // newActionConfig Create a new Helm action config from in-cluster service account
-func (h *Client) newActionConfig(ctx context.Context, namespace string) (*action.Configuration, error) {
+func (h *ChartManager) newActionConfig(ctx context.Context, namespace string) (*action.Configuration, error) {
 	actionConfig := new(action.Configuration)
 	logAdapter := func(format string, v ...interface{}) {
 		log := logf.FromContext(ctx)
@@ -56,7 +56,7 @@ func (h *Client) newActionConfig(ctx context.Context, namespace string) (*action
 }
 
 // UpgradeOrInstallChart upgrades a chart in cluster or installs it new if it does not already exist
-func (h *Client) UpgradeOrInstallChart(
+func (h *ChartManager) UpgradeOrInstallChart(
 	ctx context.Context, chartDir string, values HelmValues,
 	namespace, releaseName string, ownerReference metav1.OwnerReference,
 ) (*release.Release, error) {
@@ -108,7 +108,7 @@ func (h *Client) UpgradeOrInstallChart(
 }
 
 // UninstallChart removes a chart from the cluster
-func (h *Client) UninstallChart(ctx context.Context, releaseName, namespace string) (*release.UninstallReleaseResponse, error) {
+func (h *ChartManager) UninstallChart(ctx context.Context, releaseName, namespace string) (*release.UninstallReleaseResponse, error) {
 	cfg, err := h.newActionConfig(ctx, namespace)
 	if err != nil {
 		return nil, err
