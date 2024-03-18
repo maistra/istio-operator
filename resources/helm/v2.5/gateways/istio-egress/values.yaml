@@ -5,12 +5,12 @@ gateways:
     name: istio-egressgateway
     ports:
     - port: 80
-      targetPort: 8080
+      targetPort: 80
       name: http2
       protocol: TCP
     - port: 443
       name: https
-      targetPort: 8443
+      targetPort: 443
       protocol: TCP
 
     labels:
