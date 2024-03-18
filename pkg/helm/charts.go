@@ -72,7 +72,7 @@ func (h *Client) UpgradeOrInstallChart(
 		return nil, err
 	}
 
-	releaseExists, err := h.releaseExists(cfg, namespace, releaseName)
+	releaseExists, err := releaseExists(cfg, namespace, releaseName)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func (h *Client) UninstallChart(ctx context.Context, releaseName, namespace stri
 		return nil, err
 	}
 
-	if exists, err := h.releaseExists(cfg, namespace, releaseName); !exists {
+	if exists, err := releaseExists(cfg, namespace, releaseName); !exists {
 		return nil, nil
 	} else if err != nil {
 		return nil, err
@@ -129,7 +129,7 @@ func (h *Client) UninstallChart(ctx context.Context, releaseName, namespace stri
 	return response, nil
 }
 
-func (h *Client) releaseExists(cfg *action.Configuration, namespace string, name string) (bool, error) {
+func releaseExists(cfg *action.Configuration, namespace string, name string) (bool, error) {
 	listAction := action.NewList(cfg)
 	releases, err := listAction.Run()
 	if err != nil {
