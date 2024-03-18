@@ -72,29 +72,33 @@ func (h *Client) UpgradeOrInstallChart(
 		return nil, err
 	}
 
-	toUpgrade, err := h.releaseExists(cfg, namespace, releaseName)
+	releaseExists, err := h.releaseExists(cfg, namespace, releaseName)
 	if err != nil {
 		return nil, err
 	}
+
 	var rel *release.Release
-	if toUpgrade {
+	if releaseExists {
 		log.V(2).Info("Performing helm upgrade", "chartName", chart.Name())
+
 		updateAction := action.NewUpgrade(cfg)
 		updateAction.PostRenderer = NewOwnerReferencePostRenderer(ownerReference, "")
 		updateAction.MaxHistory = 1
 		updateAction.SkipCRDs = true
+
 		rel, err = updateAction.RunWithContext(ctx, releaseName, chart, values)
 		if err != nil {
 			return nil, fmt.Errorf("failed to update helm chart %s: %v", chart.Name(), err)
 		}
-
 	} else {
 		log.V(2).Info("Performing helm install", "chartName", chart.Name())
+
 		installAction := action.NewInstall(cfg)
 		installAction.PostRenderer = NewOwnerReferencePostRenderer(ownerReference, "")
 		installAction.Namespace = namespace
 		installAction.ReleaseName = releaseName
 		installAction.SkipCRDs = true
+
 		rel, err = installAction.RunWithContext(ctx, chart, values)
 		if err != nil {
 			return nil, fmt.Errorf("failed to install helm chart %s: %v", chart.Name(), err)
