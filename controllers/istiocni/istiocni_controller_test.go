@@ -172,7 +172,7 @@ func TestDetermineReadyCondition(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(tt.clientObjects...).Build()
 
-			r := NewIstioCNIReconciler(cl, scheme.Scheme, nil, resourceDir, nil)
+			r := NewIstioCNIReconciler(cl, scheme.Scheme, nil, resourceDir, nil, nil)
 
 			cni := &v1alpha1.IstioCNI{
 				ObjectMeta: metav1.ObjectMeta{

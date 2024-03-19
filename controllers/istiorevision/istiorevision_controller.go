@@ -17,6 +17,7 @@ package istiorevision
 import (
 	"context"
 	"fmt"
+	"path"
 	"reflect"
 	"regexp"
 	"time"
@@ -35,8 +36,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -60,21 +59,20 @@ const (
 
 // IstioRevisionReconciler reconciles an IstioRevision object
 type IstioRevisionReconciler struct {
-	RestClientGetter genericclioptions.RESTClientGetter
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme            *runtime.Scheme
+	ResourceDirectory string
+	ChartManager      *helm.ChartManager
 }
 
-func NewIstioRevisionReconciler(client client.Client, scheme *runtime.Scheme, restConfig *rest.Config) *IstioRevisionReconciler {
+func NewIstioRevisionReconciler(client client.Client, scheme *runtime.Scheme, resourceDir string, chartManager *helm.ChartManager) *IstioRevisionReconciler {
 	return &IstioRevisionReconciler{
-		RestClientGetter: helm.NewRESTClientGetter(restConfig),
-		Client:           client,
-		Scheme:           scheme,
+		Client:            client,
+		Scheme:            scheme,
+		ResourceDirectory: resourceDir,
+		ChartManager:      chartManager,
 	}
 }
-
-// charts to deploy in the istio namespace
-var userCharts = []string{"istiod"}
 
 // +kubebuilder:rbac:groups=operator.istio.io,resources=istiorevisions,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.istio.io,resources=istiorevisions/status,verbs=get;update;patch
@@ -178,16 +176,20 @@ func (r *IstioRevisionReconciler) installHelmCharts(ctx context.Context, rev *v1
 	}
 
 	values := rev.Spec.Values.ToHelmValues()
+	_, err := r.ChartManager.UpgradeOrInstallChart(ctx, r.getChartDir(rev, "istiod"), values, rev.Spec.Namespace, getReleaseName(rev, "istiod"), ownerReference)
+	return err
+}
 
-	if err := helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, userCharts, values,
-		rev.Spec.Version, rev.Name, rev.Spec.Namespace, ownerReference); err != nil {
-		return err
-	}
-	return nil
+func getReleaseName(rev *v1alpha1.IstioRevision, chartName string) string {
+	return fmt.Sprintf("%s-%s", rev.Name, chartName)
+}
+
+func (r *IstioRevisionReconciler) getChartDir(rev *v1alpha1.IstioRevision, chartName string) string {
+	return path.Join(r.ResourceDirectory, rev.Spec.Version, "charts", chartName)
 }
 
 func (r *IstioRevisionReconciler) uninstallHelmCharts(ctx context.Context, rev *v1alpha1.IstioRevision) error {
-	if err := helm.UninstallCharts(ctx, r.RestClientGetter, userCharts, rev.Name, rev.Spec.Namespace); err != nil {
+	if _, err := r.ChartManager.UninstallChart(ctx, getReleaseName(rev, "istiod"), rev.Spec.Namespace); err != nil {
 		return err
 	}
 	return nil

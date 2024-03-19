@@ -32,7 +32,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -44,29 +43,28 @@ import (
 	"istio.io/istio/pkg/ptr"
 )
 
+const cniReleaseName = "istio-cni"
+
 // IstioCNIReconciler reconciles an IstioCNI object
 type IstioCNIReconciler struct {
 	ResourceDirectory string
 	DefaultProfiles   []string
-	RestClientGetter  genericclioptions.RESTClientGetter
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme       *runtime.Scheme
+	ChartManager *helm.ChartManager
 }
 
 func NewIstioCNIReconciler(client client.Client, scheme *runtime.Scheme, restConfig *rest.Config,
-	resourceDir string, defaultProfiles []string,
+	resourceDir string, chartManager *helm.ChartManager, defaultProfiles []string,
 ) *IstioCNIReconciler {
 	return &IstioCNIReconciler{
 		ResourceDirectory: resourceDir,
 		DefaultProfiles:   defaultProfiles,
-		RestClientGetter:  helm.NewRESTClientGetter(restConfig),
 		Client:            client,
 		Scheme:            scheme,
+		ChartManager:      chartManager,
 	}
 }
-
-// charts to deploy
-var userCharts = []string{"cni"}
 
 // +kubebuilder:rbac:groups=operator.istio.io,resources=istiocnis,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.istio.io,resources=istiocnis/status,verbs=get;update;patch
@@ -100,7 +98,7 @@ func (r *IstioCNIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	if cni.DeletionTimestamp != nil {
-		if err := r.uninstallHelmCharts(ctx, &cni); err != nil {
+		if err := r.uninstallHelmChart(ctx, &cni); err != nil {
 			return ctrl.Result{}, err
 		}
 
@@ -124,7 +122,7 @@ func (r *IstioCNIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	log.Info("Installing components")
-	err := r.installHelmCharts(ctx, &cni)
+	err := r.installHelmChart(ctx, &cni)
 
 	log.Info("Reconciliation done. Updating status.")
 	err = r.updateStatus(ctx, &cni, err)
@@ -142,7 +140,7 @@ func validateIstioCNI(cni v1alpha1.IstioCNI) error {
 	return nil
 }
 
-func (r *IstioCNIReconciler) installHelmCharts(ctx context.Context, cni *v1alpha1.IstioCNI) error {
+func (r *IstioCNIReconciler) installHelmChart(ctx context.Context, cni *v1alpha1.IstioCNI) error {
 	ownerReference := metav1.OwnerReference{
 		APIVersion:         v1alpha1.GroupVersion.String(),
 		Kind:               v1alpha1.IstioCNIKind,
@@ -164,8 +162,12 @@ func (r *IstioCNIReconciler) installHelmCharts(ctx context.Context, cni *v1alpha
 		return err
 	}
 
-	return helm.UpgradeOrInstallCharts(ctx, r.RestClientGetter, userCharts, mergedHelmValues,
-		cni.Spec.Version, cni.Name, cni.Spec.Namespace, ownerReference)
+	_, err = r.ChartManager.UpgradeOrInstallChart(ctx, r.getChartDir(cni), mergedHelmValues, cni.Spec.Namespace, cniReleaseName, ownerReference)
+	return err
+}
+
+func (r *IstioCNIReconciler) getChartDir(cni *v1alpha1.IstioCNI) string {
+	return path.Join(r.ResourceDirectory, cni.Spec.Version, "charts", "cni")
 }
 
 func getProfiles(cni *v1alpha1.IstioCNI, defaultProfiles []string) []string {
@@ -200,8 +202,9 @@ func applyImageDigests(cni *v1alpha1.IstioCNI, values *v1alpha1.CNIValues, confi
 	return values
 }
 
-func (r *IstioCNIReconciler) uninstallHelmCharts(ctx context.Context, cni *v1alpha1.IstioCNI) error {
-	return helm.UninstallCharts(ctx, r.RestClientGetter, userCharts, cni.Name, cni.Spec.Namespace)
+func (r *IstioCNIReconciler) uninstallHelmChart(ctx context.Context, cni *v1alpha1.IstioCNI) error {
+	_, err := r.ChartManager.UninstallChart(ctx, cniReleaseName, cni.Spec.Namespace)
+	return err
 }
 
 // SetupWithManager sets up the controller with the Manager.

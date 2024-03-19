@@ -59,9 +59,6 @@ var _ = BeforeSuite(func() {
 	testEnv, k8sClient, cfg = test.SetupEnv()
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
-	resourceDir := path.Join(common.RepositoryRoot, "resources")
-	helm.ResourceDirectory = resourceDir
-
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme.Scheme,
 		NewClient: func(config *rest.Config, options client.Options) (client.Client, error) {
@@ -72,14 +69,17 @@ var _ = BeforeSuite(func() {
 		panic(err)
 	}
 
+	chartManager := helm.NewChartManager(mgr.GetConfig(), "")
+	resourceDir := path.Join(common.RepositoryRoot, "resources")
 	defaultProfiles := []string{"default"}
+
 	Expect(istio.NewIstioReconciler(mgr.GetClient(), mgr.GetScheme(), resourceDir, defaultProfiles).
 		SetupWithManager(mgr)).To(Succeed())
 
-	Expect(istiorevision.NewIstioRevisionReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig()).
+	Expect(istiorevision.NewIstioRevisionReconciler(mgr.GetClient(), mgr.GetScheme(), resourceDir, chartManager).
 		SetupWithManager(mgr)).To(Succeed())
 
-	Expect(istiocni.NewIstioCNIReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), resourceDir, defaultProfiles).
+	Expect(istiocni.NewIstioCNIReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), resourceDir, chartManager, defaultProfiles).
 		SetupWithManager(mgr)).To(Succeed())
 
 	// create new cancellable context

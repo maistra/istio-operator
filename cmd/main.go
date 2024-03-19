@@ -143,6 +143,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	chartManager := helm.NewChartManager(mgr.GetConfig(), os.Getenv("HELM_DRIVER"))
 	defaultProfiles := strings.Split(defaultProfilesStr, ",")
 
 	err = istio.NewIstioReconciler(mgr.GetClient(), mgr.GetScheme(), resourceDirectory, defaultProfiles).
@@ -152,15 +153,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	helm.ResourceDirectory = resourceDirectory
-	err = istiorevision.NewIstioRevisionReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig()).
+	err = istiorevision.NewIstioRevisionReconciler(mgr.GetClient(), mgr.GetScheme(), resourceDirectory, chartManager).
 		SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "IstioRevision")
 		os.Exit(1)
 	}
 
-	err = istiocni.NewIstioCNIReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), resourceDirectory, defaultProfiles).
+	err = istiocni.NewIstioCNIReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), resourceDirectory, chartManager, defaultProfiles).
 		SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "IstioCNI")
