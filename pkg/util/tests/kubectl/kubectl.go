@@ -270,6 +270,24 @@ func Delete(ns, kind, name string) error {
 	return nil
 }
 
+// Patch patches a resource.
+func Patch(ns, kind, name, patchType, patch string) error {
+	cmd := kubectl(`patch %s %s %s --type=%s -p=%q`, kind, name, prepend("-n", ns), patchType, patch)
+	_, err := shell.ExecuteCommand(cmd)
+	if err != nil {
+		return fmt.Errorf("error patching resource: %v", err)
+	}
+	return nil
+}
+
+// ForceDelete deletes a resource by removing its finalizers.
+func ForceDelete(ns, kind, name string) error {
+	if err := Patch(ns, kind, name, "json", `[{"op": "remove", "path": "/metadata/finalizers"}]`); err != nil {
+		return err
+	}
+	return Delete(ns, kind, name)
+}
+
 // Logs returns the logs of a deployment
 // Arguments:
 // - ns: namespace
@@ -337,6 +355,14 @@ func extractNames(str string) []string {
 	}
 
 	return names
+}
+
+// prepend prepends the prefix, but only if str is not empty
+func prepend(prefix, str string) string {
+	if str == "" {
+		return str
+	}
+	return prefix + str
 }
 
 func nsflag(ns string) string {

@@ -249,12 +249,18 @@ spec:
 	})
 
 	AfterAll(func() {
-		Expect(deleteIstioResources()).To(Succeed(), "Istio CRs are present; expected to not fail")
-		By("Cleaning up the operator")
+		By("Deleting any left-over Istio and IstioRevision resources")
+		Expect(forceDeleteIstioResources()).To(Succeed())
+		Success("Resources deleted")
+
+		By("Uninstalling the operator")
 		Expect(helm.Uninstall("sail-operator", "--namespace "+namespace)).
 			To(Succeed(), "Operator failed to be deleted")
+		Success("Operator uninstalled")
+
+		By("Deleting the CRDs")
 		Expect(kubectl.DeleteCRDs(crds)).To(Succeed(), "CRDs failed to be deleted")
-		Success("Operator is deleted")
+		Success("CRDs deleted")
 	})
 })
 
@@ -271,15 +277,15 @@ func getVersionFromIstiod() (string, error) {
 	return "", fmt.Errorf("error getting version from istiod: version not found in output: %s", output)
 }
 
-func deleteIstioResources() error {
+func forceDeleteIstioResources() error {
 	// This is a workaround to delete the Istio CRs that are left in the cluster
 	// This will be improved by splitting the tests into different Nodes with their independent setups and cleanups
-	err := kubectl.Delete("", "istio", istioName)
+	err := kubectl.ForceDelete("", "istio", istioName)
 	if err != nil && !strings.Contains(err.Error(), "not found") {
 		return fmt.Errorf("failed to delete %s CR: %v", "istio", err)
 	}
 
-	err = kubectl.Delete("", "istiorevision", "default")
+	err = kubectl.ForceDelete("", "istiorevision", "default")
 	if err != nil && !strings.Contains(err.Error(), "not found") {
 		return fmt.Errorf("failed to delete %s CR: %v", "istiorevision", err)
 	}
