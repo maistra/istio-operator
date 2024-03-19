@@ -71,7 +71,7 @@ function updateVersionInSamples() {
 
     sed -i -E \
       -e "s/version: .*/version: $defaultVersion/g" \
-      chart/samples/istio-sample-kubernetes.yaml chart/samples/istio-sample-openshift.yaml
+      chart/samples/istio-sample-kubernetes.yaml chart/samples/istio-sample-openshift.yaml chart/samples/istiocni-sample.yaml
 }
 
 updateVersionsInIstioTypeComment
