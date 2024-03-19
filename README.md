@@ -10,8 +10,8 @@ This project is an operator that can be used to manage the installation of an [I
 You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
 **Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
 
-### Running on the cluster
-1. Deploy the operator to the cluster:
+### Deploying the operator
+Deploy the operator to the cluster:
 ```sh
 make deploy
 ```
@@ -24,21 +24,28 @@ make deploy-olm
 
 Make sure that the `HUB` and `TAG` environment variables point to your container image repository and that the repository is publicly accessible.
 
-2. Create an instance of the Istio resource to install the Istio Control Plane:
+### Deploying the Istio Control Plane
+Create an instance of the Istio resource to install the Istio Control Plane. Use the `istio-sample-openshift.yaml` file on OpenShift:
 
 ```sh
 kubectl apply -f chart/samples/istio-sample-openshift.yaml
 ```
 
-or 
+Use the `istio-sample-kubernetes.yaml` file on vanilla Kubernetes:
 
 ```sh
 kubectl apply -f chart/samples/istio-sample-kubernetes.yaml
 ```
 
+### Deploying the Istio CNI plugin
+On OpenShift, you must also deploy the Istio CNI plugin by creating an instance of the IstioCNI resource:
 
-### Undeploy controller
-UnDeploy the controller from the cluster:
+```sh
+kubectl apply -f chart/samples/istiocni-sample.yaml
+```
+
+### Undeploying the operator
+Undeploy the operator from the cluster:
 
 ```sh
 make undeploy
