@@ -17,55 +17,34 @@ package helm
 import (
 	"context"
 	"fmt"
-	"os"
-	"path"
-	"path/filepath"
 
 	"helm.sh/helm/v3/pkg/action"
 	chartLoader "helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/release"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/client-go/rest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var ResourceDirectory, _ = filepath.Abs("resources")
-
-func UninstallCharts(ctx context.Context, restClientGetter genericclioptions.RESTClientGetter, charts []string, releaseNameBase, ns string) error {
-	actionConfig, err := newActionConfig(ctx, restClientGetter, ns)
-	if err != nil {
-		return err
-	}
-	for _, chartName := range charts {
-		releaseName := fmt.Sprintf("%s-%s", releaseNameBase, chartName)
-		_, err = uninstallChart(actionConfig, ns, releaseName)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+type ChartManager struct {
+	restClientGetter genericclioptions.RESTClientGetter
+	driver           string
 }
 
-func UpgradeOrInstallCharts(ctx context.Context, restClientGetter genericclioptions.RESTClientGetter,
-	charts []string, values HelmValues,
-	chartVersion, releaseNameBase, ns string, ownerReference metav1.OwnerReference,
-) error {
-	actionConfig, err := newActionConfig(ctx, restClientGetter, ns)
-	if err != nil {
-		return err
+// NewChartManager creates a new Helm chart manager using cfg as the configuration
+// that Helm will use to connect to the cluster when installing or uninstalling
+// charts, and using the specified driver to store information about releases
+// (one of: memory, secret, configmap, sql, or "" (same as "secret")).
+func NewChartManager(cfg *rest.Config, driver string) *ChartManager {
+	return &ChartManager{
+		restClientGetter: NewRESTClientGetter(cfg),
+		driver:           driver,
 	}
-	for _, chartName := range charts {
-		releaseName := fmt.Sprintf("%s-%s", releaseNameBase, chartName)
-		_, err = upgradeOrInstallChart(ctx, actionConfig, chartName, chartVersion, ns, releaseName, ownerReference, values)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // newActionConfig Create a new Helm action config from in-cluster service account
-func newActionConfig(ctx context.Context, restClientGetter genericclioptions.RESTClientGetter, namespace string) (*action.Configuration, error) {
+func (h *ChartManager) newActionConfig(ctx context.Context, namespace string) (*action.Configuration, error) {
 	actionConfig := new(action.Configuration)
 	logAdapter := func(format string, v ...interface{}) {
 		log := logf.FromContext(ctx)
@@ -74,56 +53,56 @@ func newActionConfig(ctx context.Context, restClientGetter genericclioptions.RES
 			logv2.Info(fmt.Sprintf(format, v...))
 		}
 	}
-	if err := actionConfig.Init(restClientGetter, namespace, os.Getenv("HELM_DRIVER"), logAdapter); err != nil {
+	if err := actionConfig.Init(h.restClientGetter, namespace, h.driver, logAdapter); err != nil {
 		return nil, err
 	}
 	return actionConfig, nil
 }
 
-// upgradeOrInstallChart upgrades a chart in cluster or installs it new if it does not already exist
-func upgradeOrInstallChart(ctx context.Context, cfg *action.Configuration,
-	chartName, chartVersion, namespace, releaseName string,
-	ownerReference metav1.OwnerReference, values HelmValues,
+// UpgradeOrInstallChart upgrades a chart in cluster or installs it new if it does not already exist
+func (h *ChartManager) UpgradeOrInstallChart(
+	ctx context.Context, chartDir string, values HelmValues,
+	namespace, releaseName string, ownerReference metav1.OwnerReference,
 ) (*release.Release, error) {
 	log := logf.FromContext(ctx)
 
-	// Helm List Action
-	listAction := action.NewList(cfg)
-	releases, err := listAction.Run()
-	if err != nil {
-		return nil, fmt.Errorf("failed to list installed helm releases: %v", err)
-	}
-
-	toUpgrade := false
-	for _, release := range releases {
-		if release.Name == releaseName && release.Namespace == namespace {
-			toUpgrade = true
-		}
-	}
-
-	chart, err := chartLoader.Load(path.Join(ResourceDirectory, chartVersion, "charts", chartName))
+	cfg, err := h.newActionConfig(ctx, namespace)
 	if err != nil {
 		return nil, err
 	}
+
+	chart, err := chartLoader.Load(chartDir)
+	if err != nil {
+		return nil, err
+	}
+
+	releaseExists, err := releaseExists(cfg, namespace, releaseName)
+	if err != nil {
+		return nil, err
+	}
+
 	var rel *release.Release
-	if toUpgrade {
+	if releaseExists {
 		log.V(2).Info("Performing helm upgrade", "chartName", chart.Name())
+
 		updateAction := action.NewUpgrade(cfg)
 		updateAction.PostRenderer = NewOwnerReferencePostRenderer(ownerReference, "")
 		updateAction.MaxHistory = 1
 		updateAction.SkipCRDs = true
+
 		rel, err = updateAction.RunWithContext(ctx, releaseName, chart, values)
 		if err != nil {
 			return nil, fmt.Errorf("failed to update helm chart %s: %v", chart.Name(), err)
 		}
-
 	} else {
 		log.V(2).Info("Performing helm install", "chartName", chart.Name())
+
 		installAction := action.NewInstall(cfg)
 		installAction.PostRenderer = NewOwnerReferencePostRenderer(ownerReference, "")
 		installAction.Namespace = namespace
 		installAction.ReleaseName = releaseName
 		installAction.SkipCRDs = true
+
 		rel, err = installAction.RunWithContext(ctx, chart, values)
 		if err != nil {
 			return nil, fmt.Errorf("failed to install helm chart %s: %v", chart.Name(), err)
@@ -132,23 +111,17 @@ func upgradeOrInstallChart(ctx context.Context, cfg *action.Configuration,
 	return rel, nil
 }
 
-// uninstallChart removes a chart from the cluster
-func uninstallChart(cfg *action.Configuration, namespace, releaseName string) (*release.UninstallReleaseResponse, error) {
-	// Helm List Action
-	listAction := action.NewList(cfg)
-	releases, err := listAction.Run()
+// UninstallChart removes a chart from the cluster
+func (h *ChartManager) UninstallChart(ctx context.Context, releaseName, namespace string) (*release.UninstallReleaseResponse, error) {
+	cfg, err := h.newActionConfig(ctx, namespace)
 	if err != nil {
 		return nil, err
 	}
 
-	found := false
-	for _, release := range releases {
-		if release.Name == releaseName && release.Namespace == namespace {
-			found = true
-		}
-	}
-	if !found {
+	if exists, err := releaseExists(cfg, namespace, releaseName); !exists {
 		return nil, nil
+	} else if err != nil {
+		return nil, err
 	}
 
 	uninstallAction := action.NewUninstall(cfg)
@@ -158,4 +131,19 @@ func uninstallChart(cfg *action.Configuration, namespace, releaseName string) (*
 	}
 
 	return response, nil
+}
+
+func releaseExists(cfg *action.Configuration, namespace string, name string) (bool, error) {
+	listAction := action.NewList(cfg)
+	releases, err := listAction.Run()
+	if err != nil {
+		return false, fmt.Errorf("failed to list installed helm releases: %v", err)
+	}
+
+	for _, rel := range releases {
+		if rel.Name == name && rel.Namespace == namespace {
+			return true, nil
+		}
+	}
+	return false, nil
 }
