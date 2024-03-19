@@ -137,14 +137,71 @@ var _ = Describe("Operator", Ordered, func() {
 		})
 	})
 
-	Describe("Istio install/uninstall", func() {
+	Describe("given Istio version", func() {
 		for _, version := range supportedversion.List {
 			// Note: This var version is needed to avoid the closure of the loop
 			version := version
 
-			Context(fmt.Sprintf("version %s", version.Name), func() {
+			Context(version.Name, func() {
 				BeforeAll(func() {
-					Expect(kubectl.CreateNamespace(controlPlaneNamespace)).To(Succeed(), "Namespace failed to be created")
+					Expect(kubectl.CreateNamespace(controlPlaneNamespace)).To(Succeed(), "Istio namespace failed to be created")
+					Expect(kubectl.CreateNamespace(istioCniNamespace)).To(Succeed(), "IstioCNI namespace failed to be created")
+				})
+
+				When("the IstioCNI CR is created", func() {
+					BeforeAll(func() {
+						yaml := `
+apiVersion: operator.istio.io/v1alpha1
+kind: IstioCNI
+metadata:
+  name: default
+spec:
+  version: %s
+  namespace: %s`
+						yaml = fmt.Sprintf(yaml, version.Name, istioCniNamespace)
+						log("IstioCNI YAML:", indent(2, yaml))
+						Expect(kubectl.ApplyString(yaml)).To(Succeed(), "IstioCNI creation failed")
+						Success("IstioCNI created")
+					})
+
+					It("deploys the CNI DaemonSet", func() {
+						Eventually(kubectl.GetDaemonSets).
+							WithArguments(istioCniNamespace).
+							Should(ContainElement("istio-cni-node"), "CNI DaemonSet is not deployed; expected list to contain element")
+
+						Eventually(func(g Gomega) {
+							numberAvailable, err := kubectl.GetDaemonSetStatusField(istioCniNamespace, "istio-cni-node", "numberAvailable")
+							g.Expect(err).ToNot(HaveOccurred(), "Error getting numberAvailable field from istio-cni-node DaemonSet")
+
+							currentNumberScheduled, err := kubectl.GetDaemonSetStatusField(istioCniNamespace, "istio-cni-node", "currentNumberScheduled")
+							g.Expect(err).ToNot(HaveOccurred(), "Error getting currentNumberScheduled field from istio-cni-node DaemonSet")
+
+							g.Expect(numberAvailable).
+								To(Equal(currentNumberScheduled), "CNI DaemonSet Pods not Available; expected numberAvailable to be equal to currentNumberScheduled")
+						}).Should(Succeed(), "CNI DaemonSet Pods are not Available")
+						Success("CNI DaemonSet is deployed in the namespace and Running")
+					})
+
+					It("updates the status to Reconciled", func() {
+						Eventually(kubectl.GetConditions).
+							WithArguments(istioCniNamespace, "istiocni", istioCniName).
+							Should(ContainElement(resourceReconciled), "IstioCNI is not Reconciled; unexpected Condition")
+						Success("IstioCNI is Reconciled")
+					})
+
+					It("updates the status to Ready", func() {
+						Eventually(kubectl.GetConditions).
+							WithArguments(istioCniNamespace, "istiocni", istioCniName).
+							Should(ContainElement(resourceReady), "IstioCNI is not Ready; unexpected Condition")
+						Success("IstioCNI is Ready")
+					})
+
+					It("doesn't continuously reconcile the IstioCNI CR", func() {
+						Eventually(kubectl.Logs).
+							WithArguments(namespace, "deploy/"+deploymentName, ptr.Of(30*time.Second)).
+							ShouldNot(ContainSubstring("Reconciliation done"), "Istio Operator is continuously reconciling")
+						Success("Istio Operator stopped reconciling")
+					})
 				})
 
 				When("the Istio CR is created", func() {
@@ -158,7 +215,7 @@ spec:
   version: %s
   namespace: %s`
 						istioYAML = fmt.Sprintf(istioYAML, version.Name, controlPlaneNamespace)
-						GinkgoWriter.Printf("Istio CR YAML: %s\n", istioYAML)
+						log("Istio YAML:", indent(2, istioYAML))
 						Expect(kubectl.ApplyString(istioYAML)).
 							To(Succeed(), "Istio CR failed to be created")
 						Success("Istio CR created")
@@ -186,32 +243,9 @@ spec:
 						Expect(getVersionFromIstiod()).To(Equal(version.Version), "Unexpected istiod version")
 					})
 
-					It("deploys the CNI DaemonSet when running on OpenShift", func() {
-						if ocp {
-							Eventually(kubectl.GetDaemonSets).
-								WithArguments(namespace).
-								Should(ContainElement("istio-cni-node"), "CNI DaemonSet is not deployed; expected list to contain element")
-
-							Eventually(func(g Gomega) {
-								numberAvailable, err := kubectl.GetDaemonSetStatusField(namespace, "istio-cni-node", "numberAvailable")
-								g.Expect(err).ToNot(HaveOccurred(), "Error getting numberAvailable field from istio-cni-node DaemonSet")
-								currentNumberScheduled, err := kubectl.GetDaemonSetStatusField(namespace, "istio-cni-node", "currentNumberScheduled")
-								g.Expect(err).ToNot(HaveOccurred(), "Error getting currentNumberScheduled field from istio-cni-node DaemonSet")
-								g.Expect(numberAvailable).
-									To(Equal(currentNumberScheduled), "CNI DaemonSet Pods not Available; expected numberAvailable to be equal to currentNumberScheduled")
-							}).Should(Succeed(), "CNI DaemonSet Pods are not Available")
-							Success("CNI DaemonSet is deployed in the namespace and Running")
-						} else {
-							Consistently(kubectl.GetDaemonSets).
-								WithArguments(namespace).WithTimeout(30*time.Second).
-								Should(BeEmpty(), "CNI DaemonSet is present; expected list to be empty")
-							Success("CNI DaemonSet is not deployed in the namespace because it's not OpenShift")
-						}
-					})
-
 					It("doesn't continuously reconcile the Istio CR", func() {
 						Eventually(kubectl.Logs).
-							WithArguments(namespace, "deploy/sail-operator", ptr.Of(30*time.Second)).
+							WithArguments(namespace, "deploy/"+deploymentName, ptr.Of(30*time.Second)).
 							ShouldNot(ContainSubstring("Reconciliation done"), "Istio Operator is continuously reconciling")
 						Success("Istio Operator stopped reconciling")
 					})
@@ -230,6 +264,20 @@ spec:
 						Success("Namespace is empty")
 					})
 				})
+
+				When("the IstioCNI CR is deleted", func() {
+					BeforeEach(func() {
+						Expect(kubectl.Delete(istioCniNamespace, "istiocni", istioCniName)).To(Succeed(), "IstioCNI CR failed to be deleted")
+						Success("IstioCNI deleted")
+					})
+
+					It("removes everything from the CNI namespace", func() {
+						Eventually(kubectl.GetResourceList).
+							WithArguments(istioCniNamespace, "all").
+							Should(Equal(kubectl.EmptyResourceList), "CNI namespace isn't empty")
+						Success("CNI namespace is empty")
+					})
+				})
 			})
 		}
 
@@ -237,9 +285,13 @@ spec:
 			if CurrentSpecReport().Failed() {
 				LogDebugInfo()
 			}
-			By("Cleaning up the namespace")
+			By("Cleaning up the Istio namespace")
 			Expect(kubectl.DeleteNamespace(controlPlaneNamespace)).
 				To(Succeed(), "Namespace failed to be deleted")
+
+			By("Cleaning up the IstioCNI namespace")
+			Expect(kubectl.DeleteNamespace(istioCniNamespace)).
+				To(Succeed(), "CNI namespace deletion failed")
 
 			Eventually(kubectl.CheckNamespaceExist).
 				WithArguments(controlPlaneNamespace).
@@ -290,7 +342,21 @@ func forceDeleteIstioResources() error {
 		return fmt.Errorf("failed to delete %s CR: %v", "istiorevision", err)
 	}
 
+	err = kubectl.Delete("", "istiocni", istioCniName)
+	if err != nil && !strings.Contains(err.Error(), "not found") {
+		return fmt.Errorf("failed to delete %s CR: %v", "istiocni", err)
+	}
+
 	return nil
+}
+
+func indent(level int, str string) string {
+	indent := strings.Repeat(" ", level)
+	return indent + strings.ReplaceAll(str, "\n", "\n"+indent)
+}
+
+func log(a ...any) {
+	GinkgoWriter.Println(a...)
 }
 
 func LogDebugInfo() {
@@ -307,7 +373,7 @@ func LogDebugInfo() {
 	}
 	GinkgoWriter.Println("Pods in Istio CR namespace: \n", output)
 
-	logs, err := kubectl.Logs(namespace, "deploy/sail-operator", ptr.Of(120*time.Second))
+	logs, err := kubectl.Logs(namespace, "deploy/"+deploymentName, ptr.Of(120*time.Second))
 	if err != nil {
 		GinkgoWriter.Println("Error getting logs from the operator: ", err)
 	}

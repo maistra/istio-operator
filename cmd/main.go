@@ -23,6 +23,7 @@ import (
 
 	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
 	"github.com/istio-ecosystem/sail-operator/controllers/istio"
+	"github.com/istio-ecosystem/sail-operator/controllers/istiocni"
 	"github.com/istio-ecosystem/sail-operator/controllers/istiorevision"
 	"github.com/istio-ecosystem/sail-operator/pkg/common"
 	"github.com/istio-ecosystem/sail-operator/pkg/helm"
@@ -60,7 +61,7 @@ func main() {
 	var probeAddr string
 	var configFile string
 	var resourceDirectory string
-	var defaultProfiles string
+	var defaultProfilesStr string
 	var logAPIRequests bool
 	var printVersion bool
 	var leaderElectionEnabled bool
@@ -68,7 +69,7 @@ func main() {
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.StringVar(&configFile, "config-file", "/etc/sail-operator/config.properties", "Location of the config file, propagated by k8s downward APIs")
 	flag.StringVar(&resourceDirectory, "resource-directory", "/var/lib/sail-operator/resources", "Where to find resources (e.g. charts)")
-	flag.StringVar(&defaultProfiles, "default-profiles", "default", "One or more comma-separated profile names that are always applied to each Istio resource")
+	flag.StringVar(&defaultProfilesStr, "default-profiles", "default", "Comma-separated profile names that are always applied to each Istio resource")
 	flag.BoolVar(&logAPIRequests, "log-api-requests", false, "Whether to log each request sent to the Kubernetes API server")
 	flag.BoolVar(&printVersion, "version", printVersion, "Prints version information and exits")
 	flag.BoolVar(&leaderElectionEnabled, "leader-elect", true,
@@ -97,7 +98,7 @@ func main() {
 		}
 	}
 
-	if defaultProfiles == "" {
+	if defaultProfilesStr == "" {
 		setupLog.Error(nil, "--default-profiles shouldn't be empty")
 		os.Exit(1)
 	}
@@ -143,18 +144,26 @@ func main() {
 	}
 
 	chartManager := helm.NewChartManager(mgr.GetConfig(), os.Getenv("HELM_DRIVER"))
+	defaultProfiles := strings.Split(defaultProfilesStr, ",")
 
-	err = istio.NewIstioReconciler(mgr.GetClient(), mgr.GetScheme(), resourceDirectory, strings.Split(defaultProfiles, ",")).
+	err = istio.NewIstioReconciler(mgr.GetClient(), mgr.GetScheme(), resourceDirectory, defaultProfiles).
 		SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Istio")
 		os.Exit(1)
 	}
 
-	err = istiorevision.NewIstioRevisionReconciler(mgr.GetClient(), mgr.GetScheme(), resourceDirectory, chartManager, operatorNamespace).
+	err = istiorevision.NewIstioRevisionReconciler(mgr.GetClient(), mgr.GetScheme(), resourceDirectory, chartManager).
 		SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "IstioRevision")
+		os.Exit(1)
+	}
+
+	err = istiocni.NewIstioCNIReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), resourceDirectory, chartManager, defaultProfiles).
+		SetupWithManager(mgr)
+	if err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "IstioCNI")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

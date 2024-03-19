@@ -32,6 +32,9 @@ func NewOwnerReference(obj client.Object) metav1.OwnerReference {
 	case *v1alpha1.IstioRevision:
 		apiVersion = v1alpha1.GroupVersion.String()
 		kind = v1alpha1.IstioRevisionKind
+	case *v1alpha1.IstioCNI:
+		apiVersion = v1alpha1.GroupVersion.String()
+		kind = v1alpha1.IstioCNIKind
 	default:
 		panic("unknown type")
 	}

@@ -31,8 +31,6 @@ import (
 	"istio.io/istio/pkg/ptr"
 )
 
-const operatorNamespace = "sail-operator"
-
 func TestDeriveState(t *testing.T) {
 	testCases := []struct {
 		name                string
@@ -94,7 +92,6 @@ func newCondition(conditionType v1alpha1.IstioRevisionConditionType,
 func TestDetermineReadyCondition(t *testing.T) {
 	testCases := []struct {
 		name          string
-		cniEnabled    bool
 		values        *v1alpha1.Values
 		clientObjects []client.Object
 		expected      v1alpha1.IstioRevisionCondition
@@ -178,142 +175,6 @@ func TestDetermineReadyCondition(t *testing.T) {
 			},
 		},
 		{
-			name: "Istiod and CNI ready",
-			values: &v1alpha1.Values{
-				IstioCni: &v1alpha1.CNIUsageConfig{
-					Enabled: ptr.Of(true),
-				},
-			},
-			clientObjects: []client.Object{
-				&appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "istiod",
-						Namespace: "istio-system",
-					},
-					Status: appsv1.DeploymentStatus{
-						Replicas:          2,
-						ReadyReplicas:     2,
-						AvailableReplicas: 2,
-					},
-				},
-				&appsv1.DaemonSet{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "istio-cni-node",
-						Namespace: operatorNamespace,
-					},
-					Status: appsv1.DaemonSetStatus{
-						CurrentNumberScheduled: 3,
-						NumberReady:            3,
-					},
-				},
-			},
-			expected: v1alpha1.IstioRevisionCondition{
-				Type:   v1alpha1.IstioRevisionConditionTypeReady,
-				Status: metav1.ConditionTrue,
-			},
-		},
-		{
-			name: "CNI not ready",
-			values: &v1alpha1.Values{
-				IstioCni: &v1alpha1.CNIUsageConfig{
-					Enabled: ptr.Of(true),
-				},
-			},
-			clientObjects: []client.Object{
-				&appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "istiod",
-						Namespace: "istio-system",
-					},
-					Status: appsv1.DeploymentStatus{
-						Replicas:          2,
-						ReadyReplicas:     2,
-						AvailableReplicas: 2,
-					},
-				},
-				&appsv1.DaemonSet{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "istio-cni-node",
-						Namespace: operatorNamespace,
-					},
-					Status: appsv1.DaemonSetStatus{
-						CurrentNumberScheduled: 1,
-						NumberReady:            0,
-					},
-				},
-			},
-			expected: v1alpha1.IstioRevisionCondition{
-				Type:    v1alpha1.IstioRevisionConditionTypeReady,
-				Status:  metav1.ConditionFalse,
-				Reason:  v1alpha1.IstioRevisionConditionReasonCNINotReady,
-				Message: "not all istio-cni-node pods are ready",
-			},
-		},
-		{
-			name: "CNI pods not scheduled",
-			values: &v1alpha1.Values{
-				IstioCni: &v1alpha1.CNIUsageConfig{
-					Enabled: ptr.Of(true),
-				},
-			},
-			clientObjects: []client.Object{
-				&appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "istiod",
-						Namespace: "istio-system",
-					},
-					Status: appsv1.DeploymentStatus{
-						Replicas:          2,
-						ReadyReplicas:     2,
-						AvailableReplicas: 2,
-					},
-				},
-				&appsv1.DaemonSet{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "istio-cni-node",
-						Namespace: operatorNamespace,
-					},
-					Status: appsv1.DaemonSetStatus{
-						CurrentNumberScheduled: 0,
-						NumberReady:            0,
-					},
-				},
-			},
-			expected: v1alpha1.IstioRevisionCondition{
-				Type:    v1alpha1.IstioRevisionConditionTypeReady,
-				Status:  metav1.ConditionFalse,
-				Reason:  v1alpha1.IstioRevisionConditionReasonCNINotReady,
-				Message: "no istio-cni-node pods are currently scheduled",
-			},
-		},
-		{
-			name: "CNI not found",
-			values: &v1alpha1.Values{
-				IstioCni: &v1alpha1.CNIUsageConfig{
-					Enabled: ptr.Of(true),
-				},
-			},
-			clientObjects: []client.Object{
-				&appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "istiod",
-						Namespace: "istio-system",
-					},
-					Status: appsv1.DeploymentStatus{
-						Replicas:          2,
-						ReadyReplicas:     2,
-						AvailableReplicas: 2,
-					},
-				},
-			},
-			expected: v1alpha1.IstioRevisionCondition{
-				Type:    v1alpha1.IstioRevisionConditionTypeReady,
-				Status:  metav1.ConditionFalse,
-				Reason:  v1alpha1.IstioRevisionConditionReasonCNINotReady,
-				Message: "istio-cni-node DaemonSet not found",
-			},
-		},
-		{
 			name: "Non-default revision",
 			values: &v1alpha1.Values{
 				Revision: "my-revision",
@@ -342,7 +203,7 @@ func TestDetermineReadyCondition(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(tt.clientObjects...).Build()
 
-			r := NewIstioRevisionReconciler(cl, scheme.Scheme, "no-resource-dir", nil, operatorNamespace)
+			r := NewIstioRevisionReconciler(cl, scheme.Scheme, "no-resource-dir", nil)
 
 			rev := &v1alpha1.IstioRevision{
 				ObjectMeta: metav1.ObjectMeta{
@@ -541,7 +402,7 @@ func TestDetermineInUseCondition(t *testing.T) {
 					WithObjects(rev, ns, pod).
 					Build()
 
-				r := NewIstioRevisionReconciler(cl, scheme.Scheme, "no-resource-dir", nil, operatorNamespace)
+				r := NewIstioRevisionReconciler(cl, scheme.Scheme, "no-resource-dir", nil)
 
 				result, err := r.determineInUseCondition(context.TODO(), rev)
 				if err != nil {

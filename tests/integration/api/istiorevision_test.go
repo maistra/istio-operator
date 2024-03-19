@@ -27,8 +27,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"istio.io/istio/pkg/ptr"
 )
 
 var _ = Describe("IstioRevision resource", Ordered, func() {
@@ -52,7 +50,6 @@ var _ = Describe("IstioRevision resource", Ordered, func() {
 
 	revKey := client.ObjectKey{Name: revName}
 	istiodKey := client.ObjectKey{Name: "istiod-" + revName, Namespace: istioNamespace}
-	cniKey := client.ObjectKey{Name: "istio-cni-node", Namespace: operatorNamespace}
 	webhookKey := client.ObjectKey{Name: "istio-sidecar-injector-" + revName + "-" + istioNamespace}
 
 	BeforeAll(func() {
@@ -175,9 +172,6 @@ var _ = Describe("IstioRevision resource", Ordered, func() {
 					Pilot: &v1alpha1.PilotConfig{
 						Image: pilotImage,
 					},
-					IstioCni: &v1alpha1.CNIUsageConfig{
-						Enabled: ptr.Of(true),
-					},
 				},
 			},
 		}
@@ -200,20 +194,14 @@ var _ = Describe("IstioRevision resource", Ordered, func() {
 		}).Should(Succeed())
 	})
 
-	When("istiod and istio-cni-node readiness changes", func() {
+	When("istiod readiness changes", func() {
 		It("updates the status of the IstioRevision resource", func() {
-			By("setting the Ready condition status to true when both are ready", func() {
+			By("setting the Ready condition status to true when istiod is ready", func() {
 				istiod := &appsv1.Deployment{}
 				Expect(k8sClient.Get(ctx, istiodKey, istiod)).To(Succeed())
 				istiod.Status.Replicas = 1
 				istiod.Status.ReadyReplicas = 1
 				Expect(k8sClient.Status().Update(ctx, istiod)).To(Succeed())
-
-				cni := &appsv1.DaemonSet{}
-				Expect(k8sClient.Get(ctx, cniKey, cni)).To(Succeed())
-				cni.Status.CurrentNumberScheduled = 3
-				cni.Status.NumberReady = 3
-				Expect(k8sClient.Status().Update(ctx, cni)).To(Succeed())
 
 				Eventually(func(g Gomega) {
 					g.Expect(k8sClient.Get(ctx, revKey, rev)).To(Succeed())

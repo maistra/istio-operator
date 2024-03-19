@@ -85,6 +85,32 @@ rules:
 - apiGroups:
   - operator.istio.io
   resources:
+  - istiocnis
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - operator.istio.io
+  resources:
+  - istiocnis/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - operator.istio.io
+  resources:
+  - istiocnis/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - operator.istio.io
+  resources:
   - istios
   verbs:
   - create

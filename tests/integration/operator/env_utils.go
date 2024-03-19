@@ -33,6 +33,8 @@ var (
 	controlPlaneNamespace = getEnv("CONTROL_PLANE_NS", "istio-system")
 	wd, _                 = os.Getwd()
 	istioName             = getEnv("ISTIO_NAME", "default")
+	istioCniNamespace     = getEnv("ISTIOCNI_NAMESPACE", "istio-cni")
+	istioCniName          = getEnv("ISTIOCNI_NAME", "default")
 	baseDir               = filepath.Join(wd, "../../..")
 )
 

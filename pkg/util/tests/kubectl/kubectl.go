@@ -291,10 +291,10 @@ func ForceDelete(ns, kind, name string) error {
 // Logs returns the logs of a deployment
 // Arguments:
 // - ns: namespace
-// - selector: selector of the pod
+// - pod: the pod name, "kind/name", or "-l labelselector"
 // - Since: time range
-func Logs(ns, selector string, since *time.Duration) (string, error) {
-	cmd := kubectl("logs %s %s %s", selector, nsflag(ns), sinceFlag(since))
+func Logs(ns, pod string, since *time.Duration) (string, error) {
+	cmd := kubectl("logs %s %s %s", pod, nsflag(ns), sinceFlag(since))
 	output, err := shell.ExecuteCommand(cmd)
 	if err != nil {
 		return "", err

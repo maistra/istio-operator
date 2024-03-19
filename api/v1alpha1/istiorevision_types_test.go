@@ -170,7 +170,7 @@ func TestSetCondition(t *testing.T) {
 			condition: IstioRevisionCondition{
 				Type:   IstioRevisionConditionTypeReady,
 				Status: metav1.ConditionFalse, // same as previous status
-				Reason: IstioRevisionConditionReasonCNINotReady,
+				Reason: IstioRevisionConditionReasonIstiodNotReady,
 			},
 			expected: []IstioRevisionCondition{
 				{
@@ -181,7 +181,7 @@ func TestSetCondition(t *testing.T) {
 				{
 					Type:               IstioRevisionConditionTypeReady,
 					Status:             metav1.ConditionFalse,
-					Reason:             IstioRevisionConditionReasonCNINotReady,
+					Reason:             IstioRevisionConditionReasonIstiodNotReady,
 					LastTransitionTime: metav1.NewTime(prevTime), // original lastTransitionTime must be preserved
 				},
 			},

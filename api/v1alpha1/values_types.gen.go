@@ -77,8 +77,6 @@ type ArchConfig struct {
 
 // Configuration for CNI.
 type CNIConfig struct {
-	// Controls whether CNI is installed.
-	Enabled *bool `json:"enabled,omitempty"`
 	// Hub to pull the container image from. Image will be `Hub/Image:Tag-Variant`.
 	Hub string `json:"hub,omitempty"`
 	// The container image tag to pull. Image will be `Hub/Image:Tag-Variant`.
@@ -929,9 +927,6 @@ type IstiodRemoteConfig struct {
 }
 
 type Values struct {
-	// Configuration for the Istio CNI plugin.
-	Cni *CNIConfig `json:"cni,omitempty"`
-
 	// Global configuration for Istio components.
 	Global *GlobalConfig `json:"global,omitempty"`
 	// Configuration for the Pilot component.
@@ -941,10 +936,7 @@ type Values struct {
 	Telemetry *TelemetryConfig `json:"telemetry,omitempty"`
 	// Configuration for the sidecar injector webhook.
 	SidecarInjectorWebhook *SidecarInjectorConfig `json:"sidecarInjectorWebhook,omitempty"`
-	// Configuration for the Istio CNI plugin.
-	//
-	// Deprecated: Marked as deprecated in pkg/apis/istio/v1alpha1/values_types.proto.
-	IstioCni *CNIUsageConfig `json:"istio_cni,omitempty"`
+
 	// Identifies the revision this installation is associated with.
 	Revision string `json:"revision,omitempty"`
 
