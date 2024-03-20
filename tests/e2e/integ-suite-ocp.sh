@@ -20,4 +20,4 @@ set -eux -o pipefail
 
 # Run the integration tests
 echo "Running integration tests"
-./tests/integration/common-operator-integ-suite.sh --ocp
+./tests/e2e/common-operator-integ-suite.sh --ocp
