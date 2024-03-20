@@ -101,12 +101,7 @@ func (r *IstioCNIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		if err := r.uninstallHelmChart(ctx, &cni); err != nil {
 			return ctrl.Result{}, err
 		}
-
-		if err := kube.RemoveFinalizer(ctx, &cni, r.Client); err != nil {
-			log.Info("failed to remove finalizer")
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{}, nil
+		return kube.RemoveFinalizer(ctx, &cni, r.Client)
 	}
 
 	if !kube.HasFinalizer(&cni) {

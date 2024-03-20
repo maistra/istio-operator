@@ -109,12 +109,7 @@ func (r *IstioRevisionReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		if err := r.uninstallHelmCharts(ctx, &rev); err != nil {
 			return ctrl.Result{}, err
 		}
-
-		if err := kube.RemoveFinalizer(ctx, &rev, r.Client); err != nil {
-			log.Info("failed to remove finalizer")
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{}, nil
+		return kube.RemoveFinalizer(ctx, &rev, r.Client)
 	}
 
 	if !kube.HasFinalizer(&rev) {
