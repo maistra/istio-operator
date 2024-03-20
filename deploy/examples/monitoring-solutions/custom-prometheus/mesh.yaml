@@ -1,0 +1,40 @@
+apiVersion: maistra.io/v2
+kind: ServiceMeshControlPlane
+metadata:
+  name: basic
+spec:
+  addons:
+    grafana:
+      enabled: false
+    kiali:
+      enabled: true
+      name: kiali-custom-prometheus
+    prometheus:
+      enabled: false
+  meshConfig:
+    extensionProviders:
+    - name: prometheus
+      prometheus: {}
+  gateways:
+    egress:
+      enabled: false
+    openshiftRoute:
+      enabled: false
+  proxy:
+    accessLogging:
+      file:
+        name: /dev/stdout
+  security:
+    dataPlane:
+      mtls: true
+  tracing:
+    type: None
+---
+apiVersion: maistra.io/v1
+kind: ServiceMeshMemberRoll
+metadata:
+  name: default
+spec:
+  members:
+  - bookinfo-2
+  - custom-prometheus

@@ -1,0 +1,23 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: istio-federation
+  namespace: istio-system-3
+spec:
+  selector:
+    matchLabels:
+      app: prometheus
+  endpoints:
+  - targetPort: 9090
+    path: /federate
+    interval: 30s
+    scrapeTimeout: 30s
+    honorLabels: true
+    params:
+      'match[]':
+        - '{job="kubernetes-pods"}'
+        - '{job="kubernetes-services"}'
+    relabelings:
+    - action: replace
+      replacement: "basic_istio-system-3"
+      targetLabel: mesh_id

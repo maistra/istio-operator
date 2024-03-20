@@ -1,0 +1,24 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: app-metrics-monitor-mtls
+  namespace: custom-prometheus
+spec:
+  targetLabels:
+  - app
+  selector:
+    matchLabels:
+      app: productpage
+  namespaceSelector:
+    matchNames:
+    - bookinfo-2
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 15s
+    scheme: https
+    tlsConfig:
+      caFile: /etc/prom-certs/root-cert.pem
+      certFile: /etc/prom-certs/cert-chain.pem
+      keyFile: /etc/prom-certs/key.pem
+      insecureSkipVerify: true
