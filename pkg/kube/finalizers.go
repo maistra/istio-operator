@@ -16,11 +16,13 @@ package kube
 
 import (
 	"context"
+	"time"
 
 	"github.com/istio-ecosystem/sail-operator/pkg/common"
 	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -33,7 +35,7 @@ func HasFinalizer(obj client.Object) bool {
 	return finalizers.Contains(common.FinalizerName)
 }
 
-func RemoveFinalizer(ctx context.Context, obj client.Object, cl client.Client) error {
+func RemoveFinalizer(ctx context.Context, obj client.Object, cl client.Client) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 	log.Info("Removing finalizer")
 
@@ -44,12 +46,17 @@ func RemoveFinalizer(ctx context.Context, obj client.Object, cl client.Client) e
 
 	err := cl.Update(ctx, obj)
 	if errors.IsNotFound(err) {
-		// We're reconciling a stale instance. The object no longer exists, so we're done.
-		return nil
+		log.Info("Resource no longer exists; nothing to do")
+		return ctrl.Result{}, nil
+	} else if errors.IsConflict(err) {
+		log.Info("Conflict while removing finalizer; Requeuing reconciliation")
+		return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
 	} else if err != nil {
-		return pkgerrors.Wrapf(err, "Could not remove finalizer from %s/%s", objectMeta.GetNamespace(), objectMeta.GetName())
+		return ctrl.Result{}, pkgerrors.Wrapf(err, "could not remove finalizer from %s/%s", objectMeta.GetNamespace(), objectMeta.GetName())
 	}
-	return nil
+
+	log.Info("Finalizer removed")
+	return ctrl.Result{}, nil
 }
 
 func AddFinalizer(ctx context.Context, obj client.Object, cl client.Client) error {
