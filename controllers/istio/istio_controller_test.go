@@ -25,14 +25,13 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	v1alpha1 "github.com/istio-ecosystem/sail-operator/api/v1alpha1"
+	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
 	"github.com/istio-ecosystem/sail-operator/pkg/common"
-	"github.com/istio-ecosystem/sail-operator/pkg/test"
+	"github.com/istio-ecosystem/sail-operator/pkg/scheme"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/kubectl/pkg/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -55,7 +54,6 @@ var (
 )
 
 func TestReconcile(t *testing.T) {
-	test.SetupScheme()
 	resourceDir := t.TempDir()
 
 	req := ctrl.Request{NamespacedName: istioKey}
@@ -219,7 +217,6 @@ func TestReconcile(t *testing.T) {
 }
 
 func TestUpdateStatus(t *testing.T) {
-	test.SetupScheme()
 	resourceDir := t.TempDir()
 
 	generation := int64(100)
@@ -598,7 +595,6 @@ func toConditionStatus(b bool) metav1.ConditionStatus {
 }
 
 func TestReconcileActiveRevision(t *testing.T) {
-	test.SetupScheme()
 	resourceDir := t.TempDir()
 
 	const version = "my-version"
@@ -738,7 +734,6 @@ func TestReconcileActiveRevision(t *testing.T) {
 }
 
 func TestPruneInactiveRevisions(t *testing.T) {
-	test.SetupScheme()
 	resourceDir := t.TempDir()
 
 	const istioName = "my-istio"
