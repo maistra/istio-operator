@@ -1,3 +1,7 @@
+run:
+  build-tags:
+  - integration
+  - e2e
 linters:
   enable:
   - ginkgolinter
