@@ -151,17 +151,17 @@ test: envtest ## Run unit tests.
 test.scorecard: operator-sdk ## Run the operator scorecard test.
 	OPERATOR_SDK=$(OPERATOR_SDK) ${SOURCE_DIR}/tests/scorecard-test.sh
 
-.PHONY: test.integration.ocp
-test.integration.ocp: ## Run the integration tests against an existing OCP cluster.
-	${SOURCE_DIR}/tests/integration/integ-suite-ocp.sh
+.PHONY: test.e2e.ocp
+test.e2e.ocp: ## Run the end-to-end tests against an existing OCP cluster.
+	${SOURCE_DIR}/tests/e2e/integ-suite-ocp.sh
 
-.PHONY: test.integration.kind
-test.integration.kind: ## Deploy a KinD cluster and run the integration tests against it.
-	${SOURCE_DIR}/tests/integration/integ-suite-kind.sh
+.PHONY: test.e2e.kind
+test.e2e.kind: ## Deploy a KinD cluster and run the end-to-end tests against it.
+	${SOURCE_DIR}/tests/e2e/integ-suite-kind.sh
 
-.PHONY: test.integration.describe
-test.integration.describe:
-	${SOURCE_DIR}/tests/integration/common-operator-integ-suite.sh --describe
+.PHONY: test.e2e.describe
+test.e2e.describe: ## Runs ginkgo outline -format indent over the e2e test to show in BDD style the steps and test structure
+	${SOURCE_DIR}/tests/e2e/common-operator-integ-suite.sh --describe
 
 ##@ Build
 

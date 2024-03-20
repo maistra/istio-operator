@@ -28,7 +28,7 @@ export KUBECONFIG
 
 # Create the kind cluster
 export KIND_CLUSTER_NAME="${KIND_CLUSTER_NAME:-kind}"
-export DEFAULT_CLUSTER_YAML="${ROOT}/tests/integration/config/default.yaml"
+export DEFAULT_CLUSTER_YAML="${ROOT}/tests/e2e/config/default.yaml"
 export ARTIFACTS="${ARTIFACTS:-$(mktemp -d)}"
 export IP_FAMILY="${IP_FAMILY:-ipv4}"
 setup_kind_cluster "${KIND_CLUSTER_NAME}" "" "" "true" "true"

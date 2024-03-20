@@ -64,4 +64,4 @@ setup_kind_registry
 
 # Run the integration tests
 echo "Running integration tests"
-./tests/integration/common-operator-integ-suite.sh --kind
+./tests/e2e/common-operator-integ-suite.sh --kind
