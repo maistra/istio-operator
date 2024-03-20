@@ -20,11 +20,10 @@ import (
 	"testing"
 
 	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
-	"github.com/istio-ecosystem/sail-operator/pkg/test"
+	"github.com/istio-ecosystem/sail-operator/pkg/scheme"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/kubectl/pkg/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -225,8 +224,6 @@ func TestDetermineReadyCondition(t *testing.T) {
 }
 
 func TestDetermineInUseCondition(t *testing.T) {
-	test.SetupScheme()
-
 	testCases := []struct {
 		podLabels           map[string]string
 		podAnnotations      map[string]string
