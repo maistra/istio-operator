@@ -178,7 +178,7 @@ docker-build: build ## Build docker image.
 	docker build ${DOCKER_BUILD_FLAGS} -t ${IMAGE} .
 
 .PHONY: docker-push
-docker-push: docker-build ## Push docker image.
+docker-push: docker-build ## Build and Push docker image.
 	docker push ${IMAGE}
 
 .PHONY: docker-push-nightly
