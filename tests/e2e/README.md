@@ -1,7 +1,7 @@
 # Sail Operator end-to-end test
 
 This end-to-end test suite utilizes Ginkgo, a testing framework known for its expressive specs (reference: https://onsi.github.io/ginkgo/). The setup for the test run is similar to the upstream Istio integration tests:
-* In the case of kind execution, it relies on the upstream script `kind_provisioner.sh` and `integ-suite-kind.sh`, which are copied from the `github.com/maistra/istio` repository to set up the kind cluster used for the test.
+* In the case of kind execution, it relies on the upstream script `kind_provisioner.sh` and `integ-suite-kind.sh`, which are copied from the `github.com/istio/common-files` repository to set up the kind cluster used for the test.
 * In the case of OCP execution, it relies on the `inter-suite-ocp.sh` and `common-operator-integ-suite` scripts to setup the the OCP cluster to be ready for the test.
 
 ## Pre-requisites
@@ -41,12 +41,12 @@ $ make BUILD_WITH_CONTAINER=0 test.2e2.ocp
 The following environment variables define the behavior of the test run:
 
 * SKIP_BUILD=false - If set to true, the test will skip the build process and an existing operator image will be used to deploy the operator and run the test. The operator image that is going to be used is defined by the `IMAGE` variable.
-* IMAGE=quay.io/maistra-dev/istio-operator:latest - The operator image to be used to deploy the operator and run the test. This is useful when you want to test a specific operator image.
+* IMAGE=quay.io/maistra-dev/sail-operator:latest - The operator image to be used to deploy the operator and run the test. This is useful when you want to test a specific operator image.
 * SKIP_DEPLOY=false - If set to true, the test will skip the deployment of the operator. This is useful when the operator is already deployed in the cluster and you want to run the test only.
 * OCP=false - If set to true, the test will be configured to run on an OCP cluster and use the `oc` command to interact with it. If set to false, the test will run in a KinD cluster and use `kubectl`.
-* NAMESPACE=istio-operator - The namespace where the operator will be deployed and the test will run.
+* NAMESPACE=sail-operator - The namespace where the operator will be deployed and the test will run.
 * CONTROL_PLANE_NS=istio-system - The namespace where the control plane will be deployed.
-* DEPLOYMENT_NAME=istio-operator - The name of the operator deployment.
+* DEPLOYMENT_NAME=sail-operator - The name of the operator deployment.
 
 ## Get test definitions for the end-to-end test
 

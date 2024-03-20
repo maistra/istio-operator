@@ -160,7 +160,7 @@ test.e2e.kind: ## Deploy a KinD cluster and run the end-to-end tests against it.
 	${SOURCE_DIR}/tests/e2e/integ-suite-kind.sh
 
 .PHONY: test.e2e.describe
-test.e2e.describe:
+test.e2e.describe: ## Runs ginkgo outline -format indent over the e2e test to show in BDD style the steps and test structure
 	${SOURCE_DIR}/tests/e2e/common-operator-integ-suite.sh --describe
 
 ##@ Build
