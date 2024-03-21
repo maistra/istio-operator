@@ -21,7 +21,6 @@ import (
 	"github.com/istio-ecosystem/sail-operator/pkg/common"
 	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/errors"
-	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -30,8 +29,7 @@ import (
 )
 
 func HasFinalizer(obj client.Object) bool {
-	objectMeta := getObjectMeta(obj)
-	finalizers := sets.New(objectMeta.GetFinalizers()...)
+	finalizers := sets.New(obj.GetFinalizers()...)
 	return finalizers.Contains(common.FinalizerName)
 }
 
@@ -39,10 +37,9 @@ func RemoveFinalizer(ctx context.Context, obj client.Object, cl client.Client) (
 	log := logf.FromContext(ctx)
 	log.Info("Removing finalizer")
 
-	objectMeta := getObjectMeta(obj)
-	finalizers := sets.New(objectMeta.GetFinalizers()...)
+	finalizers := sets.New(obj.GetFinalizers()...)
 	finalizers.Delete(common.FinalizerName)
-	objectMeta.SetFinalizers(finalizers.UnsortedList())
+	obj.SetFinalizers(finalizers.UnsortedList())
 
 	err := cl.Update(ctx, obj)
 	if errors.IsNotFound(err) {
@@ -52,7 +49,7 @@ func RemoveFinalizer(ctx context.Context, obj client.Object, cl client.Client) (
 		log.Info("Conflict while removing finalizer; Requeuing reconciliation")
 		return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
 	} else if err != nil {
-		return ctrl.Result{}, pkgerrors.Wrapf(err, "could not remove finalizer from %s/%s", objectMeta.GetNamespace(), objectMeta.GetName())
+		return ctrl.Result{}, pkgerrors.Wrapf(err, "could not remove finalizer from %s/%s", obj.GetNamespace(), obj.GetName())
 	}
 
 	log.Info("Finalizer removed")
@@ -63,10 +60,9 @@ func AddFinalizer(ctx context.Context, obj client.Object, cl client.Client) (ctr
 	log := logf.FromContext(ctx)
 	log.Info("Adding finalizer")
 
-	objectMeta := getObjectMeta(obj)
-	finalizers := sets.New(objectMeta.GetFinalizers()...)
+	finalizers := sets.New(obj.GetFinalizers()...)
 	finalizers.Insert(common.FinalizerName)
-	objectMeta.SetFinalizers(finalizers.UnsortedList())
+	obj.SetFinalizers(finalizers.UnsortedList())
 
 	err := cl.Update(ctx, obj)
 	if errors.IsNotFound(err) {
@@ -76,17 +72,9 @@ func AddFinalizer(ctx context.Context, obj client.Object, cl client.Client) (ctr
 		log.Info("Conflict while adding finalizer; Requeuing reconciliation")
 		return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
 	} else if err != nil {
-		return ctrl.Result{}, pkgerrors.Wrapf(err, "Could not add finalizer to %s/%s", objectMeta.GetNamespace(), objectMeta.GetName())
+		return ctrl.Result{}, pkgerrors.Wrapf(err, "Could not add finalizer to %s/%s", obj.GetNamespace(), obj.GetName())
 	}
 
 	log.Info("Finalizer added")
 	return ctrl.Result{}, nil
-}
-
-func getObjectMeta(obj client.Object) meta.Object {
-	oma, ok := obj.(meta.ObjectMetaAccessor)
-	if !ok {
-		panic("object does not implement ObjectMetaAccessor")
-	}
-	return oma.GetObjectMeta()
 }
