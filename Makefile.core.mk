@@ -143,11 +143,10 @@ export
 ##@ Testing
 
 .PHONY: test
-test: envtest test.unit test.integration ## Run both unit tests and integration test.
+test: test.unit test.integration ## Run both unit tests and integration test.
 
 .PHONY: test.unit
-test.unit: envtest  ## Run unit tests. This will exclude the integration tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" \
+test.unit:  ## Run unit tests.
 	go test $(VERBOSE_FLAG) ./... -coverprofile cover.out
 
 .PHONY: test.integration
