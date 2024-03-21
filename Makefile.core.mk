@@ -147,14 +147,13 @@ test: envtest test.unit test.integration ## Run both unit tests and integration 
 
 .PHONY: test.unit
 test.unit: envtest  ## Run unit tests. This will exclude the integration tests.
-	$(eval TEST_PACKAGES=$(shell go list ./... | grep -v /tests/integration/))
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" \
-	go test $(VERBOSE_FLAG) $(TEST_PACKAGES) -coverprofile cover.out
+	go test $(VERBOSE_FLAG) ./... -coverprofile cover.out
 
 .PHONY: test.integration
 test.integration: envtest ## Run integration tests located in the tests/integration directory.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" \
-	go test $(VERBOSE_FLAG) ./tests/integration/... -coverprofile cover.out
+	go test --tags=integration $(VERBOSE_FLAG) ./tests/integration/... -coverprofile cover.out
 
 .PHONY: test.scorecard
 test.scorecard: operator-sdk ## Run the operator scorecard test.
