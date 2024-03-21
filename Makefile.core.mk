@@ -177,8 +177,11 @@ run: gen ## Run a controller from your host.
 docker-build: build ## Build docker image.
 	docker build ${DOCKER_BUILD_FLAGS} -t ${IMAGE} .
 
+PHONY: push
+push: docker-push ## Build and push docker image.
+
 .PHONY: docker-push
-docker-push: ## Push docker image.
+docker-push: docker-build ## Build and Push docker image.
 	docker push ${IMAGE}
 
 .PHONY: docker-push-nightly
