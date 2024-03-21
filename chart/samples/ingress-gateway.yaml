@@ -59,18 +59,19 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: default
----
-#Allow outside traffic to access the gateway 
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: gatewayingress
-spec:
-  podSelector:
-    matchLabels:
-      istio: ingressgateway
-  ingress:
-    - {}
-  policyTypes:
-  - Ingress
+#---
+# Allow outside traffic to access the gateway
+# This is optional, only needed in case your cluster contains restrictive NetworkPolicies
+#apiVersion: networking.k8s.io/v1
+#kind: NetworkPolicy
+#metadata:
+#  name: gatewayingress
+#spec:
+#  podSelector:
+#    matchLabels:
+#      istio: ingressgateway
+#  ingress:
+#    - {}
+#  policyTypes:
+#  - Ingress
 
