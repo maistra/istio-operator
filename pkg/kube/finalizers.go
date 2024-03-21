@@ -28,6 +28,8 @@ import (
 	"istio.io/istio/pkg/util/sets"
 )
 
+const conflictRequeueDelay = 2 * time.Second
+
 func HasFinalizer(obj client.Object) bool {
 	for _, finalizer := range obj.GetFinalizers() {
 		if finalizer == common.FinalizerName {
@@ -51,7 +53,7 @@ func RemoveFinalizer(ctx context.Context, obj client.Object, cl client.Client) (
 		return ctrl.Result{}, nil
 	} else if errors.IsConflict(err) {
 		log.Info("Conflict while removing finalizer; Requeuing reconciliation")
-		return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: conflictRequeueDelay}, nil
 	} else if err != nil {
 		return ctrl.Result{}, pkgerrors.Wrapf(err, "could not remove finalizer from %s/%s", obj.GetNamespace(), obj.GetName())
 	}
@@ -74,7 +76,7 @@ func AddFinalizer(ctx context.Context, obj client.Object, cl client.Client) (ctr
 		return ctrl.Result{}, nil
 	} else if errors.IsConflict(err) {
 		log.Info("Conflict while adding finalizer; Requeuing reconciliation")
-		return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: conflictRequeueDelay}, nil
 	} else if err != nil {
 		return ctrl.Result{}, pkgerrors.Wrapf(err, "Could not add finalizer to %s/%s", obj.GetNamespace(), obj.GetName())
 	}
