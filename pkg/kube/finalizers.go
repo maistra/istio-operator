@@ -29,8 +29,12 @@ import (
 )
 
 func HasFinalizer(obj client.Object) bool {
-	finalizers := sets.New(obj.GetFinalizers()...)
-	return finalizers.Contains(common.FinalizerName)
+	for _, finalizer := range obj.GetFinalizers() {
+		if finalizer == common.FinalizerName {
+			return true
+		}
+	}
+	return false
 }
 
 func RemoveFinalizer(ctx context.Context, obj client.Object, cl client.Client) (ctrl.Result, error) {
