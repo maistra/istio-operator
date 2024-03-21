@@ -113,11 +113,7 @@ func (r *IstioRevisionReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	if !kube.HasFinalizer(&rev) {
-		err := kube.AddFinalizer(ctx, &rev, r.Client)
-		if err != nil {
-			log.Info("failed to add finalizer")
-			return ctrl.Result{}, err
-		}
+		return kube.AddFinalizer(ctx, &rev, r.Client)
 	}
 
 	if err := validateIstioRevision(rev); err != nil {

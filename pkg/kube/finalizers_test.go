@@ -194,3 +194,116 @@ func TestRemoveFinalizer(t *testing.T) {
 		})
 	}
 }
+
+func TestAddFinalizer(t *testing.T) {
+	tests := []struct {
+		name               string
+		obj                client.Object
+		interceptorFuncs   interceptor.Funcs
+		expectResult       ctrl.Result
+		expectError        bool
+		checkFinalizers    bool
+		expectedFinalizers []string
+	}{
+		{
+			name: "object not found",
+			obj: &v1alpha1.Istio{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test",
+				},
+			},
+			interceptorFuncs: interceptor.Funcs{
+				Get: func(ctx context.Context, client client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+					return errors.NewNotFound(schema.GroupResource{}, "Istio")
+				},
+			},
+			expectResult: ctrl.Result{},
+			expectError:  false,
+		},
+		{
+			name: "update conflict",
+			obj: &v1alpha1.Istio{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test",
+				},
+			},
+			interceptorFuncs: interceptor.Funcs{
+				Update: func(ctx context.Context, client client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
+					return errors.NewConflict(schema.GroupResource{}, "dummy", fmt.Errorf("simulated conflict error"))
+				},
+			},
+			expectResult: ctrl.Result{RequeueAfter: 2 * time.Second},
+			expectError:  false,
+		},
+		{
+			name: "update error",
+			obj: &v1alpha1.Istio{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test",
+				},
+			},
+			interceptorFuncs: interceptor.Funcs{
+				Update: func(ctx context.Context, client client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
+					return fmt.Errorf("simulated update error")
+				},
+			},
+			expectResult: ctrl.Result{},
+			expectError:  true,
+		},
+		{
+			name: "success with no previous finalizer",
+			obj: &v1alpha1.Istio{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test",
+				},
+			},
+			expectResult:       ctrl.Result{},
+			expectError:        false,
+			checkFinalizers:    true,
+			expectedFinalizers: []string{common.FinalizerName},
+		},
+		{
+			name: "success with other finalizers",
+			obj: &v1alpha1.Istio{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       "test",
+					Finalizers: []string{"example.com/some-finalizer"},
+				},
+			},
+			expectResult:       ctrl.Result{},
+			expectError:        false,
+			checkFinalizers:    true,
+			expectedFinalizers: []string{"example.com/some-finalizer", common.FinalizerName},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cl := fake.NewClientBuilder().
+				WithScheme(scheme.Scheme).
+				WithObjects(tc.obj).
+				WithInterceptorFuncs(tc.interceptorFuncs).
+				Build()
+
+			result, err := AddFinalizer(context.TODO(), tc.obj, cl)
+
+			assert.Equal(t, result, tc.expectResult)
+
+			if tc.expectError {
+				if err == nil {
+					t.Fatalf("Expected error, got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("Expected no error, got %v", err)
+			}
+
+			if tc.checkFinalizers {
+				obj := &v1alpha1.Istio{}
+				assert.NilError(t, cl.Get(context.TODO(), types.NamespacedName{Name: tc.obj.GetName()}, obj))
+				assert.DeepEqual(t, sets.NewString(obj.GetFinalizers()...), sets.NewString(tc.expectedFinalizers...))
+			}
+		})
+	}
+}

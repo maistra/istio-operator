@@ -105,11 +105,7 @@ func (r *IstioCNIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	if !kube.HasFinalizer(&cni) {
-		err := kube.AddFinalizer(ctx, &cni, r.Client)
-		if err != nil {
-			log.Info("failed to add finalizer")
-			return ctrl.Result{}, err
-		}
+		return kube.AddFinalizer(ctx, &cni, r.Client)
 	}
 
 	if err := validateIstioCNI(cni); err != nil {

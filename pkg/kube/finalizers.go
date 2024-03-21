@@ -59,7 +59,7 @@ func RemoveFinalizer(ctx context.Context, obj client.Object, cl client.Client) (
 	return ctrl.Result{}, nil
 }
 
-func AddFinalizer(ctx context.Context, obj client.Object, cl client.Client) error {
+func AddFinalizer(ctx context.Context, obj client.Object, cl client.Client) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 	log.Info("Adding finalizer")
 
@@ -70,12 +70,17 @@ func AddFinalizer(ctx context.Context, obj client.Object, cl client.Client) erro
 
 	err := cl.Update(ctx, obj)
 	if errors.IsNotFound(err) {
-		// Object was deleted manually before we could add the finalizer to it. This is not an error.
-		return nil
+		log.Info("Resource no longer exists; nothing to do")
+		return ctrl.Result{}, nil
+	} else if errors.IsConflict(err) {
+		log.Info("Conflict while adding finalizer; Requeuing reconciliation")
+		return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
 	} else if err != nil {
-		return pkgerrors.Wrapf(err, "Could not add finalizer to %s/%s", objectMeta.GetNamespace(), objectMeta.GetName())
+		return ctrl.Result{}, pkgerrors.Wrapf(err, "Could not add finalizer to %s/%s", objectMeta.GetNamespace(), objectMeta.GetName())
 	}
-	return nil
+
+	log.Info("Finalizer added")
+	return ctrl.Result{}, nil
 }
 
 func getObjectMeta(obj client.Object) meta.Object {
