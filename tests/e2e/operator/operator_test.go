@@ -23,11 +23,10 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/istio-ecosystem/sail-operator/pkg/util/tests/ginkgo"
-	"github.com/istio-ecosystem/sail-operator/pkg/util/tests/helm"
-	"github.com/istio-ecosystem/sail-operator/pkg/util/tests/kubectl"
-	r "github.com/istio-ecosystem/sail-operator/pkg/util/tests/types"
-	"github.com/istio-ecosystem/sail-operator/tests/integration/supportedversion"
+	. "github.com/istio-ecosystem/sail-operator/pkg/test/util/ginkgo"
+	"github.com/istio-ecosystem/sail-operator/pkg/test/util/supportedversion"
+	"github.com/istio-ecosystem/sail-operator/tests/e2e/operator/util/helm"
+	"github.com/istio-ecosystem/sail-operator/tests/e2e/operator/util/kubectl"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -40,21 +39,21 @@ var _ = Describe("Operator", Ordered, func() {
 	SetDefaultEventuallyTimeout(120 * time.Second)
 	SetDefaultEventuallyPollingInterval(time.Second)
 	var (
-		resourceAvailable = r.Condition{
+		resourceAvailable = kubectl.Condition{
 			Type:   "Available",
 			Status: "True",
 		}
-		resourceReconciled = r.Condition{
+		resourceReconciled = kubectl.Condition{
 			Type:   "Reconciled",
 			Status: "True",
 		}
 
-		resourceReady = r.Condition{
+		resourceReady = kubectl.Condition{
 			Type:   "Ready",
 			Status: "True",
 		}
 
-		crdEstablished = r.Condition{
+		crdEstablished = kubectl.Condition{
 			Type:   "Established",
 			Status: "True",
 		}
