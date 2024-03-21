@@ -22,19 +22,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/istio-ecosystem/sail-operator/pkg/util/tests/shell"
-	r "github.com/istio-ecosystem/sail-operator/pkg/util/tests/types"
+	"github.com/istio-ecosystem/sail-operator/tests/e2e/operator/util/shell"
 )
 
 const DefaultBinary = "kubectl"
 
 var (
 	ErrNotFound       = errors.New("resource was not found")
-	EmptyResourceList = r.ResourceList{
+	EmptyResourceList = ResourceList{
 		APIVersion: "v1",
 		Items:      []interface{}{},
 		Kind:       "List",
-		Metadata:   r.Metadata{ResourceVersion: ""},
+		Metadata:   Metadata{ResourceVersion: ""},
 	}
 )
 
@@ -81,16 +80,16 @@ func DeleteString(yamlString string) error {
 }
 
 // GetConditions returns the condition of a resource
-func GetConditions(ns, kind, name string) ([]r.Condition, error) {
+func GetConditions(ns, kind, name string) ([]Condition, error) {
 	output, err := GetJSON(ns, kind, name)
 	if err != nil {
-		return []r.Condition{}, err
+		return []Condition{}, err
 	}
 
-	var resource r.Resource
+	var resource Resource
 	err = json.Unmarshal([]byte(output), &resource)
 	if err != nil {
-		return []r.Condition{}, err
+		return []Condition{}, err
 	}
 
 	return resource.Status.Conditions, nil
@@ -108,7 +107,7 @@ func GetPodPhase(ns, selector string) (string, error) {
 		return "", err
 	}
 
-	var resource r.Resource
+	var resource Resource
 	err = json.Unmarshal([]byte(output), &resource)
 	if err != nil {
 		return "", err
@@ -128,14 +127,14 @@ func GetCRDs() ([]string, error) {
 }
 
 // GetResourceList returns a json list of the resources of a namespace by resource name
-func GetResourceList(ns, kind string) (r.ResourceList, error) {
+func GetResourceList(ns, kind string) (ResourceList, error) {
 	// TODO: improve the function to get all the resources
 	output, err := GetJSON(ns, kind, "")
 	if err != nil {
 		return EmptyResourceList, err
 	}
 
-	var resourceList r.ResourceList
+	var resourceList ResourceList
 	err = json.Unmarshal([]byte(output), &resourceList)
 	if err != nil {
 		return EmptyResourceList, err

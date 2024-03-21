@@ -12,15 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package gutils
+package kubectl
 
-import (
-	g "github.com/onsi/ginkgo/v2"
-)
+type Condition struct {
+	Type   string `json:"type"`
+	Status string `json:"status"`
+}
 
-// Success func will print the success message using the provided message
-// Arguments:
-// - string: message to be printed
-func Success(message string) {
-	g.GinkgoWriter.Println("* " + message)
+type Status struct {
+	Conditions []Condition `json:"conditions"`
+	Phase      string      `json:"phase"`
+}
+
+type Resource struct {
+	Status Status `json:"status"`
 }
