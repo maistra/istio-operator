@@ -23,17 +23,18 @@ import (
 	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
 	"github.com/istio-ecosystem/sail-operator/pkg/common"
 	"github.com/istio-ecosystem/sail-operator/pkg/scheme"
-	"gotest.tools/v3/assert"
+	"github.com/istio-ecosystem/sail-operator/pkg/util/tests/kube"
+	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/sets"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
+
+var ctx = context.TODO()
 
 func TestHasFinalizer(t *testing.T) {
 	testCases := []struct {
@@ -59,12 +60,13 @@ func TestHasFinalizer(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			g := NewWithT(t)
 			obj := &v1alpha1.Istio{
 				ObjectMeta: metav1.ObjectMeta{
 					Finalizers: tc.finalizers,
 				},
 			}
-			assert.Equal(t, HasFinalizer(obj, common.FinalizerName), tc.expectedResult)
+			g.Expect(HasFinalizer(obj, common.FinalizerName)).To(Equal(tc.expectedResult))
 		})
 	}
 }
@@ -138,6 +140,7 @@ func TestRemoveFinalizer(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			g := NewWithT(t)
 			obj := &v1alpha1.Istio{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:       "test",
@@ -151,24 +154,19 @@ func TestRemoveFinalizer(t *testing.T) {
 				WithInterceptorFuncs(tc.interceptorFuncs).
 				Build()
 
-			result, err := RemoveFinalizer(context.TODO(), cl, obj, common.FinalizerName)
+			result, err := RemoveFinalizer(ctx, cl, obj, common.FinalizerName)
 
-			assert.Equal(t, result, tc.expectResult)
+			g.Expect(result).To(Equal(tc.expectResult))
 
 			if tc.expectError {
-				if err == nil {
-					t.Fatalf("Expected error, got nil")
-				}
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("Expected no error, got %v", err)
+				g.Expect(err).To(HaveOccurred())
+			} else {
+				g.Expect(err).ToNot(HaveOccurred())
 			}
 
 			if tc.checkFinalizers {
-				assert.NilError(t, cl.Get(context.TODO(), types.NamespacedName{Name: obj.GetName()}, obj))
-				assert.DeepEqual(t, sets.NewString(obj.GetFinalizers()...), sets.NewString(tc.expectedFinalizers...))
+				g.Expect(cl.Get(ctx, kube.GetObjectKey(obj), obj)).To(Succeed())
+				g.Expect(obj.GetFinalizers()).To(ConsistOf(tc.expectedFinalizers))
 			}
 		})
 	}
@@ -243,6 +241,7 @@ func TestAddFinalizer(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			g := NewWithT(t)
 			obj := &v1alpha1.Istio{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:       "test",
@@ -256,24 +255,19 @@ func TestAddFinalizer(t *testing.T) {
 				WithInterceptorFuncs(tc.interceptorFuncs).
 				Build()
 
-			result, err := AddFinalizer(context.TODO(), cl, obj, common.FinalizerName)
+			result, err := AddFinalizer(ctx, cl, obj, common.FinalizerName)
 
-			assert.Equal(t, result, tc.expectResult)
+			g.Expect(result).To(Equal(tc.expectResult))
 
 			if tc.expectError {
-				if err == nil {
-					t.Fatalf("Expected error, got nil")
-				}
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("Expected no error, got %v", err)
+				g.Expect(err).To(HaveOccurred())
+			} else {
+				g.Expect(err).ToNot(HaveOccurred())
 			}
 
 			if tc.checkFinalizers {
-				assert.NilError(t, cl.Get(context.TODO(), types.NamespacedName{Name: obj.GetName()}, obj))
-				assert.DeepEqual(t, sets.NewString(obj.GetFinalizers()...), sets.NewString(tc.expectedFinalizers...))
+				g.Expect(cl.Get(ctx, kube.GetObjectKey(obj), obj)).To(Succeed())
+				g.Expect(obj.GetFinalizers()).To(ConsistOf(tc.expectedFinalizers))
 			}
 		})
 	}
