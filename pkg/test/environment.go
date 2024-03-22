@@ -15,6 +15,7 @@
 package test
 
 import (
+	"io"
 	"path"
 
 	"github.com/istio-ecosystem/sail-operator/pkg/common"
@@ -26,8 +27,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
-func SetupEnv() (*envtest.Environment, client.Client, *rest.Config) {
-	logf.SetLogger(zap.New(zap.UseDevMode(true)))
+func SetupEnv(logWriter io.Writer) (*envtest.Environment, client.Client, *rest.Config) {
+	logf.SetLogger(zap.New(zap.WriteTo(logWriter), zap.UseDevMode(true)))
 
 	testEnv := &envtest.Environment{
 		CRDDirectoryPaths:     []string{path.Join(common.RepositoryRoot, "chart", "crds")},
