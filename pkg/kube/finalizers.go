@@ -39,8 +39,7 @@ func HasFinalizer(obj client.Object, finalizer string) bool {
 }
 
 func RemoveFinalizer(ctx context.Context, cl client.Client, obj client.Object, finalizer string) (ctrl.Result, error) {
-	log := logf.FromContext(ctx)
-	log.Info("Removing finalizer")
+	log := logf.FromContext(ctx).WithValues("finalizer", finalizer)
 
 	finalizers := sets.New(obj.GetFinalizers()...)
 	finalizers.Delete(finalizer)
@@ -48,22 +47,21 @@ func RemoveFinalizer(ctx context.Context, cl client.Client, obj client.Object, f
 
 	err := cl.Update(ctx, obj)
 	if errors.IsNotFound(err) {
-		log.Info("Resource no longer exists; nothing to do")
+		log.Info("Resource no longer exists; no need to remove finalizer")
 		return ctrl.Result{}, nil
 	} else if errors.IsConflict(err) {
-		log.Info("Conflict while removing finalizer; Requeuing reconciliation")
+		log.Info("Conflict while removing finalizer; will retry")
 		return ctrl.Result{RequeueAfter: conflictRequeueDelay}, nil
 	} else if err != nil {
 		return ctrl.Result{}, pkgerrors.Wrapf(err, "could not remove finalizer from %s/%s", obj.GetNamespace(), obj.GetName())
 	}
 
-	log.Info("Finalizer removed")
+	log.Info("Removed finalizer")
 	return ctrl.Result{}, nil
 }
 
 func AddFinalizer(ctx context.Context, cl client.Client, obj client.Object, finalizer string) (ctrl.Result, error) {
-	log := logf.FromContext(ctx)
-	log.Info("Adding finalizer")
+	log := logf.FromContext(ctx).WithValues("finalizer", finalizer)
 
 	finalizers := sets.New(obj.GetFinalizers()...)
 	finalizers.Insert(finalizer)
@@ -71,15 +69,15 @@ func AddFinalizer(ctx context.Context, cl client.Client, obj client.Object, fina
 
 	err := cl.Update(ctx, obj)
 	if errors.IsNotFound(err) {
-		log.Info("Resource no longer exists; nothing to do")
+		log.Info("Resource no longer exists; no need to add finalizer")
 		return ctrl.Result{}, nil
 	} else if errors.IsConflict(err) {
-		log.Info("Conflict while adding finalizer; Requeuing reconciliation")
+		log.Info("Conflict while adding finalizer; will retry")
 		return ctrl.Result{RequeueAfter: conflictRequeueDelay}, nil
 	} else if err != nil {
-		return ctrl.Result{}, pkgerrors.Wrapf(err, "Could not add finalizer to %s/%s", obj.GetNamespace(), obj.GetName())
+		return ctrl.Result{}, pkgerrors.Wrapf(err, "could not add finalizer to %s/%s", obj.GetNamespace(), obj.GetName())
 	}
 
-	log.Info("Finalizer added")
+	log.Info("Added finalizer")
 	return ctrl.Result{}, nil
 }
