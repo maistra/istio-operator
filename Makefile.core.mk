@@ -152,7 +152,7 @@ test.unit:  ## Run unit tests.
 .PHONY: test.integration
 test.integration: envtest ## Run integration tests located in the tests/integration directory.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" \
-	go test --tags=integration $(VERBOSE_FLAG) ./tests/integration/...
+	go run github.com/onsi/ginkgo/v2/ginkgo --tags=integration $(VERBOSE_FLAG) ./tests/integration/...
 
 .PHONY: test.scorecard
 test.scorecard: operator-sdk ## Run the operator scorecard test.
