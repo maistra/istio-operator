@@ -37,29 +37,35 @@ import (
 
 func TestHasFinalizer(t *testing.T) {
 	testCases := []struct {
+		name           string
 		finalizers     []string
 		expectedResult bool
 	}{
 		{
+			name:           "nil finalizers",
 			finalizers:     nil,
 			expectedResult: false,
 		},
 		{
+			name:           "has other finalizer",
 			finalizers:     []string{"example.com/some-finalizer"},
 			expectedResult: false,
 		},
 		{
+			name:           "has finalizer in question",
 			finalizers:     []string{common.FinalizerName},
 			expectedResult: true,
 		},
 	}
 	for _, tc := range testCases {
-		obj := &v1alpha1.Istio{
-			ObjectMeta: metav1.ObjectMeta{
-				Finalizers: tc.finalizers,
-			},
-		}
-		assert.Equal(t, HasFinalizer(obj, common.FinalizerName), tc.expectedResult)
+		t.Run(tc.name, func(t *testing.T) {
+			obj := &v1alpha1.Istio{
+				ObjectMeta: metav1.ObjectMeta{
+					Finalizers: tc.finalizers,
+				},
+			}
+			assert.Equal(t, HasFinalizer(obj, common.FinalizerName), tc.expectedResult)
+		})
 	}
 }
 
