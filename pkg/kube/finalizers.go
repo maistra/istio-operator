@@ -18,10 +18,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/istio-ecosystem/sail-operator/pkg/common"
 	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/errors"
-	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -29,64 +27,57 @@ import (
 	"istio.io/istio/pkg/util/sets"
 )
 
-func HasFinalizer(obj client.Object) bool {
-	objectMeta := getObjectMeta(obj)
-	finalizers := sets.New(objectMeta.GetFinalizers()...)
-	return finalizers.Contains(common.FinalizerName)
+const conflictRequeueDelay = 2 * time.Second
+
+func HasFinalizer(obj client.Object, finalizer string) bool {
+	for _, f := range obj.GetFinalizers() {
+		if f == finalizer {
+			return true
+		}
+	}
+	return false
 }
 
-func RemoveFinalizer(ctx context.Context, obj client.Object, cl client.Client) (ctrl.Result, error) {
-	log := logf.FromContext(ctx)
-	log.Info("Removing finalizer")
+func RemoveFinalizer(ctx context.Context, cl client.Client, obj client.Object, finalizer string) (ctrl.Result, error) {
+	log := logf.FromContext(ctx).WithValues("finalizer", finalizer)
 
-	objectMeta := getObjectMeta(obj)
-	finalizers := sets.New(objectMeta.GetFinalizers()...)
-	finalizers.Delete(common.FinalizerName)
-	objectMeta.SetFinalizers(finalizers.UnsortedList())
+	finalizers := sets.New(obj.GetFinalizers()...)
+	finalizers.Delete(finalizer)
+	obj.SetFinalizers(finalizers.UnsortedList())
 
 	err := cl.Update(ctx, obj)
 	if errors.IsNotFound(err) {
-		log.Info("Resource no longer exists; nothing to do")
+		log.Info("Resource no longer exists; no need to remove finalizer")
 		return ctrl.Result{}, nil
 	} else if errors.IsConflict(err) {
-		log.Info("Conflict while removing finalizer; Requeuing reconciliation")
-		return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
+		log.Info("Conflict while removing finalizer; will retry")
+		return ctrl.Result{RequeueAfter: conflictRequeueDelay}, nil
 	} else if err != nil {
-		return ctrl.Result{}, pkgerrors.Wrapf(err, "could not remove finalizer from %s/%s", objectMeta.GetNamespace(), objectMeta.GetName())
+		return ctrl.Result{}, pkgerrors.Wrapf(err, "could not remove finalizer from %s/%s", obj.GetNamespace(), obj.GetName())
 	}
 
-	log.Info("Finalizer removed")
+	log.Info("Removed finalizer")
 	return ctrl.Result{}, nil
 }
 
-func AddFinalizer(ctx context.Context, obj client.Object, cl client.Client) (ctrl.Result, error) {
-	log := logf.FromContext(ctx)
-	log.Info("Adding finalizer")
+func AddFinalizer(ctx context.Context, cl client.Client, obj client.Object, finalizer string) (ctrl.Result, error) {
+	log := logf.FromContext(ctx).WithValues("finalizer", finalizer)
 
-	objectMeta := getObjectMeta(obj)
-	finalizers := sets.New(objectMeta.GetFinalizers()...)
-	finalizers.Insert(common.FinalizerName)
-	objectMeta.SetFinalizers(finalizers.UnsortedList())
+	finalizers := sets.New(obj.GetFinalizers()...)
+	finalizers.Insert(finalizer)
+	obj.SetFinalizers(finalizers.UnsortedList())
 
 	err := cl.Update(ctx, obj)
 	if errors.IsNotFound(err) {
-		log.Info("Resource no longer exists; nothing to do")
+		log.Info("Resource no longer exists; no need to add finalizer")
 		return ctrl.Result{}, nil
 	} else if errors.IsConflict(err) {
-		log.Info("Conflict while adding finalizer; Requeuing reconciliation")
-		return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
+		log.Info("Conflict while adding finalizer; will retry")
+		return ctrl.Result{RequeueAfter: conflictRequeueDelay}, nil
 	} else if err != nil {
-		return ctrl.Result{}, pkgerrors.Wrapf(err, "Could not add finalizer to %s/%s", objectMeta.GetNamespace(), objectMeta.GetName())
+		return ctrl.Result{}, pkgerrors.Wrapf(err, "could not add finalizer to %s/%s", obj.GetNamespace(), obj.GetName())
 	}
 
-	log.Info("Finalizer added")
+	log.Info("Added finalizer")
 	return ctrl.Result{}, nil
-}
-
-func getObjectMeta(obj client.Object) meta.Object {
-	oma, ok := obj.(meta.ObjectMetaAccessor)
-	if !ok {
-		panic("object does not implement ObjectMetaAccessor")
-	}
-	return oma.GetObjectMeta()
 }
