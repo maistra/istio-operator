@@ -147,12 +147,12 @@ test: test.unit test.integration ## Run both unit tests and integration test.
 
 .PHONY: test.unit
 test.unit:  ## Run unit tests.
-	go test $(VERBOSE_FLAG) ./... -coverprofile cover.out
+	go test $(VERBOSE_FLAG) ./...
 
 .PHONY: test.integration
 test.integration: envtest ## Run integration tests located in the tests/integration directory.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" \
-	go test --tags=integration $(VERBOSE_FLAG) ./tests/integration/... -coverprofile cover.out
+	go test --tags=integration $(VERBOSE_FLAG) ./tests/integration/...
 
 .PHONY: test.scorecard
 test.scorecard: operator-sdk ## Run the operator scorecard test.
