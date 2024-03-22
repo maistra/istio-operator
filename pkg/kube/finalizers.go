@@ -18,7 +18,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/istio-ecosystem/sail-operator/pkg/common"
 	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -30,21 +29,21 @@ import (
 
 const conflictRequeueDelay = 2 * time.Second
 
-func HasFinalizer(obj client.Object) bool {
-	for _, finalizer := range obj.GetFinalizers() {
-		if finalizer == common.FinalizerName {
+func HasFinalizer(obj client.Object, finalizer string) bool {
+	for _, f := range obj.GetFinalizers() {
+		if f == finalizer {
 			return true
 		}
 	}
 	return false
 }
 
-func RemoveFinalizer(ctx context.Context, obj client.Object, cl client.Client) (ctrl.Result, error) {
+func RemoveFinalizer(ctx context.Context, cl client.Client, obj client.Object, finalizer string) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 	log.Info("Removing finalizer")
 
 	finalizers := sets.New(obj.GetFinalizers()...)
-	finalizers.Delete(common.FinalizerName)
+	finalizers.Delete(finalizer)
 	obj.SetFinalizers(finalizers.UnsortedList())
 
 	err := cl.Update(ctx, obj)
@@ -62,12 +61,12 @@ func RemoveFinalizer(ctx context.Context, obj client.Object, cl client.Client) (
 	return ctrl.Result{}, nil
 }
 
-func AddFinalizer(ctx context.Context, obj client.Object, cl client.Client) (ctrl.Result, error) {
+func AddFinalizer(ctx context.Context, cl client.Client, obj client.Object, finalizer string) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 	log.Info("Adding finalizer")
 
 	finalizers := sets.New(obj.GetFinalizers()...)
-	finalizers.Insert(common.FinalizerName)
+	finalizers.Insert(finalizer)
 	obj.SetFinalizers(finalizers.UnsortedList())
 
 	err := cl.Update(ctx, obj)

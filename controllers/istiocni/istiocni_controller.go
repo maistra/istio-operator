@@ -43,7 +43,10 @@ import (
 	"istio.io/istio/pkg/ptr"
 )
 
-const cniReleaseName = "istio-cni"
+const (
+	cniReleaseName = "istio-cni"
+	finalizer      = common.FinalizerName
+)
 
 // IstioCNIReconciler reconciles an IstioCNI object
 type IstioCNIReconciler struct {
@@ -101,11 +104,11 @@ func (r *IstioCNIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		if err := r.uninstallHelmChart(ctx, &cni); err != nil {
 			return ctrl.Result{}, err
 		}
-		return kube.RemoveFinalizer(ctx, &cni, r.Client)
+		return kube.RemoveFinalizer(ctx, r.Client, &cni, finalizer)
 	}
 
-	if !kube.HasFinalizer(&cni) {
-		return kube.AddFinalizer(ctx, &cni, r.Client)
+	if !kube.HasFinalizer(&cni, finalizer) {
+		return kube.AddFinalizer(ctx, r.Client, &cni, finalizer)
 	}
 
 	if err := validateIstioCNI(cni); err != nil {

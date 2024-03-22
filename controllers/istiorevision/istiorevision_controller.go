@@ -24,6 +24,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
+	"github.com/istio-ecosystem/sail-operator/pkg/common"
 	"github.com/istio-ecosystem/sail-operator/pkg/helm"
 	"github.com/istio-ecosystem/sail-operator/pkg/kube"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
@@ -55,6 +56,8 @@ const (
 	IstioInjectionEnabledValue = "enabled"
 	IstioRevLabel              = "istio.io/rev"
 	IstioSidecarInjectLabel    = "sidecar.istio.io/inject"
+
+	finalizer = common.FinalizerName
 )
 
 // IstioRevisionReconciler reconciles an IstioRevision object
@@ -109,11 +112,11 @@ func (r *IstioRevisionReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		if err := r.uninstallHelmCharts(ctx, &rev); err != nil {
 			return ctrl.Result{}, err
 		}
-		return kube.RemoveFinalizer(ctx, &rev, r.Client)
+		return kube.RemoveFinalizer(ctx, r.Client, &rev, finalizer)
 	}
 
-	if !kube.HasFinalizer(&rev) {
-		return kube.AddFinalizer(ctx, &rev, r.Client)
+	if !kube.HasFinalizer(&rev, finalizer) {
+		return kube.AddFinalizer(ctx, r.Client, &rev, finalizer)
 	}
 
 	if err := validateIstioRevision(rev); err != nil {

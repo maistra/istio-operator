@@ -59,7 +59,7 @@ func TestHasFinalizer(t *testing.T) {
 				Finalizers: tc.finalizers,
 			},
 		}
-		assert.Equal(t, HasFinalizer(obj), tc.expectedResult)
+		assert.Equal(t, HasFinalizer(obj, common.FinalizerName), tc.expectedResult)
 	}
 }
 
@@ -145,7 +145,7 @@ func TestRemoveFinalizer(t *testing.T) {
 				WithInterceptorFuncs(tc.interceptorFuncs).
 				Build()
 
-			result, err := RemoveFinalizer(context.TODO(), obj, cl)
+			result, err := RemoveFinalizer(context.TODO(), cl, obj, common.FinalizerName)
 
 			assert.Equal(t, result, tc.expectResult)
 
@@ -250,7 +250,7 @@ func TestAddFinalizer(t *testing.T) {
 				WithInterceptorFuncs(tc.interceptorFuncs).
 				Build()
 
-			result, err := AddFinalizer(context.TODO(), obj, cl)
+			result, err := AddFinalizer(context.TODO(), cl, obj, common.FinalizerName)
 
 			assert.Equal(t, result, tc.expectResult)
 
