@@ -23,7 +23,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/sail-operator:3.0-latest
-    createdAt: "2024-03-23T03:05:15Z"
+    createdAt: "2024-03-24T03:05:04Z"
     description: Experimental operator for installing Istio service mesh
     features.operators.openshift.io/cnf: "false"
     features.operators.openshift.io/cni: "true"
@@ -249,7 +249,7 @@ spec:
 
     - v1.21.0
     - v1.20.3
-    - latest (c0d71c6a)
+    - latest (10158e1a)
 
     [See this page](https://github.com/istio-ecosystem/sail-operator/blob/pre-main/bundle/README.md) for instructions on how to use it.
   displayName: Sail Operator
