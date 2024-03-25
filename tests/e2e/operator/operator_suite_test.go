@@ -19,17 +19,15 @@ package operator
 import (
 	"testing"
 
-	"github.com/istio-ecosystem/sail-operator/tests/e2e/operator/util/kubectl"
+	k8sclient "github.com/istio-ecosystem/sail-operator/tests/e2e/operator/util/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
-	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
-	k8sclient          *kubernetes.Clientset
-	k8sclientextension *apiextensionsclient.Clientset
-	err                error
+	k8sClient client.Client
+	err       error
 )
 
 func TestInstall(t *testing.T) {
@@ -42,7 +40,7 @@ func setup() {
 	GinkgoWriter.Println("************ Running Setup ************")
 
 	GinkgoWriter.Println("Initializing k8s client")
-	k8sclient, k8sclientextension, err = kubectl.InitK8sClients()
+	k8sClient, err = k8sclient.InitK8sClients()
 	Expect(err).NotTo(HaveOccurred())
 
 	if ocp {

@@ -30,12 +30,22 @@ import (
 	"github.com/istio-ecosystem/sail-operator/tests/e2e/operator/util/kubectl"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"istio.io/istio/pkg/ptr"
 )
 
-var istiodVersionRegex = regexp.MustCompile(`Version:"(\d+\.\d+(\.\d+|-\w+))`)
+var (
+	istiodVersionRegex = regexp.MustCompile(`Version:"(\d+\.\d+(\.\d+|-\w+))`)
+	// pod                          = &corev1.Pod{}
+	podList                      = &corev1.PodList{}
+	deployment                   = &appsv1.Deployment{}
+	customResourceDefintion      = &apiextensionsv1.CustomResourceDefinition{}
+	customResourceDefinitionList = &apiextensionsv1.CustomResourceDefinitionList{}
+)
 
 var _ = Describe("Operator", Ordered, func() {
 	SetDefaultEventuallyTimeout(120 * time.Second)
@@ -98,23 +108,25 @@ var _ = Describe("Operator", Ordered, func() {
 
 		It("deploys all the CRDs", func() {
 			Eventually(func(g Gomega) {
-				result, err := k8sclientextension.ApiextensionsV1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
-				g.Expect(err).ToNot(HaveOccurred(), "Error getting CRDs")
+				g.Expect(k8sClient.List(context.TODO(), customResourceDefinitionList)).To(Succeed(), "Error getting CRDs list from the cluster")
+
 				var crdNames []string
-				for _, crd := range result.Items {
+				for _, crd := range customResourceDefinitionList.Items {
 					crdNames = append(crdNames, crd.ObjectMeta.Name)
 				}
+
 				g.Expect(crdNames).To(ContainElements(crds), "Istio CRDs are not present; expected list to contain all elements")
-			}).Should(Succeed(), "Istio CRDs are not present")
+			}).Should(Succeed(), "Unexpected error getting CRDs from the cluster")
 			Success("Istio CRDs are present")
 		})
 
 		It("updates the CRDs status to Established", func() {
 			for _, crd := range crds {
 				Eventually(func(g Gomega) {
-					crd, err := k8sclientextension.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), crd, metav1.GetOptions{})
-					g.Expect(err).ToNot(HaveOccurred(), "Error getting CRD")
-					for _, condition := range crd.Status.Conditions {
+					Expect(k8sClient.Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: crd}, customResourceDefintion)).
+						To(Succeed(), "Error getting CRD")
+
+					for _, condition := range customResourceDefintion.Status.Conditions {
 						if condition.Type == "Established" {
 							g.Expect(string(condition.Status)).To(Equal("True"), "CRD conditions was not the expected")
 						}
@@ -126,32 +138,27 @@ var _ = Describe("Operator", Ordered, func() {
 
 		Specify("istio crd is present", func() {
 			// When the operator runs in OCP cluster, the CRD is created but not available at the moment
-			Eventually(kubectl.GetResourceList).
-				WithArguments("", "istio").
-				Should(Equal(kubectl.EmptyResourceList), "Istio CRD is not present; expected to not fail and return an empty list of Istio CR")
+			Eventually(k8sClient.Get).WithArguments(context.TODO(), client.ObjectKey{Name: "istios.operator.istio.io"}, customResourceDefintion).
+				Should(Succeed(), "Error getting Istio CRD")
 			Success("Istio CRD is present")
 		})
 
 		It("starts successfully", func() {
 			Eventually(func(g Gomega) {
-				// Wait until the operator deployment is available
-				pods, err := k8sclient.AppsV1().Deployments(namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
-				g.Expect(err).ToNot(HaveOccurred(), "Error getting deployment")
-
-				for _, condition := range pods.Status.Conditions {
+				g.Expect(k8sClient.Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: deploymentName}, deployment)).
+					To(Succeed(), "Error getting operator deployment")
+				for _, condition := range deployment.Status.Conditions {
 					if condition.Type == "Available" {
 						g.Expect(string(condition.Status)).To(Equal("True"), "Operator conditions was not the expected")
 					}
 				}
 			}).Should(Succeed(), "Operator deployment is not Available")
 
-			// Get the operator pod and check if it's running
-			pod, err := k8sclient.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{
-				LabelSelector: "control-plane=sail-operator",
-			})
+			selector := client.MatchingLabels(map[string]string{"control-plane": "sail-operator"})
+			Expect(k8sClient.List(context.TODO(), podList, selector, client.InNamespace(namespace))).To(Succeed(), "Error getting operator pod")
 
-			Expect(err).ToNot(HaveOccurred(), "Error getting pod")
-			Expect(string(pod.Items[0].Status.Phase)).To(Equal("Running"), "Operator failed to start; unexpected pod Phase")
+			Expect(podList.Items).To(HaveLen(1), "Unexpected number of operator pods; expected list to have length 1")
+			Expect(string(podList.Items[0].Status.Phase)).To(Equal("Running"), "Operator failed to start; unexpected pod Phase")
 			Success("sail-operator pod is Running")
 		})
 
