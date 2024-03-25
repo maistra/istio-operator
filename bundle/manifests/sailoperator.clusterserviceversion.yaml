@@ -18,12 +18,23 @@ metadata:
             },
             "version": "v1.21.0"
           }
+        },
+        {
+          "apiVersion": "operator.istio.io/v1alpha1",
+          "kind": "IstioCNI",
+          "metadata": {
+            "name": "default"
+          },
+          "spec": {
+            "namespace": "istio-cni",
+            "version": "v1.21.0"
+          }
         }
       ]
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/sail-operator:3.0-latest
-    createdAt: "2024-03-25T03:05:30Z"
+    createdAt: "2024-03-25T14:37:42Z"
     description: Experimental operator for installing Istio service mesh
     features.operators.openshift.io/cnf: "false"
     features.operators.openshift.io/cni: "true"

@@ -3,3 +3,5 @@
 {{ else if .Values.bundleGeneration }}
 {{ .Files.Get "samples/istio-sample-kubernetes.yaml" }}
 {{ end }}
+---
+{{ .Files.Get "samples/istiocni-sample.yaml" }}
