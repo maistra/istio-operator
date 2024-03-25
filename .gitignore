@@ -28,3 +28,6 @@ out/
 *.swp
 *.swo
 *~
+
+# VS Code settings
+.vscode

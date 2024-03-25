@@ -27,7 +27,7 @@ import (
 var (
 	ocp                   = getBoolEnv("OCP", false)
 	skipDeploy            = getBoolEnv("SKIP_DEPLOY", false)
-	image                 = getEnv("IMAGE", "quay.io/maistra-dev/istio-operator:latest")
+	image                 = getEnv("IMAGE", "quay.io/maistra-dev/sail-operator:latest")
 	namespace             = getEnv("NAMESPACE", "sail-operator")
 	deploymentName        = getEnv("DEPLOYMENT_NAME", "sail-operator")
 	controlPlaneNamespace = getEnv("CONTROL_PLANE_NS", "istio-system")

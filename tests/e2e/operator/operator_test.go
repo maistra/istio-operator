@@ -17,6 +17,7 @@
 package operator
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"regexp"
@@ -29,6 +30,7 @@ import (
 	"github.com/istio-ecosystem/sail-operator/tests/e2e/operator/util/kubectl"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"istio.io/istio/pkg/ptr"
 )
@@ -39,10 +41,6 @@ var _ = Describe("Operator", Ordered, func() {
 	SetDefaultEventuallyTimeout(120 * time.Second)
 	SetDefaultEventuallyPollingInterval(time.Second)
 	var (
-		resourceAvailable = kubectl.Condition{
-			Type:   "Available",
-			Status: "True",
-		}
 		resourceReconciled = kubectl.Condition{
 			Type:   "Reconciled",
 			Status: "True",
@@ -53,10 +51,10 @@ var _ = Describe("Operator", Ordered, func() {
 			Status: "True",
 		}
 
-		crdEstablished = kubectl.Condition{
-			Type:   "Established",
-			Status: "True",
-		}
+		// crdEstablished = kubectl.Condition{
+		// 	Type:   "Established",
+		// 	Status: "True",
+		// }
 
 		crds = []string{
 			// TODO: Find an alternative to this list
@@ -99,14 +97,29 @@ var _ = Describe("Operator", Ordered, func() {
 		})
 
 		It("deploys all the CRDs", func() {
-			Eventually(kubectl.GetCRDs).
-				Should(ContainElements(crds), "Istio CRDs are not present; expected list to contain all elements")
+			Eventually(func(g Gomega) {
+				result, err := k8sclientextension.ApiextensionsV1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
+				g.Expect(err).ToNot(HaveOccurred(), "Error getting CRDs")
+				var crdNames []string
+				for _, crd := range result.Items {
+					crdNames = append(crdNames, crd.ObjectMeta.Name)
+				}
+				g.Expect(crdNames).To(ContainElements(crds), "Istio CRDs are not present; expected list to contain all elements")
+			}).Should(Succeed(), "Istio CRDs are not present")
 			Success("Istio CRDs are present")
 		})
 
 		It("updates the CRDs status to Established", func() {
 			for _, crd := range crds {
-				Eventually(kubectl.GetConditions).WithArguments(namespace, "crd", crd).Should(ContainElement(crdEstablished), "CRD is not Established")
+				Eventually(func(g Gomega) {
+					crd, err := k8sclientextension.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), crd, metav1.GetOptions{})
+					g.Expect(err).ToNot(HaveOccurred(), "Error getting CRD")
+					for _, condition := range crd.Status.Conditions {
+						if condition.Type == "Established" {
+							g.Expect(string(condition.Status)).To(Equal("True"), "CRD conditions was not the expected")
+						}
+					}
+				}).Should(Succeed(), "CRD is not Established")
 			}
 			Success("CRDs are Established")
 		})
@@ -120,12 +133,25 @@ var _ = Describe("Operator", Ordered, func() {
 		})
 
 		It("starts successfully", func() {
-			Eventually(kubectl.GetConditions).
-				WithArguments(namespace, "deployment", deploymentName).
-				Should(ContainElement(resourceAvailable), "Operator deployment is not Available; unexpected Condition")
-			Success("Operator deployment is Available")
+			Eventually(func(g Gomega) {
+				// Wait until the operator deployment is available
+				pods, err := k8sclient.AppsV1().Deployments(namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
+				g.Expect(err).ToNot(HaveOccurred(), "Error getting deployment")
 
-			Expect(kubectl.GetPodPhase(namespace, "control-plane=sail-operator")).To(Equal("Running"), "Operator failed to start; unexpected pod Phase")
+				for _, condition := range pods.Status.Conditions {
+					if condition.Type == "Available" {
+						g.Expect(string(condition.Status)).To(Equal("True"), "Operator conditions was not the expected")
+					}
+				}
+			}).Should(Succeed(), "Operator deployment is not Available")
+
+			// Get the operator pod and check if it's running
+			pod, err := k8sclient.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{
+				LabelSelector: "control-plane=sail-operator",
+			})
+
+			Expect(err).ToNot(HaveOccurred(), "Error getting pod")
+			Expect(string(pod.Items[0].Status.Phase)).To(Equal("Running"), "Operator failed to start; unexpected pod Phase")
 			Success("sail-operator pod is Running")
 		})
 

@@ -36,7 +36,7 @@ export KIND_CLUSTER_NAME="${KIND_CLUSTER_NAME:-operator-integration-tests}"
 # Use the local registry instead of the default HUB
 export HUB="${KIND_REGISTRY}"
 # Workaround make inside make: ovewrite this variable so it is not recomputed in Makefile.core.mk
-export IMAGE="${HUB}/${IMAGE_BASE:-istio-operator}:${TAG:-latest}"
+export IMAGE="${HUB}/${IMAGE_BASE:-sail-operator}:${TAG:-latest}"
 
 # Copied from Istio: https://github.com/istio/istio/blob/861abfbc050c5be41154054853fe70336a851ce9/prow/lib.sh#L149
 function setup_kind_registry() {
@@ -53,7 +53,7 @@ function setup_kind_registry() {
 
   # https://docs.tilt.dev/choosing_clusters.html#discovering-the-registry
   # TODO get context/config from existing variables
-  kind export kubeconfig --name="${KIND_CLUSTER_NAME}"
+  kind export kubeconfig --name="${KIND_CLUSTER_NAME}" --kubeconfig="${HOME}/.kube/config"
   for node in $(kind get nodes --name="${KIND_CLUSTER_NAME}"); do
     kubectl annotate node "${node}" "kind.x-k8s.io/registry=localhost:${KIND_REGISTRY_PORT}" --overwrite;
   done
