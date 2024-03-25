@@ -105,7 +105,7 @@ func (r *IstioRevisionReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			log.V(2).Info("IstioRevision not found. Skipping reconciliation")
 			return ctrl.Result{}, nil
 		}
-		log.Error(err, "failed to get IstioRevision from cluster")
+		return ctrl.Result{}, fmt.Errorf("failed to get IstioRevision: %v", err)
 	}
 
 	if rev.DeletionTimestamp != nil {

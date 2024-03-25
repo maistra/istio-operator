@@ -75,7 +75,7 @@ func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			log.V(2).Info("Istio not found. Skipping reconciliation")
 			return ctrl.Result{}, nil
 		}
-		log.Error(err, "failed to get Istio from cluster")
+		return ctrl.Result{}, fmt.Errorf("failed to get Istio: %v", err)
 	}
 
 	if istio.DeletionTimestamp != nil {
