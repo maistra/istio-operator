@@ -16,12 +16,14 @@ package istiocni
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
 	"github.com/istio-ecosystem/sail-operator/pkg/common"
 	"github.com/istio-ecosystem/sail-operator/pkg/scheme"
+	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -329,4 +331,53 @@ func TestApplyImageDigests(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDetermineStatus(t *testing.T) {
+	tests := []struct {
+		name         string
+		reconcileErr error
+	}{
+		{
+			name:         "no error",
+			reconcileErr: nil,
+		},
+		{
+			name:         "reconcile error",
+			reconcileErr: fmt.Errorf("some reconcile error"),
+		},
+	}
+
+	ctx := context.TODO()
+	resourceDir := t.TempDir()
+	cl := fake.NewClientBuilder().WithScheme(scheme.Scheme).Build()
+	r := NewIstioCNIReconciler(cl, scheme.Scheme, nil, resourceDir, nil, nil)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := NewWithT(t)
+
+			cni := &v1alpha1.IstioCNI{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       "my-cni",
+					Generation: 123,
+				},
+			}
+
+			reconciledCondition := r.determineReconciledCondition(tt.reconcileErr)
+			readyCondition := r.determineReadyCondition(ctx, cni)
+
+			status := r.determineStatus(ctx, cni, tt.reconcileErr)
+
+			g.Expect(status.ObservedGeneration).To(Equal(cni.Generation))
+			g.Expect(status.State).To(Equal(deriveState(reconciledCondition, readyCondition)))
+			g.Expect(normalize(status.GetCondition(v1alpha1.IstioCNIConditionTypeReconciled))).To(Equal(normalize(reconciledCondition)))
+			g.Expect(normalize(status.GetCondition(v1alpha1.IstioCNIConditionTypeReady))).To(Equal(normalize(readyCondition)))
+		})
+	}
+}
+
+func normalize(condition v1alpha1.IstioCNICondition) v1alpha1.IstioCNICondition {
+	condition.LastTransitionTime = metav1.Time{}
+	return condition
 }

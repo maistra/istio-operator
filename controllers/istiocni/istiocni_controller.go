@@ -234,35 +234,37 @@ func (r *IstioCNIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *IstioCNIReconciler) updateStatus(ctx context.Context, cni *v1alpha1.IstioCNI, err error) error {
-	log := logf.FromContext(ctx)
-	reconciledCondition := r.determineReconciledCondition(err)
+func (r *IstioCNIReconciler) determineStatus(ctx context.Context, cni *v1alpha1.IstioCNI, reconcileErr error) v1alpha1.IstioCNIStatus {
+	reconciledCondition := r.determineReconciledCondition(reconcileErr)
 	readyCondition := r.determineReadyCondition(ctx, cni)
-	if err != nil {
-		return err
-	}
 
 	status := cni.Status.DeepCopy()
 	status.ObservedGeneration = cni.Generation
 	status.SetCondition(reconciledCondition)
 	status.SetCondition(readyCondition)
 	status.State = deriveState(reconciledCondition, readyCondition)
+	return *status
+}
 
-	if reflect.DeepEqual(cni.Status, *status) {
+func (r *IstioCNIReconciler) updateStatus(ctx context.Context, cni *v1alpha1.IstioCNI, reconcileErr error) error {
+	status := r.determineStatus(ctx, cni, reconcileErr)
+
+	if reflect.DeepEqual(cni.Status, status) {
 		return nil
 	}
 
-	statusErr := r.Client.Status().Patch(ctx, cni, kube.NewStatusPatch(*status))
+	statusErr := r.Client.Status().Patch(ctx, cni, kube.NewStatusPatch(status))
 	if statusErr != nil {
+		log := logf.FromContext(ctx)
 		log.Error(statusErr, "failed to patch status")
 
 		// ensure that we retry the reconcile by returning the status error
 		// (but without overriding the original error)
-		if err == nil {
+		if reconcileErr == nil {
 			return statusErr
 		}
 	}
-	return err
+	return reconcileErr
 }
 
 func deriveState(reconciledCondition, readyCondition v1alpha1.IstioCNICondition) v1alpha1.IstioCNIConditionReason {
