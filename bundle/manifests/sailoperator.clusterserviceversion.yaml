@@ -34,7 +34,7 @@ metadata:
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Integration & Delivery, Networking, Security
     containerImage: quay.io/maistra-dev/sail-operator:3.0-latest
-    createdAt: "2024-03-25T14:37:42Z"
+    createdAt: "2024-03-25T14:58:08Z"
     description: Experimental operator for installing Istio service mesh
     features.operators.openshift.io/cnf: "false"
     features.operators.openshift.io/cni: "true"
@@ -129,9 +129,6 @@ spec:
     - kind: WorkloadGroup
       name: workloadgroups.networking.istio.io
       version: v1beta1
-    - kind: IstioCNI
-      name: istiocnis.operator.istio.io
-      version: v1alpha1
     - kind: AuthorizationPolicy
       name: authorizationpolicies.security.istio.io
       version: v1
@@ -152,6 +149,38 @@ spec:
       version: v1beta1
     - kind: Telemetry
       name: telemetries.telemetry.istio.io
+      version: v1alpha1
+    - description: IstioCNI represents a deployment of the Istio CNI component.
+      displayName: Istio CNI
+      kind: IstioCNI
+      name: istiocnis.operator.istio.io
+      specDescriptors:
+      - description: 'Defines the version of Istio to install. Must be one of: v1.21.0,
+          v1.20.3, latest.'
+        displayName: Istio Version
+        path: version
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:General
+        - urn:alm:descriptor:com.tectonic.ui:select:v1.21.0
+        - urn:alm:descriptor:com.tectonic.ui:select:v1.20.3
+        - urn:alm:descriptor:com.tectonic.ui:select:latest
+      - description: Namespace to which the Istio CNI component should be installed.
+        displayName: Namespace
+        path: namespace
+        x-descriptors:
+        - urn:alm:descriptor:io.kubernetes:Namespace
+      - description: 'The built-in installation configuration profile to use. The
+          ''default'' profile is always applied. On OpenShift, the ''openshift'' profile
+          is also applied on top of ''default''. Must be one of: ambient, default,
+          demo, empty, external, minimal, openshift-ambient, openshift, preview, remote.'
+        displayName: Profile
+        path: profile
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:hidden
+      - description: Defines the values to be passed to the Helm charts when installing
+          Istio CNI.
+        displayName: Helm Values
+        path: values
       version: v1alpha1
     - description: IstioRevision represents a single revision of an Istio Service
         Mesh deployment. Users shouldn't create IstioRevision objects directly. Instead,
