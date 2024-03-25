@@ -97,7 +97,7 @@ func (r *IstioCNIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			log.V(2).Info("IstioCNI not found. Skipping reconciliation")
 			return ctrl.Result{}, nil
 		}
-		log.Error(err, "failed to get IstioCNI from cluster")
+		return ctrl.Result{}, fmt.Errorf("failed to get IstioCNI: %v", err)
 	}
 
 	if cni.DeletionTimestamp != nil {
