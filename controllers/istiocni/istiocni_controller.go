@@ -268,12 +268,11 @@ func (r *IstioCNIReconciler) updateStatus(ctx context.Context, cni *v1alpha1.Ist
 }
 
 func deriveState(reconciledCondition, readyCondition v1alpha1.IstioCNICondition) v1alpha1.IstioCNIConditionReason {
-	if reconciledCondition.Status == metav1.ConditionFalse {
+	if reconciledCondition.Status != metav1.ConditionTrue {
 		return reconciledCondition.Reason
-	} else if readyCondition.Status == metav1.ConditionFalse {
+	} else if readyCondition.Status != metav1.ConditionTrue {
 		return readyCondition.Reason
 	}
-
 	return v1alpha1.IstioCNIReasonHealthy
 }
 
@@ -311,6 +310,7 @@ func (r *IstioCNIReconciler) determineReadyCondition(ctx context.Context, cni *v
 		c.Reason = v1alpha1.IstioCNIDaemonSetNotReady
 		c.Message = "istio-cni-node DaemonSet not found"
 	} else {
+		c.Status = metav1.ConditionUnknown
 		c.Reason = v1alpha1.IstioCNIReasonReadinessCheckFailed
 		c.Message = fmt.Sprintf("failed to get readiness: %v", err)
 	}

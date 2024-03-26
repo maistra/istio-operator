@@ -274,12 +274,11 @@ func (r *IstioRevisionReconciler) updateStatus(ctx context.Context, rev *v1alpha
 }
 
 func deriveState(reconciledCondition, readyCondition v1alpha1.IstioRevisionCondition) v1alpha1.IstioRevisionConditionReason {
-	if reconciledCondition.Status == metav1.ConditionFalse {
+	if reconciledCondition.Status != metav1.ConditionTrue {
 		return reconciledCondition.Reason
-	} else if readyCondition.Status == metav1.ConditionFalse {
+	} else if readyCondition.Status != metav1.ConditionTrue {
 		return readyCondition.Reason
 	}
-
 	return v1alpha1.IstioRevisionReasonHealthy
 }
 
@@ -317,6 +316,7 @@ func (r *IstioRevisionReconciler) determineReadyCondition(ctx context.Context, r
 		c.Reason = v1alpha1.IstioRevisionReasonIstiodNotReady
 		c.Message = "istiod Deployment not found"
 	} else {
+		c.Status = metav1.ConditionUnknown
 		c.Reason = v1alpha1.IstioRevisionReasonReadinessCheckFailed
 		c.Message = fmt.Sprintf("failed to get readiness: %v", err)
 	}
@@ -337,7 +337,7 @@ func (r *IstioRevisionReconciler) determineInUseCondition(ctx context.Context, r
 			c.Message = "Not referenced by any pod or namespace"
 		}
 	} else {
-		c.Status = metav1.ConditionFalse
+		c.Status = metav1.ConditionUnknown
 		c.Reason = v1alpha1.IstioRevisionReasonUsageCheckFailed
 		c.Message = fmt.Sprintf("failed to determine if revision is in use: %v", err)
 	}
