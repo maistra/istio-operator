@@ -137,29 +137,28 @@ type IstioCNIConditionType string
 type IstioCNIConditionReason string
 
 const (
-	// IstioCNIConditionTypeReconciled signifies whether the controller has
+	// IstioCNIConditionReconciled signifies whether the controller has
 	// successfully reconciled the resources defined through the CR.
-	IstioCNIConditionTypeReconciled IstioCNIConditionType = "Reconciled"
+	IstioCNIConditionReconciled IstioCNIConditionType = "Reconciled"
 
-	// IstioCNIConditionReasonReconcileError indicates that the reconciliation of the resource has failed, but will be retried.
-	IstioCNIConditionReasonReconcileError IstioCNIConditionReason = "ReconcileError"
+	// IstioCNIReasonReconcileError indicates that the reconciliation of the resource has failed, but will be retried.
+	IstioCNIReasonReconcileError IstioCNIConditionReason = "ReconcileError"
 )
 
 const (
-	// IstioCNIConditionTypeReady signifies whether any Deployment, StatefulSet,
-	// etc. resources are Ready.
-	IstioCNIConditionTypeReady IstioCNIConditionType = "Ready"
+	// IstioCNIConditionReady signifies whether the istio-cni-node DaemonSet is ready.
+	IstioCNIConditionReady IstioCNIConditionType = "Ready"
 
-	// IstioCNIConditionReasonIstiodNotReady indicates that the control plane is fully reconciled, but istiod is not ready.
-	IstioCNIConditionReasonIstiodNotReady IstioCNIConditionReason = "IstiodNotReady"
+	// IstioCNIDaemonSetNotReady indicates that the istio-cni-node DaemonSet is not ready.
+	IstioCNIDaemonSetNotReady IstioCNIConditionReason = "DaemonSetNotReady"
 
-	// IstioCNIConditionReasonCNINotReady indicates that the control plane is fully reconciled, but istio-cni-node is not ready.
-	IstioCNIConditionReasonCNINotReady IstioCNIConditionReason = "CNINotReady"
+	// IstioCNIReasonReadinessCheckFailed indicates that the DaemonSet readiness status could not be ascertained.
+	IstioCNIReasonReadinessCheckFailed IstioCNIConditionReason = "ReadinessCheckFailed"
 )
 
 const (
-	// IstioCNIConditionReasonHealthy indicates that the control plane is fully reconciled and that all components are ready.
-	IstioCNIConditionReasonHealthy IstioCNIConditionReason = "Healthy"
+	// IstioCNIReasonHealthy indicates that the control plane is fully reconciled and that all components are ready.
+	IstioCNIReasonHealthy IstioCNIConditionReason = "Healthy"
 )
 
 // +kubebuilder:object:root=true

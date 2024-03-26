@@ -39,27 +39,27 @@ func TestDeriveState(t *testing.T) {
 	}{
 		{
 			name:                "healthy",
-			reconciledCondition: newCondition(v1alpha1.IstioRevisionConditionTypeReconciled, true, ""),
-			readyCondition:      newCondition(v1alpha1.IstioRevisionConditionTypeReady, true, ""),
-			expectedState:       v1alpha1.IstioRevisionConditionReasonHealthy,
+			reconciledCondition: newCondition(v1alpha1.IstioRevisionConditionReconciled, true, ""),
+			readyCondition:      newCondition(v1alpha1.IstioRevisionConditionReady, true, ""),
+			expectedState:       v1alpha1.IstioRevisionReasonHealthy,
 		},
 		{
 			name:                "not reconciled",
-			reconciledCondition: newCondition(v1alpha1.IstioRevisionConditionTypeReconciled, false, v1alpha1.IstioRevisionConditionReasonReconcileError),
-			readyCondition:      newCondition(v1alpha1.IstioRevisionConditionTypeReady, true, ""),
-			expectedState:       v1alpha1.IstioRevisionConditionReasonReconcileError,
+			reconciledCondition: newCondition(v1alpha1.IstioRevisionConditionReconciled, false, v1alpha1.IstioRevisionReasonReconcileError),
+			readyCondition:      newCondition(v1alpha1.IstioRevisionConditionReady, true, ""),
+			expectedState:       v1alpha1.IstioRevisionReasonReconcileError,
 		},
 		{
 			name:                "not ready",
-			reconciledCondition: newCondition(v1alpha1.IstioRevisionConditionTypeReconciled, true, ""),
-			readyCondition:      newCondition(v1alpha1.IstioRevisionConditionTypeReady, false, v1alpha1.IstioRevisionConditionReasonIstiodNotReady),
-			expectedState:       v1alpha1.IstioRevisionConditionReasonIstiodNotReady,
+			reconciledCondition: newCondition(v1alpha1.IstioRevisionConditionReconciled, true, ""),
+			readyCondition:      newCondition(v1alpha1.IstioRevisionConditionReady, false, v1alpha1.IstioRevisionReasonIstiodNotReady),
+			expectedState:       v1alpha1.IstioRevisionReasonIstiodNotReady,
 		},
 		{
 			name:                "not reconciled nor ready",
-			reconciledCondition: newCondition(v1alpha1.IstioRevisionConditionTypeReconciled, false, v1alpha1.IstioRevisionConditionReasonReconcileError),
-			readyCondition:      newCondition(v1alpha1.IstioRevisionConditionTypeReady, false, v1alpha1.IstioRevisionConditionReasonIstiodNotReady),
-			expectedState:       v1alpha1.IstioRevisionConditionReasonReconcileError, // reconcile reason takes precedence over ready reason
+			reconciledCondition: newCondition(v1alpha1.IstioRevisionConditionReconciled, false, v1alpha1.IstioRevisionReasonReconcileError),
+			readyCondition:      newCondition(v1alpha1.IstioRevisionConditionReady, false, v1alpha1.IstioRevisionReasonIstiodNotReady),
+			expectedState:       v1alpha1.IstioRevisionReasonReconcileError, // reconcile reason takes precedence over ready reason
 		},
 	}
 
@@ -112,7 +112,7 @@ func TestDetermineReadyCondition(t *testing.T) {
 				},
 			},
 			expected: v1alpha1.IstioRevisionCondition{
-				Type:   v1alpha1.IstioRevisionConditionTypeReady,
+				Type:   v1alpha1.IstioRevisionConditionReady,
 				Status: metav1.ConditionTrue,
 			},
 		},
@@ -133,9 +133,9 @@ func TestDetermineReadyCondition(t *testing.T) {
 				},
 			},
 			expected: v1alpha1.IstioRevisionCondition{
-				Type:    v1alpha1.IstioRevisionConditionTypeReady,
+				Type:    v1alpha1.IstioRevisionConditionReady,
 				Status:  metav1.ConditionFalse,
-				Reason:  v1alpha1.IstioRevisionConditionReasonIstiodNotReady,
+				Reason:  v1alpha1.IstioRevisionReasonIstiodNotReady,
 				Message: "not all istiod pods are ready",
 			},
 		},
@@ -156,9 +156,9 @@ func TestDetermineReadyCondition(t *testing.T) {
 				},
 			},
 			expected: v1alpha1.IstioRevisionCondition{
-				Type:    v1alpha1.IstioRevisionConditionTypeReady,
+				Type:    v1alpha1.IstioRevisionConditionReady,
 				Status:  metav1.ConditionFalse,
-				Reason:  v1alpha1.IstioRevisionConditionReasonIstiodNotReady,
+				Reason:  v1alpha1.IstioRevisionReasonIstiodNotReady,
 				Message: "istiod Deployment is scaled to zero replicas",
 			},
 		},
@@ -167,9 +167,9 @@ func TestDetermineReadyCondition(t *testing.T) {
 			values:        nil,
 			clientObjects: []client.Object{},
 			expected: v1alpha1.IstioRevisionCondition{
-				Type:    v1alpha1.IstioRevisionConditionTypeReady,
+				Type:    v1alpha1.IstioRevisionConditionReady,
 				Status:  metav1.ConditionFalse,
-				Reason:  v1alpha1.IstioRevisionConditionReasonIstiodNotReady,
+				Reason:  v1alpha1.IstioRevisionReasonIstiodNotReady,
 				Message: "istiod Deployment not found",
 			},
 		},
@@ -192,7 +192,7 @@ func TestDetermineReadyCondition(t *testing.T) {
 				},
 			},
 			expected: v1alpha1.IstioRevisionCondition{
-				Type:   v1alpha1.IstioRevisionConditionTypeReady,
+				Type:   v1alpha1.IstioRevisionConditionReady,
 				Status: metav1.ConditionTrue,
 			},
 		},
@@ -405,7 +405,7 @@ func TestDetermineInUseCondition(t *testing.T) {
 				if err != nil {
 					t.Fatalf("Unexpected error: %v", err)
 				}
-				if result.Type != v1alpha1.IstioRevisionConditionTypeInUse {
+				if result.Type != v1alpha1.IstioRevisionConditionInUse {
 					t.Errorf("unexpected condition type: %v", result.Type)
 				}
 
