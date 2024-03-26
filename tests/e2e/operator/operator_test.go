@@ -43,8 +43,8 @@ var (
 	// pod                          = &corev1.Pod{}
 	podList                      = &corev1.PodList{}
 	deployment                   = &appsv1.Deployment{}
-	customResourceDefintion      = &apiextensionsv1.CustomResourceDefinition{}
-	customResourceDefinitionList = &apiextensionsv1.CustomResourceDefinitionList{}
+	crd      = &apiextensionsv1.CustomResourceDefinition{}
+	crdList = &apiextensionsv1.CustomResourceDefinitionList{}
 )
 
 var _ = Describe("Operator", Ordered, func() {
@@ -108,7 +108,7 @@ var _ = Describe("Operator", Ordered, func() {
 
 		It("deploys all the CRDs", func(ctx SpecContext) {
 			Eventually(func(g Gomega) {
-				g.Expect(k8sClient.List(context.TODO(), customResourceDefinitionList)).To(Succeed(), "Error getting CRDs list from the cluster")
+				g.Expect(k8sClient.List(ctx, customResourceDefinitionList)).To(Succeed(), "Error getting CRDs list from the cluster")
 
 				var crdNames []string
 				for _, crd := range customResourceDefinitionList.Items {
@@ -123,14 +123,10 @@ var _ = Describe("Operator", Ordered, func() {
 		It("updates the CRDs status to Established", func() {
 			for _, crd := range crds {
 				Eventually(func(g Gomega) {
-					Expect(k8sClient.Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: crd}, customResourceDefintion)).
+					Expect(k8sClient.Get(context.TODO(), key(namespace, crd), customResourceDefintion)).
 						To(Succeed(), "Error getting CRD")
 
-					for _, condition := range customResourceDefintion.Status.Conditions {
-						if condition.Type == "Established" {
-							g.Expect(string(condition.Status)).To(Equal("True"), "CRD conditions was not the expected")
-						}
-					}
+	Expect(getConditionStatus(crd.Status.Conditions, apiextensionsv1.Established)).To(Equal("True"))
 				}).Should(Succeed(), "CRD is not Established")
 			}
 			Success("CRDs are Established")
@@ -154,7 +150,7 @@ var _ = Describe("Operator", Ordered, func() {
 				}
 			}).Should(Succeed(), "Operator deployment is not Available")
 
-			selector := client.MatchingLabels(map[string]string{"control-plane": "sail-operator"})
+			selector := client.MatchingLabels{"control-plane": "sail-operator"}
 			Expect(k8sClient.List(context.TODO(), podList, selector, client.InNamespace(namespace))).To(Succeed(), "Error getting operator pod")
 
 			Expect(podList.Items).To(HaveLen(1), "Unexpected number of operator pods; expected list to have length 1")
