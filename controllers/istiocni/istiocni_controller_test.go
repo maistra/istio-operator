@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	"istio.io/istio/pkg/ptr"
 )
@@ -42,48 +43,49 @@ func TestDeriveState(t *testing.T) {
 	}{
 		{
 			name:                "healthy",
-			reconciledCondition: newCondition(v1alpha1.IstioCNIConditionReconciled, true, ""),
-			readyCondition:      newCondition(v1alpha1.IstioCNIConditionReady, true, ""),
+			reconciledCondition: newCondition(v1alpha1.IstioCNIConditionReconciled, metav1.ConditionTrue, ""),
+			readyCondition:      newCondition(v1alpha1.IstioCNIConditionReady, metav1.ConditionTrue, ""),
 			expectedState:       v1alpha1.IstioCNIReasonHealthy,
 		},
 		{
 			name:                "not reconciled",
-			reconciledCondition: newCondition(v1alpha1.IstioCNIConditionReconciled, false, v1alpha1.IstioCNIReasonReconcileError),
-			readyCondition:      newCondition(v1alpha1.IstioCNIConditionReady, true, ""),
+			reconciledCondition: newCondition(v1alpha1.IstioCNIConditionReconciled, metav1.ConditionFalse, v1alpha1.IstioCNIReasonReconcileError),
+			readyCondition:      newCondition(v1alpha1.IstioCNIConditionReady, metav1.ConditionTrue, ""),
 			expectedState:       v1alpha1.IstioCNIReasonReconcileError,
 		},
 		{
 			name:                "not ready",
-			reconciledCondition: newCondition(v1alpha1.IstioCNIConditionReconciled, true, ""),
-			readyCondition:      newCondition(v1alpha1.IstioCNIConditionReady, false, v1alpha1.IstioCNIDaemonSetNotReady),
+			reconciledCondition: newCondition(v1alpha1.IstioCNIConditionReconciled, metav1.ConditionTrue, ""),
+			readyCondition:      newCondition(v1alpha1.IstioCNIConditionReady, metav1.ConditionFalse, v1alpha1.IstioCNIDaemonSetNotReady),
 			expectedState:       v1alpha1.IstioCNIDaemonSetNotReady,
 		},
 		{
+			name:                "readiness unknown",
+			reconciledCondition: newCondition(v1alpha1.IstioCNIConditionReconciled, metav1.ConditionTrue, ""),
+			readyCondition:      newCondition(v1alpha1.IstioCNIConditionReady, metav1.ConditionUnknown, v1alpha1.IstioCNIReasonReadinessCheckFailed),
+			expectedState:       v1alpha1.IstioCNIReasonReadinessCheckFailed,
+		},
+		{
 			name:                "not reconciled nor ready",
-			reconciledCondition: newCondition(v1alpha1.IstioCNIConditionReconciled, false, v1alpha1.IstioCNIReasonReconcileError),
-			readyCondition:      newCondition(v1alpha1.IstioCNIConditionReady, false, v1alpha1.IstioCNIDaemonSetNotReady),
+			reconciledCondition: newCondition(v1alpha1.IstioCNIConditionReconciled, metav1.ConditionFalse, v1alpha1.IstioCNIReasonReconcileError),
+			readyCondition:      newCondition(v1alpha1.IstioCNIConditionReady, metav1.ConditionFalse, v1alpha1.IstioCNIDaemonSetNotReady),
 			expectedState:       v1alpha1.IstioCNIReasonReconcileError, // reconcile reason takes precedence over ready reason
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			g := NewWithT(t)
 			result := deriveState(tc.reconciledCondition, tc.readyCondition)
-			if result != tc.expectedState {
-				t.Errorf("Expected reason %s, but got %s", tc.expectedState, result)
-			}
+			g.Expect(result).To(Equal(tc.expectedState))
 		})
 	}
 }
 
-func newCondition(conditionType v1alpha1.IstioCNIConditionType, status bool, reason v1alpha1.IstioCNIConditionReason) v1alpha1.IstioCNICondition {
-	st := metav1.ConditionFalse
-	if status {
-		st = metav1.ConditionTrue
-	}
+func newCondition(condType v1alpha1.IstioCNIConditionType, status metav1.ConditionStatus, reason v1alpha1.IstioCNIConditionReason) v1alpha1.IstioCNICondition {
 	return v1alpha1.IstioCNICondition{
-		Type:   conditionType,
-		Status: st,
+		Type:   condType,
+		Status: status,
 		Reason: reason,
 	}
 }
@@ -95,6 +97,7 @@ func TestDetermineReadyCondition(t *testing.T) {
 		name          string
 		cniEnabled    bool
 		clientObjects []client.Object
+		interceptors  interceptor.Funcs
 		expected      v1alpha1.IstioCNICondition
 	}{
 		{
@@ -168,11 +171,28 @@ func TestDetermineReadyCondition(t *testing.T) {
 				Message: "istio-cni-node DaemonSet not found",
 			},
 		},
+		{
+			name:          "client error on get",
+			clientObjects: []client.Object{},
+			interceptors: interceptor.Funcs{
+				Get: func(_ context.Context, _ client.WithWatch, _ client.ObjectKey, obj client.Object, _ ...client.GetOption) error {
+					return fmt.Errorf("simulated error")
+				},
+			},
+			expected: v1alpha1.IstioCNICondition{
+				Type:    v1alpha1.IstioCNIConditionReady,
+				Status:  metav1.ConditionUnknown,
+				Reason:  v1alpha1.IstioCNIReasonReadinessCheckFailed,
+				Message: "failed to get readiness: simulated error",
+			},
+		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			cl := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(tt.clientObjects...).Build()
+			g := NewWithT(t)
+
+			cl := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(tt.clientObjects...).WithInterceptorFuncs(tt.interceptors).Build()
 
 			r := NewIstioCNIReconciler(cl, scheme.Scheme, nil, resourceDir, nil, nil)
 
@@ -186,10 +206,10 @@ func TestDetermineReadyCondition(t *testing.T) {
 			}
 
 			result := r.determineReadyCondition(context.TODO(), cni)
-			if result.Type != tt.expected.Type || result.Status != tt.expected.Status ||
-				result.Reason != tt.expected.Reason || result.Message != tt.expected.Message {
-				t.Errorf("Unexpected result.\nGot:\n    %+v\nexpected:\n    %+v", result, tt.expected)
-			}
+			g.Expect(result.Type).To(Equal(tt.expected.Type))
+			g.Expect(result.Status).To(Equal(tt.expected.Status))
+			g.Expect(result.Reason).To(Equal(tt.expected.Reason))
+			g.Expect(result.Message).To(Equal(tt.expected.Message))
 		})
 	}
 }
