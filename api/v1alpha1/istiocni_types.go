@@ -150,9 +150,6 @@ const (
 	// etc. resources are Ready.
 	IstioCNIConditionTypeReady IstioCNIConditionType = "Ready"
 
-	// IstioCNIConditionReasonIstiodNotReady indicates that the control plane is fully reconciled, but istiod is not ready.
-	IstioCNIConditionReasonIstiodNotReady IstioCNIConditionReason = "IstiodNotReady"
-
 	// IstioCNIConditionReasonCNINotReady indicates that the control plane is fully reconciled, but istio-cni-node is not ready.
 	IstioCNIConditionReasonCNINotReady IstioCNIConditionReason = "CNINotReady"
 )

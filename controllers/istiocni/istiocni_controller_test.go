@@ -55,13 +55,13 @@ func TestDeriveState(t *testing.T) {
 		{
 			name:                "not ready",
 			reconciledCondition: newCondition(v1alpha1.IstioCNIConditionTypeReconciled, true, ""),
-			readyCondition:      newCondition(v1alpha1.IstioCNIConditionTypeReady, false, v1alpha1.IstioCNIConditionReasonIstiodNotReady),
-			expectedState:       v1alpha1.IstioCNIConditionReasonIstiodNotReady,
+			readyCondition:      newCondition(v1alpha1.IstioCNIConditionTypeReady, false, v1alpha1.IstioCNIConditionReasonCNINotReady),
+			expectedState:       v1alpha1.IstioCNIConditionReasonCNINotReady,
 		},
 		{
 			name:                "not reconciled nor ready",
 			reconciledCondition: newCondition(v1alpha1.IstioCNIConditionTypeReconciled, false, v1alpha1.IstioCNIConditionReasonReconcileError),
-			readyCondition:      newCondition(v1alpha1.IstioCNIConditionTypeReady, false, v1alpha1.IstioCNIConditionReasonIstiodNotReady),
+			readyCondition:      newCondition(v1alpha1.IstioCNIConditionTypeReady, false, v1alpha1.IstioCNIConditionReasonCNINotReady),
 			expectedState:       v1alpha1.IstioCNIConditionReasonReconcileError, // reconcile reason takes precedence over ready reason
 		},
 	}
