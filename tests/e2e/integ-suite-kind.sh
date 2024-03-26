@@ -53,15 +53,15 @@ function setup_kind_registry() {
 
   # https://docs.tilt.dev/choosing_clusters.html#discovering-the-registry
   # TODO get context/config from existing variables
-  kind export kubeconfig --name="${KIND_CLUSTER_NAME}" --kubeconfig="${HOME}/.kube/config"
+  kind export kubeconfig --name="${KIND_CLUSTER_NAME}"
   for node in $(kind get nodes --name="${KIND_CLUSTER_NAME}"); do
     kubectl annotate node "${node}" "kind.x-k8s.io/registry=localhost:${KIND_REGISTRY_PORT}" --overwrite;
   done
 }
 
-setup_kind_cluster "${KIND_CLUSTER_NAME}" "" "" "true" "true"
+KUBECONFIG="${ARTIFACTS}/config" setup_kind_cluster "${KIND_CLUSTER_NAME}" "" "" "true" "true"
 setup_kind_registry
 
 # Run the integration tests
 echo "Running integration tests"
-./tests/e2e/common-operator-integ-suite.sh --kind
+ARTIFACTS="${ARTIFACTS}" ./tests/e2e/common-operator-integ-suite.sh --kind

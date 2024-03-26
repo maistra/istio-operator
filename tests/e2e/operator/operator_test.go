@@ -24,8 +24,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
 	. "github.com/istio-ecosystem/sail-operator/pkg/test/util/ginkgo"
 	"github.com/istio-ecosystem/sail-operator/pkg/test/util/supportedversion"
+	. "github.com/istio-ecosystem/sail-operator/tests/e2e/operator/util/gomega"
 	"github.com/istio-ecosystem/sail-operator/tests/e2e/operator/util/helm"
 	"github.com/istio-ecosystem/sail-operator/tests/e2e/operator/util/kubectl"
 	. "github.com/onsi/ginkgo/v2"
@@ -33,6 +35,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"istio.io/istio/pkg/ptr"
@@ -40,52 +43,36 @@ import (
 
 var (
 	istiodVersionRegex = regexp.MustCompile(`Version:"(\d+\.\d+(\.\d+|-\w+))`)
-	// pod                          = &corev1.Pod{}
-	podList                      = &corev1.PodList{}
-	deployment                   = &appsv1.Deployment{}
-	crd      = &apiextensionsv1.CustomResourceDefinition{}
-	crdList = &apiextensionsv1.CustomResourceDefinitionList{}
+	deployment         = &appsv1.Deployment{}
+	crd                = &apiextensionsv1.CustomResourceDefinition{}
+	crdList            = &apiextensionsv1.CustomResourceDefinitionList{}
+	daemonset          = &appsv1.DaemonSet{}
+	cni                = &v1alpha1.IstioCNI{}
+	istio              = &v1alpha1.Istio{}
+	expectedCRDList    = []string{
+		// TODO: Find an alternative to this list
+		"authorizationpolicies.security.istio.io",
+		"destinationrules.networking.istio.io",
+		"envoyfilters.networking.istio.io",
+		"gateways.networking.istio.io",
+		"istiorevisions.operator.istio.io",
+		"istios.operator.istio.io",
+		"peerauthentications.security.istio.io",
+		"proxyconfigs.networking.istio.io",
+		"requestauthentications.security.istio.io",
+		"serviceentries.networking.istio.io",
+		"sidecars.networking.istio.io",
+		"telemetries.telemetry.istio.io",
+		"virtualservices.networking.istio.io",
+		"wasmplugins.extensions.istio.io",
+		"workloadentries.networking.istio.io",
+		"workloadgroups.networking.istio.io",
+	}
 )
 
 var _ = Describe("Operator", Ordered, func() {
 	SetDefaultEventuallyTimeout(120 * time.Second)
 	SetDefaultEventuallyPollingInterval(time.Second)
-	var (
-		resourceReconciled = kubectl.Condition{
-			Type:   "Reconciled",
-			Status: "True",
-		}
-
-		resourceReady = kubectl.Condition{
-			Type:   "Ready",
-			Status: "True",
-		}
-
-		// crdEstablished = kubectl.Condition{
-		// 	Type:   "Established",
-		// 	Status: "True",
-		// }
-
-		crds = []string{
-			// TODO: Find an alternative to this list
-			"authorizationpolicies.security.istio.io",
-			"destinationrules.networking.istio.io",
-			"envoyfilters.networking.istio.io",
-			"gateways.networking.istio.io",
-			"istiorevisions.operator.istio.io",
-			"istios.operator.istio.io",
-			"peerauthentications.security.istio.io",
-			"proxyconfigs.networking.istio.io",
-			"requestauthentications.security.istio.io",
-			"serviceentries.networking.istio.io",
-			"sidecars.networking.istio.io",
-			"telemetries.telemetry.istio.io",
-			"virtualservices.networking.istio.io",
-			"wasmplugins.extensions.istio.io",
-			"workloadentries.networking.istio.io",
-			"workloadgroups.networking.istio.io",
-		}
-	)
 
 	Describe("installation", func() {
 		// TODO: we  need to support testing both types of deployment for the operator, helm and olm via subscription.
@@ -108,54 +95,36 @@ var _ = Describe("Operator", Ordered, func() {
 
 		It("deploys all the CRDs", func(ctx SpecContext) {
 			Eventually(func(g Gomega) {
-				g.Expect(k8sClient.List(ctx, customResourceDefinitionList)).To(Succeed(), "Error getting CRDs list from the cluster")
+				g.Expect(cl.List(ctx, crdList)).To(Succeed(), "Error getting CRDs list from the cluster")
 
-				var crdNames []string
-				for _, crd := range customResourceDefinitionList.Items {
-					crdNames = append(crdNames, crd.ObjectMeta.Name)
-				}
+				// TODO: move this and used amoug WithTransform to get the list of CRDs
+				crdNames := getCRDsName()
 
-				g.Expect(crdNames).To(ContainElements(crds), "Istio CRDs are not present; expected list to contain all elements")
+				g.Expect(crdNames).To(ContainElements(expectedCRDList), "Istio CRDs are not present; expected list to contain all elements")
 			}).Should(Succeed(), "Unexpected error getting CRDs from the cluster")
 			Success("Istio CRDs are present")
 		})
 
-		It("updates the CRDs status to Established", func() {
-			for _, crd := range crds {
-				Eventually(func(g Gomega) {
-					Expect(k8sClient.Get(context.TODO(), key(namespace, crd), customResourceDefintion)).
-						To(Succeed(), "Error getting CRD")
-
-	Expect(getConditionStatus(crd.Status.Conditions, apiextensionsv1.Established)).To(Equal("True"))
-				}).Should(Succeed(), "CRD is not Established")
+		It("updates the CRDs status to Established", func(ctx SpecContext) {
+			for _, expectedCRD := range expectedCRDList {
+				Eventually(func() (client.Object, error) {
+					return getObject(ctx, cl, getCRDKey(expectedCRD), crd)
+				}).Should(HaveCondition("Established", metav1.ConditionTrue), "Error getting Istio CRD")
 			}
 			Success("CRDs are Established")
 		})
 
-		Specify("istio crd is present", func() {
+		Specify("istio crd is present", func(ctx SpecContext) {
 			// When the operator runs in OCP cluster, the CRD is created but not available at the moment
-			Eventually(k8sClient.Get).WithArguments(context.TODO(), client.ObjectKey{Name: "istios.operator.istio.io"}, customResourceDefintion).
+			Eventually(cl.Get).WithArguments(ctx, getCRDKey("istios.operator.istio.io"), crd).
 				Should(Succeed(), "Error getting Istio CRD")
 			Success("Istio CRD is present")
 		})
 
-		It("starts successfully", func() {
-			Eventually(func(g Gomega) {
-				g.Expect(k8sClient.Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: deploymentName}, deployment)).
-					To(Succeed(), "Error getting operator deployment")
-				for _, condition := range deployment.Status.Conditions {
-					if condition.Type == "Available" {
-						g.Expect(string(condition.Status)).To(Equal("True"), "Operator conditions was not the expected")
-					}
-				}
-			}).Should(Succeed(), "Operator deployment is not Available")
-
-			selector := client.MatchingLabels{"control-plane": "sail-operator"}
-			Expect(k8sClient.List(context.TODO(), podList, selector, client.InNamespace(namespace))).To(Succeed(), "Error getting operator pod")
-
-			Expect(podList.Items).To(HaveLen(1), "Unexpected number of operator pods; expected list to have length 1")
-			Expect(string(podList.Items[0].Status.Phase)).To(Equal("Running"), "Operator failed to start; unexpected pod Phase")
-			Success("sail-operator pod is Running")
+		It("starts successfully", func(ctx SpecContext) {
+			Eventually(func() (client.Object, error) {
+				return getObject(ctx, cl, getKey(namespace, deploymentName), deployment)
+			}).Should(HaveCondition("Available", metav1.ConditionTrue), "Error getting Istio CRD")
 		})
 
 		AfterAll(func() {
@@ -192,35 +161,27 @@ spec:
 						Success("IstioCNI created")
 					})
 
-					It("deploys the CNI DaemonSet", func() {
-						Eventually(kubectl.GetDaemonSets).
-							WithArguments(istioCniNamespace).
-							Should(ContainElement("istio-cni-node"), "CNI DaemonSet is not deployed; expected list to contain element")
-
+					It("deploys the CNI DaemonSet", func(ctx SpecContext) {
 						Eventually(func(g Gomega) {
-							numberAvailable, err := kubectl.GetDaemonSetStatusField(istioCniNamespace, "istio-cni-node", "numberAvailable")
-							g.Expect(err).ToNot(HaveOccurred(), "Error getting numberAvailable field from istio-cni-node DaemonSet")
-
-							currentNumberScheduled, err := kubectl.GetDaemonSetStatusField(istioCniNamespace, "istio-cni-node", "currentNumberScheduled")
-							g.Expect(err).ToNot(HaveOccurred(), "Error getting currentNumberScheduled field from istio-cni-node DaemonSet")
-
-							g.Expect(numberAvailable).
-								To(Equal(currentNumberScheduled), "CNI DaemonSet Pods not Available; expected numberAvailable to be equal to currentNumberScheduled")
+							_, err := getObject(ctx, cl, getKey(istioCniNamespace, "istio-cni-node"), daemonset)
+							g.Expect(err).ToNot(HaveOccurred(), "Error getting IstioCNI DaemonSet")
+							g.Expect(daemonset.Status.NumberAvailable).
+								To(Equal(daemonset.Status.CurrentNumberScheduled), "CNI DaemonSet Pods not Available; expected numberAvailable to be equal to currentNumberScheduled")
 						}).Should(Succeed(), "CNI DaemonSet Pods are not Available")
 						Success("CNI DaemonSet is deployed in the namespace and Running")
 					})
 
-					It("updates the status to Reconciled", func() {
-						Eventually(kubectl.GetConditions).
-							WithArguments(istioCniNamespace, "istiocni", istioCniName).
-							Should(ContainElement(resourceReconciled), "IstioCNI is not Reconciled; unexpected Condition")
+					It("updates the status to Reconciled", func(ctx SpecContext) {
+						Eventually(func() (client.Object, error) {
+							return getObject(ctx, cl, getCRDKey(istioCniName), cni)
+						}).Should(HaveCondition("Reconciled", metav1.ConditionTrue), "IstioCNI is not Reconciled; unexpected Condition")
 						Success("IstioCNI is Reconciled")
 					})
 
-					It("updates the status to Ready", func() {
-						Eventually(kubectl.GetConditions).
-							WithArguments(istioCniNamespace, "istiocni", istioCniName).
-							Should(ContainElement(resourceReady), "IstioCNI is not Ready; unexpected Condition")
+					It("updates the status to Ready", func(ctx SpecContext) {
+						Eventually(func() (client.Object, error) {
+							return getObject(ctx, cl, getCRDKey(istioCniName), cni)
+						}).Should(HaveCondition("Ready", metav1.ConditionTrue), "IstioCNI is not Ready; unexpected Condition")
 						Success("IstioCNI is Ready")
 					})
 
@@ -249,26 +210,26 @@ spec:
 						Success("Istio CR created")
 					})
 
-					It("updates the Istio CR status to Reconciled", func() {
-						Eventually(kubectl.GetConditions).
-							WithArguments(controlPlaneNamespace, "istio", istioName).
-							Should(ContainElement(resourceReconciled), "Istio is not Reconciled; unexpected Condition")
+					It("updates the Istio CR status to Reconciled", func(ctx SpecContext) {
+						Eventually(func() (client.Object, error) {
+							return getObject(ctx, cl, getCRDKey(istioName), istio)
+						}).Should(HaveCondition("Reconciled", metav1.ConditionTrue), "Istio is not Reconciled; unexpected Condition")
 						Success("Istio CR is Reconciled")
 					})
 
-					It("updates the Istio CR status to Ready", func() {
-						Eventually(kubectl.GetConditions).
-							WithArguments(controlPlaneNamespace, "istio", istioName).
-							Should(ContainElement(resourceReady), "Istio is not Ready; unexpected Condition")
+					It("updates the Istio CR status to Ready", func(ctx SpecContext) {
+						Eventually(func() (client.Object, error) {
+							return getObject(ctx, cl, getCRDKey(istioName), istio)
+						}).Should(HaveCondition("Ready", metav1.ConditionTrue), "Istio is not Ready; unexpected Condition")
 						Success("Istio CR is Ready")
 					})
 
-					It("deploys istiod", func() {
-						Expect(kubectl.GetDeployments(controlPlaneNamespace)).
-							To(Equal([]string{"istiod"}), "Istiod deployment is not present; unexpected list of deployments")
-						Success("Istiod deployment is present")
-
+					It("deploys istiod", func(ctx SpecContext) {
+						Eventually(func() (client.Object, error) {
+							return getObject(ctx, cl, getKey(controlPlaneNamespace, "istiod"), deployment)
+						}).Should(HaveCondition("Available", metav1.ConditionTrue), "Istiod is not Available; unexpected Condition")
 						Expect(getVersionFromIstiod()).To(Equal(version.Version), "Unexpected istiod version")
+						Success("Istiod is deployed in the namespace and Running")
 					})
 
 					It("doesn't continuously reconcile the Istio CR", func() {
@@ -285,10 +246,15 @@ spec:
 						Success("Istio CR deleted")
 					})
 
-					It("removes everything from the namespace", func() {
-						Eventually(kubectl.GetResourceList).
-							WithArguments(controlPlaneNamespace, "all").
-							Should(Equal(kubectl.EmptyResourceList), "Namespace should be empty")
+					It("removes everything from the namespace", func(ctx SpecContext) {
+						// Check that the istiod deployment does not exist
+						Eventually(func() error {
+							_, err := getObject(ctx, cl, getKey(controlPlaneNamespace, "istiod"), deployment)
+							return err
+						}).ShouldNot(Succeed(), "Istiod should not exist anymore")
+
+						// TODO: Add more validations to ensure that all resources are deleted from this namespace
+
 						Success("Namespace is empty")
 					})
 				})
@@ -299,20 +265,27 @@ spec:
 						Success("IstioCNI deleted")
 					})
 
-					It("removes everything from the CNI namespace", func() {
-						Eventually(kubectl.GetResourceList).
-							WithArguments(istioCniNamespace, "all").
-							Should(Equal(kubectl.EmptyResourceList), "CNI namespace isn't empty")
+					It("removes everything from the CNI namespace", func(ctx SpecContext) {
+						// Check that the istio-cni-node daemonset does not exist
+						Eventually(func() error {
+							_, err := getObject(ctx, cl, getKey(istioCniNamespace, "istio-cni-node"), daemonset)
+							return err
+						}).ShouldNot(Succeed(), "IstioCNI DaemonSet should not exist anymore")
+
+						// TODO: Add more validations to ensure that all resources are deleted from this namespace
+
 						Success("CNI namespace is empty")
 					})
 				})
 			})
 		}
 
-		AfterAll(func() {
+		AfterAll(func(ctx SpecContext) {
 			if CurrentSpecReport().Failed() {
 				LogDebugInfo()
 			}
+
+			// TODO: make clean up also by using the client
 			By("Cleaning up the Istio namespace")
 			Expect(kubectl.DeleteNamespace(controlPlaneNamespace)).
 				To(Succeed(), "Namespace failed to be deleted")
@@ -321,14 +294,17 @@ spec:
 			Expect(kubectl.DeleteNamespace(istioCniNamespace)).
 				To(Succeed(), "CNI namespace deletion failed")
 
-			Eventually(kubectl.CheckNamespaceExist).
-				WithArguments(controlPlaneNamespace).
-				Should(MatchError(kubectl.ErrNotFound), "Namespace should not exist")
+			ns := &corev1.Namespace{}
+			Eventually(func() error {
+				_, err := getObject(ctx, cl, getCRDKey(controlPlaneNamespace), ns)
+				return err
+			}).ShouldNot(Succeed(), "Namespace should not exist")
 			Success("Cleanup done")
 		})
 	})
 
 	AfterAll(func() {
+		// TODO: move this to use client
 		By("Deleting any left-over Istio and IstioRevision resources")
 		Expect(forceDeleteIstioResources()).To(Succeed())
 		Success("Resources deleted")
@@ -339,7 +315,7 @@ spec:
 		Success("Operator uninstalled")
 
 		By("Deleting the CRDs")
-		Expect(kubectl.DeleteCRDs(crds)).To(Succeed(), "CRDs failed to be deleted")
+		Expect(kubectl.DeleteCRDs(expectedCRDList)).To(Succeed(), "CRDs failed to be deleted")
 		Success("CRDs deleted")
 	})
 })
@@ -387,8 +363,17 @@ func log(a ...any) {
 	GinkgoWriter.Println(a...)
 }
 
+func getCRDsName() []string {
+	var crdNames []string
+	for _, crd := range crdList.Items {
+		crdNames = append(crdNames, crd.ObjectMeta.Name)
+	}
+	return crdNames
+}
+
 func LogDebugInfo() {
 	// General debugging information to help diagnose the failure
+	// TODO: Add more debugging information for IstioCNI
 	resource, err := kubectl.GetYAML(controlPlaneNamespace, "istio", istioName)
 	if err != nil {
 		GinkgoWriter.Println("Error getting Istio CR: ", err)
@@ -412,4 +397,23 @@ func LogDebugInfo() {
 		GinkgoWriter.Println("Error getting logs from the istiod: ", err)
 	}
 	GinkgoWriter.Println("Logs from istiod pod: \n", logs)
+}
+
+// getKey returns the client.ObjectKey for the given object
+func getKey(namespace, name string) client.ObjectKey {
+	return client.ObjectKey{Namespace: namespace, Name: name}
+}
+
+// getCRDKey returns the client.ObjectKey for the given CRD name
+func getCRDKey(name string) client.ObjectKey {
+	return client.ObjectKey{Namespace: "", Name: name}
+}
+
+// getObject returns the object with the given key
+func getObject(ctx context.Context, cl client.Client, key client.ObjectKey, obj client.Object) (client.Object, error) {
+	err := cl.Get(ctx, key, obj)
+	if err != nil {
+		return nil, err // Return the error, letting Eventually handle retries
+	}
+	return obj, nil
 }

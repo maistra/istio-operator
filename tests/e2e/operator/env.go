@@ -36,6 +36,7 @@ var (
 	istioCniNamespace     = getEnv("ISTIOCNI_NAMESPACE", "istio-cni")
 	istioCniName          = getEnv("ISTIOCNI_NAME", "default")
 	baseDir               = filepath.Join(wd, "../../..")
+	kubeconfigPath        = getEnv("KUBECONFIG_DIR", filepath.Join(os.Getenv("HOME"), ".kube/config"))
 )
 
 func getEnv(key, defaultValue string) string {

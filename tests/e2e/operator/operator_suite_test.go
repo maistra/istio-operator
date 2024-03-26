@@ -26,8 +26,8 @@ import (
 )
 
 var (
-	k8sClient client.Client
-	err       error
+	cl  client.Client
+	err error
 )
 
 func TestInstall(t *testing.T) {
@@ -40,7 +40,7 @@ func setup() {
 	GinkgoWriter.Println("************ Running Setup ************")
 
 	GinkgoWriter.Println("Initializing k8s client")
-	k8sClient, err = k8sclient.InitK8sClients()
+	cl, err = k8sclient.InitK8sClient(kubeconfigPath)
 	Expect(err).NotTo(HaveOccurred())
 
 	if ocp {
