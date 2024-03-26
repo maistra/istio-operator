@@ -497,6 +497,8 @@ func convertConditionReason(reason v1alpha1.IstioRevisionConditionReason) v1alph
 		return v1alpha1.IstioReasonIstiodNotReady
 	case v1alpha1.IstioRevisionReasonHealthy:
 		return v1alpha1.IstioReasonHealthy
+	case v1alpha1.IstioRevisionReasonReadinessCheckFailed:
+		return v1alpha1.IstioReasonReadinessCheckFailed
 	case v1alpha1.IstioRevisionReasonReconcileError:
 		return v1alpha1.IstioReasonReconcileError
 	default:

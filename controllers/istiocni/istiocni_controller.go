@@ -308,7 +308,7 @@ func (r *IstioCNIReconciler) determineReadyCondition(ctx context.Context, cni *v
 		if errors.IsNotFound(err) {
 			return notReady(v1alpha1.IstioCNIDaemonSetNotReady, "istio-cni-node DaemonSet not found")
 		}
-		return notReady(v1alpha1.IstioCNIReasonReconcileError, fmt.Sprintf("failed to get readiness: %v", err))
+		return notReady(v1alpha1.IstioCNIReasonReadinessCheckFailed, fmt.Sprintf("failed to get readiness: %v", err))
 	}
 
 	if daemonSet.Status.CurrentNumberScheduled == 0 {

@@ -317,7 +317,7 @@ func (r *IstioRevisionReconciler) determineReadyCondition(ctx context.Context, r
 		if errors.IsNotFound(err) {
 			return notReady(v1alpha1.IstioRevisionReasonIstiodNotReady, "istiod Deployment not found")
 		}
-		return notReady(v1alpha1.IstioRevisionReasonReconcileError, fmt.Sprintf("failed to get readiness: %v", err))
+		return notReady(v1alpha1.IstioRevisionReasonReadinessCheckFailed, fmt.Sprintf("failed to get readiness: %v", err))
 	}
 	if istiod.Status.Replicas == 0 {
 		return notReady(v1alpha1.IstioRevisionReasonIstiodNotReady, "istiod Deployment is scaled to zero replicas")

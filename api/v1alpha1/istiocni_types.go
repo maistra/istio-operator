@@ -152,6 +152,9 @@ const (
 
 	// IstioCNIDaemonSetNotReady indicates that the control plane is fully reconciled, but istio-cni-node is not ready.
 	IstioCNIDaemonSetNotReady IstioCNIConditionReason = "DaemonSetNotReady"
+
+	// IstioCNIReasonReadinessCheckFailed indicates that the DaemonSet readiness status could not be ascertained.
+	IstioCNIReasonReadinessCheckFailed IstioCNIConditionReason = "ReadinessCheckFailed"
 )
 
 const (

@@ -145,6 +145,9 @@ const (
 
 	// IstioRevisionReasonIstiodNotReady indicates that the control plane is fully reconciled, but istiod is not ready.
 	IstioRevisionReasonIstiodNotReady IstioRevisionConditionReason = "IstiodNotReady"
+
+	// IstioRevisionReasonReadinessCheckFailed indicates that istiod readiness status could not be ascertained.
+	IstioRevisionReasonReadinessCheckFailed IstioRevisionConditionReason = "ReadinessCheckFailed"
 )
 
 const (
