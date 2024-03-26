@@ -247,10 +247,7 @@ func (r *IstioRevisionReconciler) updateStatus(ctx context.Context, rev *v1alpha
 	log := logf.FromContext(ctx)
 	reconciledCondition := r.determineReconciledCondition(err)
 	readyCondition := r.determineReadyCondition(ctx, rev)
-	inUseCondition, err := r.determineInUseCondition(ctx, rev)
-	if err != nil {
-		return err
-	}
+	inUseCondition := r.determineInUseCondition(ctx, rev)
 
 	status := rev.Status.DeepCopy()
 	status.ObservedGeneration = rev.Generation
@@ -287,70 +284,64 @@ func deriveState(reconciledCondition, readyCondition v1alpha1.IstioRevisionCondi
 }
 
 func (r *IstioRevisionReconciler) determineReconciledCondition(err error) v1alpha1.IstioRevisionCondition {
-	if err == nil {
-		return v1alpha1.IstioRevisionCondition{
-			Type:   v1alpha1.IstioRevisionConditionReconciled,
-			Status: metav1.ConditionTrue,
-		}
-	}
+	c := v1alpha1.IstioRevisionCondition{Type: v1alpha1.IstioRevisionConditionReconciled}
 
-	return v1alpha1.IstioRevisionCondition{
-		Type:    v1alpha1.IstioRevisionConditionReconciled,
-		Status:  metav1.ConditionFalse,
-		Reason:  v1alpha1.IstioRevisionReasonReconcileError,
-		Message: fmt.Sprintf("error reconciling resource: %v", err),
+	if err == nil {
+		c.Status = metav1.ConditionTrue
+	} else {
+		c.Status = metav1.ConditionFalse
+		c.Reason = v1alpha1.IstioRevisionReasonReconcileError
+		c.Message = fmt.Sprintf("error reconciling resource: %v", err)
 	}
+	return c
 }
 
 func (r *IstioRevisionReconciler) determineReadyCondition(ctx context.Context, rev *v1alpha1.IstioRevision) v1alpha1.IstioRevisionCondition {
-	notReady := func(reason v1alpha1.IstioRevisionConditionReason, message string) v1alpha1.IstioRevisionCondition {
-		return v1alpha1.IstioRevisionCondition{
-			Type:    v1alpha1.IstioRevisionConditionReady,
-			Status:  metav1.ConditionFalse,
-			Reason:  reason,
-			Message: message,
-		}
+	c := v1alpha1.IstioRevisionCondition{
+		Type:   v1alpha1.IstioRevisionConditionReady,
+		Status: metav1.ConditionFalse,
 	}
 
 	istiod := appsv1.Deployment{}
-	if err := r.Client.Get(ctx, istiodDeploymentKey(rev), &istiod); err != nil {
-		if errors.IsNotFound(err) {
-			return notReady(v1alpha1.IstioRevisionReasonIstiodNotReady, "istiod Deployment not found")
+	if err := r.Client.Get(ctx, istiodDeploymentKey(rev), &istiod); err == nil {
+		if istiod.Status.Replicas == 0 {
+			c.Reason = v1alpha1.IstioRevisionReasonIstiodNotReady
+			c.Message = "istiod Deployment is scaled to zero replicas"
+		} else if istiod.Status.ReadyReplicas < istiod.Status.Replicas {
+			c.Reason = v1alpha1.IstioRevisionReasonIstiodNotReady
+			c.Message = "not all istiod pods are ready"
+		} else {
+			c.Status = metav1.ConditionTrue
 		}
-		return notReady(v1alpha1.IstioRevisionReasonReadinessCheckFailed, fmt.Sprintf("failed to get readiness: %v", err))
+	} else if errors.IsNotFound(err) {
+		c.Reason = v1alpha1.IstioRevisionReasonIstiodNotReady
+		c.Message = "istiod Deployment not found"
+	} else {
+		c.Reason = v1alpha1.IstioRevisionReasonReadinessCheckFailed
+		c.Message = fmt.Sprintf("failed to get readiness: %v", err)
 	}
-	if istiod.Status.Replicas == 0 {
-		return notReady(v1alpha1.IstioRevisionReasonIstiodNotReady, "istiod Deployment is scaled to zero replicas")
-	} else if istiod.Status.ReadyReplicas < istiod.Status.Replicas {
-		return notReady(v1alpha1.IstioRevisionReasonIstiodNotReady, "not all istiod pods are ready")
-	}
-
-	return v1alpha1.IstioRevisionCondition{
-		Type:   v1alpha1.IstioRevisionConditionReady,
-		Status: metav1.ConditionTrue,
-	}
+	return c
 }
 
-func (r *IstioRevisionReconciler) determineInUseCondition(ctx context.Context, rev *v1alpha1.IstioRevision) (v1alpha1.IstioRevisionCondition, error) {
-	isReferenced, err := r.isRevisionReferencedByWorkloads(ctx, rev)
-	if err != nil {
-		return v1alpha1.IstioRevisionCondition{}, err
-	}
+func (r *IstioRevisionReconciler) determineInUseCondition(ctx context.Context, rev *v1alpha1.IstioRevision) v1alpha1.IstioRevisionCondition {
+	c := v1alpha1.IstioRevisionCondition{Type: v1alpha1.IstioRevisionConditionInUse}
 
-	if isReferenced {
-		return v1alpha1.IstioRevisionCondition{
-			Type:    v1alpha1.IstioRevisionConditionInUse,
-			Status:  metav1.ConditionTrue,
-			Reason:  v1alpha1.IstioRevisionReasonReferencedByWorkloads,
-			Message: "Referenced by at least one pod or namespace",
-		}, nil
+	if isReferenced, err := r.isRevisionReferencedByWorkloads(ctx, rev); err == nil {
+		if isReferenced {
+			c.Status = metav1.ConditionTrue
+			c.Reason = v1alpha1.IstioRevisionReasonReferencedByWorkloads
+			c.Message = "Referenced by at least one pod or namespace"
+		} else {
+			c.Status = metav1.ConditionFalse
+			c.Reason = v1alpha1.IstioRevisionReasonNotReferenced
+			c.Message = "Not referenced by any pod or namespace"
+		}
+	} else {
+		c.Status = metav1.ConditionFalse
+		c.Reason = v1alpha1.IstioRevisionReasonUsageCheckFailed
+		c.Message = fmt.Sprintf("failed to determine if revision is in use: %v", err)
 	}
-	return v1alpha1.IstioRevisionCondition{
-		Type:    v1alpha1.IstioRevisionConditionInUse,
-		Status:  metav1.ConditionFalse,
-		Reason:  v1alpha1.IstioRevisionReasonNotReferenced,
-		Message: "Not referenced by any pod or namespace",
-	}, nil
+	return c
 }
 
 func (r *IstioRevisionReconciler) isRevisionReferencedByWorkloads(ctx context.Context, rev *v1alpha1.IstioRevision) (bool, error) {

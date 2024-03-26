@@ -159,6 +159,9 @@ const (
 
 	// IstioRevisionReasonNotReferenced indicates that the revision is not referenced by any pod or namespace.
 	IstioRevisionReasonNotReferenced IstioRevisionConditionReason = "NotReferencedByAnything"
+
+	// IstioRevisionReasonUsageCheckFailed indicates that the operator could not check whether any workloads use the revision.
+	IstioRevisionReasonUsageCheckFailed IstioRevisionConditionReason = "UsageCheckFailed"
 )
 
 const (

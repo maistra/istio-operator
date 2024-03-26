@@ -401,10 +401,7 @@ func TestDetermineInUseCondition(t *testing.T) {
 
 				r := NewIstioRevisionReconciler(cl, scheme.Scheme, "no-resource-dir", nil)
 
-				result, err := r.determineInUseCondition(context.TODO(), rev)
-				if err != nil {
-					t.Fatalf("Unexpected error: %v", err)
-				}
+				result := r.determineInUseCondition(context.TODO(), rev)
 				if result.Type != v1alpha1.IstioRevisionConditionInUse {
 					t.Errorf("unexpected condition type: %v", result.Type)
 				}
