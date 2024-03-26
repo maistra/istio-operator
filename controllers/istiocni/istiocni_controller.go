@@ -306,15 +306,15 @@ func (r *IstioCNIReconciler) determineReadyCondition(ctx context.Context, cni *v
 	daemonSet := appsv1.DaemonSet{}
 	if err := r.Client.Get(ctx, r.cniDaemonSetKey(cni), &daemonSet); err != nil {
 		if errors.IsNotFound(err) {
-			return notReady(v1alpha1.IstioCNIConditionReasonCNINotReady, "istio-cni-node DaemonSet not found")
+			return notReady(v1alpha1.IstioCNIConditionReasonDaemonSetNotReady, "istio-cni-node DaemonSet not found")
 		}
 		return notReady(v1alpha1.IstioCNIConditionReasonReconcileError, fmt.Sprintf("failed to get readiness: %v", err))
 	}
 
 	if daemonSet.Status.CurrentNumberScheduled == 0 {
-		return notReady(v1alpha1.IstioCNIConditionReasonCNINotReady, "no istio-cni-node pods are currently scheduled")
+		return notReady(v1alpha1.IstioCNIConditionReasonDaemonSetNotReady, "no istio-cni-node pods are currently scheduled")
 	} else if daemonSet.Status.NumberReady < daemonSet.Status.CurrentNumberScheduled {
-		return notReady(v1alpha1.IstioCNIConditionReasonCNINotReady, "not all istio-cni-node pods are ready")
+		return notReady(v1alpha1.IstioCNIConditionReasonDaemonSetNotReady, "not all istio-cni-node pods are ready")
 	}
 
 	return v1alpha1.IstioCNICondition{

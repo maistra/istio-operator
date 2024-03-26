@@ -55,13 +55,13 @@ func TestDeriveState(t *testing.T) {
 		{
 			name:                "not ready",
 			reconciledCondition: newCondition(v1alpha1.IstioCNIConditionTypeReconciled, true, ""),
-			readyCondition:      newCondition(v1alpha1.IstioCNIConditionTypeReady, false, v1alpha1.IstioCNIConditionReasonCNINotReady),
-			expectedState:       v1alpha1.IstioCNIConditionReasonCNINotReady,
+			readyCondition:      newCondition(v1alpha1.IstioCNIConditionTypeReady, false, v1alpha1.IstioCNIConditionReasonDaemonSetNotReady),
+			expectedState:       v1alpha1.IstioCNIConditionReasonDaemonSetNotReady,
 		},
 		{
 			name:                "not reconciled nor ready",
 			reconciledCondition: newCondition(v1alpha1.IstioCNIConditionTypeReconciled, false, v1alpha1.IstioCNIConditionReasonReconcileError),
-			readyCondition:      newCondition(v1alpha1.IstioCNIConditionTypeReady, false, v1alpha1.IstioCNIConditionReasonCNINotReady),
+			readyCondition:      newCondition(v1alpha1.IstioCNIConditionTypeReady, false, v1alpha1.IstioCNIConditionReasonDaemonSetNotReady),
 			expectedState:       v1alpha1.IstioCNIConditionReasonReconcileError, // reconcile reason takes precedence over ready reason
 		},
 	}
@@ -133,7 +133,7 @@ func TestDetermineReadyCondition(t *testing.T) {
 			expected: v1alpha1.IstioCNICondition{
 				Type:    v1alpha1.IstioCNIConditionTypeReady,
 				Status:  metav1.ConditionFalse,
-				Reason:  v1alpha1.IstioCNIConditionReasonCNINotReady,
+				Reason:  v1alpha1.IstioCNIConditionReasonDaemonSetNotReady,
 				Message: "not all istio-cni-node pods are ready",
 			},
 		},
@@ -154,7 +154,7 @@ func TestDetermineReadyCondition(t *testing.T) {
 			expected: v1alpha1.IstioCNICondition{
 				Type:    v1alpha1.IstioCNIConditionTypeReady,
 				Status:  metav1.ConditionFalse,
-				Reason:  v1alpha1.IstioCNIConditionReasonCNINotReady,
+				Reason:  v1alpha1.IstioCNIConditionReasonDaemonSetNotReady,
 				Message: "no istio-cni-node pods are currently scheduled",
 			},
 		},
@@ -164,7 +164,7 @@ func TestDetermineReadyCondition(t *testing.T) {
 			expected: v1alpha1.IstioCNICondition{
 				Type:    v1alpha1.IstioCNIConditionTypeReady,
 				Status:  metav1.ConditionFalse,
-				Reason:  v1alpha1.IstioCNIConditionReasonCNINotReady,
+				Reason:  v1alpha1.IstioCNIConditionReasonDaemonSetNotReady,
 				Message: "istio-cni-node DaemonSet not found",
 			},
 		},
