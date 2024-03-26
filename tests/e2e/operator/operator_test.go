@@ -106,7 +106,7 @@ var _ = Describe("Operator", Ordered, func() {
 				To(Succeed(), "Operator failed to be deployed")
 		})
 
-		It("deploys all the CRDs", func() {
+		It("deploys all the CRDs", func(ctx SpecContext) {
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.List(context.TODO(), customResourceDefinitionList)).To(Succeed(), "Error getting CRDs list from the cluster")
 
