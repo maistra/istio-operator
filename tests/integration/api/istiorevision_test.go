@@ -208,7 +208,7 @@ var _ = Describe("IstioRevision resource", Ordered, func() {
 
 				Eventually(func(g Gomega) {
 					g.Expect(k8sClient.Get(ctx, revKey, rev)).To(Succeed())
-					readyCondition := rev.Status.GetCondition(v1alpha1.IstioRevisionConditionTypeReady)
+					readyCondition := rev.Status.GetCondition(v1alpha1.IstioRevisionConditionReady)
 					g.Expect(readyCondition.Status).To(Equal(metav1.ConditionTrue))
 				}).Should(Succeed())
 			})
@@ -222,7 +222,7 @@ var _ = Describe("IstioRevision resource", Ordered, func() {
 
 				Eventually(func(g Gomega) {
 					g.Expect(k8sClient.Get(ctx, revKey, rev)).To(Succeed())
-					readyCondition := rev.Status.GetCondition(v1alpha1.IstioRevisionConditionTypeReady)
+					readyCondition := rev.Status.GetCondition(v1alpha1.IstioRevisionConditionReady)
 					g.Expect(readyCondition.Status).To(Equal(metav1.ConditionFalse))
 				}).Should(Succeed())
 			})

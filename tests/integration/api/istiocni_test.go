@@ -101,7 +101,7 @@ var _ = Describe("IstioCNI", Ordered, func() {
 			It("marks the IstioCNI resource as ready", func() {
 				Eventually(func(g Gomega) {
 					g.Expect(k8sClient.Get(ctx, cniKey, cni)).To(Succeed())
-					readyCondition := cni.Status.GetCondition(v1alpha1.IstioCNIConditionTypeReady)
+					readyCondition := cni.Status.GetCondition(v1alpha1.IstioCNIConditionReady)
 					g.Expect(readyCondition.Status).To(Equal(metav1.ConditionTrue))
 				}).Should(Succeed())
 			})
@@ -118,7 +118,7 @@ var _ = Describe("IstioCNI", Ordered, func() {
 			It("marks the IstioCNI resource as not ready", func() {
 				Eventually(func(g Gomega) {
 					g.Expect(k8sClient.Get(ctx, cniKey, cni)).To(Succeed())
-					readyCondition := cni.Status.GetCondition(v1alpha1.IstioCNIConditionTypeReady)
+					readyCondition := cni.Status.GetCondition(v1alpha1.IstioCNIConditionReady)
 					g.Expect(readyCondition.Status).To(Equal(metav1.ConditionFalse))
 				}).Should(Succeed())
 			})

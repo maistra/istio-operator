@@ -130,37 +130,37 @@ type IstioRevisionConditionType string
 type IstioRevisionConditionReason string
 
 const (
-	// IstioRevisionConditionTypeReconciled signifies whether the controller has
+	// IstioRevisionConditionReconciled signifies whether the controller has
 	// successfully reconciled the resources defined through the CR.
-	IstioRevisionConditionTypeReconciled IstioRevisionConditionType = "Reconciled"
+	IstioRevisionConditionReconciled IstioRevisionConditionType = "Reconciled"
 
-	// IstioRevisionConditionReasonReconcileError indicates that the reconciliation of the resource has failed, but will be retried.
-	IstioRevisionConditionReasonReconcileError IstioRevisionConditionReason = "ReconcileError"
+	// IstioRevisionReasonReconcileError indicates that the reconciliation of the resource has failed, but will be retried.
+	IstioRevisionReasonReconcileError IstioRevisionConditionReason = "ReconcileError"
 )
 
 const (
-	// IstioRevisionConditionTypeReady signifies whether any Deployment, StatefulSet,
+	// IstioRevisionConditionReady signifies whether any Deployment, StatefulSet,
 	// etc. resources are Ready.
-	IstioRevisionConditionTypeReady IstioRevisionConditionType = "Ready"
+	IstioRevisionConditionReady IstioRevisionConditionType = "Ready"
 
-	// IstioRevisionConditionReasonIstiodNotReady indicates that the control plane is fully reconciled, but istiod is not ready.
-	IstioRevisionConditionReasonIstiodNotReady IstioRevisionConditionReason = "IstiodNotReady"
+	// IstioRevisionReasonIstiodNotReady indicates that the control plane is fully reconciled, but istiod is not ready.
+	IstioRevisionReasonIstiodNotReady IstioRevisionConditionReason = "IstiodNotReady"
 )
 
 const (
-	// IstioRevisionConditionTypeInUse signifies whether any workload is configured to use the revision.
-	IstioRevisionConditionTypeInUse IstioRevisionConditionType = "InUse"
+	// IstioRevisionConditionInUse signifies whether any workload is configured to use the revision.
+	IstioRevisionConditionInUse IstioRevisionConditionType = "InUse"
 
-	// IstioRevisionConditionReasonReferencedByWorkloads indicates that the revision is referenced by at least one pod or namespace.
-	IstioRevisionConditionReasonReferencedByWorkloads IstioRevisionConditionReason = "ReferencedByWorkloads"
+	// IstioRevisionReasonReferencedByWorkloads indicates that the revision is referenced by at least one pod or namespace.
+	IstioRevisionReasonReferencedByWorkloads IstioRevisionConditionReason = "ReferencedByWorkloads"
 
-	// IstioRevisionConditionReasonNotReferenced indicates that the revision is not referenced by any pod or namespace.
-	IstioRevisionConditionReasonNotReferenced IstioRevisionConditionReason = "NotReferencedByAnything"
+	// IstioRevisionReasonNotReferenced indicates that the revision is not referenced by any pod or namespace.
+	IstioRevisionReasonNotReferenced IstioRevisionConditionReason = "NotReferencedByAnything"
 )
 
 const (
-	// IstioRevisionConditionReasonHealthy indicates that the control plane is fully reconciled and that all components are ready.
-	IstioRevisionConditionReasonHealthy IstioRevisionConditionReason = "Healthy"
+	// IstioRevisionReasonHealthy indicates that the control plane is fully reconciled and that all components are ready.
+	IstioRevisionReasonHealthy IstioRevisionConditionReason = "Healthy"
 )
 
 // +kubebuilder:object:root=true

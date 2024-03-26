@@ -42,27 +42,27 @@ func TestDeriveState(t *testing.T) {
 	}{
 		{
 			name:                "healthy",
-			reconciledCondition: newCondition(v1alpha1.IstioCNIConditionTypeReconciled, true, ""),
-			readyCondition:      newCondition(v1alpha1.IstioCNIConditionTypeReady, true, ""),
-			expectedState:       v1alpha1.IstioCNIConditionReasonHealthy,
+			reconciledCondition: newCondition(v1alpha1.IstioCNIConditionReconciled, true, ""),
+			readyCondition:      newCondition(v1alpha1.IstioCNIConditionReady, true, ""),
+			expectedState:       v1alpha1.IstioCNIReasonHealthy,
 		},
 		{
 			name:                "not reconciled",
-			reconciledCondition: newCondition(v1alpha1.IstioCNIConditionTypeReconciled, false, v1alpha1.IstioCNIConditionReasonReconcileError),
-			readyCondition:      newCondition(v1alpha1.IstioCNIConditionTypeReady, true, ""),
-			expectedState:       v1alpha1.IstioCNIConditionReasonReconcileError,
+			reconciledCondition: newCondition(v1alpha1.IstioCNIConditionReconciled, false, v1alpha1.IstioCNIReasonReconcileError),
+			readyCondition:      newCondition(v1alpha1.IstioCNIConditionReady, true, ""),
+			expectedState:       v1alpha1.IstioCNIReasonReconcileError,
 		},
 		{
 			name:                "not ready",
-			reconciledCondition: newCondition(v1alpha1.IstioCNIConditionTypeReconciled, true, ""),
-			readyCondition:      newCondition(v1alpha1.IstioCNIConditionTypeReady, false, v1alpha1.IstioCNIConditionReasonDaemonSetNotReady),
-			expectedState:       v1alpha1.IstioCNIConditionReasonDaemonSetNotReady,
+			reconciledCondition: newCondition(v1alpha1.IstioCNIConditionReconciled, true, ""),
+			readyCondition:      newCondition(v1alpha1.IstioCNIConditionReady, false, v1alpha1.IstioCNIDaemonSetNotReady),
+			expectedState:       v1alpha1.IstioCNIDaemonSetNotReady,
 		},
 		{
 			name:                "not reconciled nor ready",
-			reconciledCondition: newCondition(v1alpha1.IstioCNIConditionTypeReconciled, false, v1alpha1.IstioCNIConditionReasonReconcileError),
-			readyCondition:      newCondition(v1alpha1.IstioCNIConditionTypeReady, false, v1alpha1.IstioCNIConditionReasonDaemonSetNotReady),
-			expectedState:       v1alpha1.IstioCNIConditionReasonReconcileError, // reconcile reason takes precedence over ready reason
+			reconciledCondition: newCondition(v1alpha1.IstioCNIConditionReconciled, false, v1alpha1.IstioCNIReasonReconcileError),
+			readyCondition:      newCondition(v1alpha1.IstioCNIConditionReady, false, v1alpha1.IstioCNIDaemonSetNotReady),
+			expectedState:       v1alpha1.IstioCNIReasonReconcileError, // reconcile reason takes precedence over ready reason
 		},
 	}
 
@@ -112,7 +112,7 @@ func TestDetermineReadyCondition(t *testing.T) {
 				},
 			},
 			expected: v1alpha1.IstioCNICondition{
-				Type:   v1alpha1.IstioCNIConditionTypeReady,
+				Type:   v1alpha1.IstioCNIConditionReady,
 				Status: metav1.ConditionTrue,
 			},
 		},
@@ -131,9 +131,9 @@ func TestDetermineReadyCondition(t *testing.T) {
 				},
 			},
 			expected: v1alpha1.IstioCNICondition{
-				Type:    v1alpha1.IstioCNIConditionTypeReady,
+				Type:    v1alpha1.IstioCNIConditionReady,
 				Status:  metav1.ConditionFalse,
-				Reason:  v1alpha1.IstioCNIConditionReasonDaemonSetNotReady,
+				Reason:  v1alpha1.IstioCNIDaemonSetNotReady,
 				Message: "not all istio-cni-node pods are ready",
 			},
 		},
@@ -152,9 +152,9 @@ func TestDetermineReadyCondition(t *testing.T) {
 				},
 			},
 			expected: v1alpha1.IstioCNICondition{
-				Type:    v1alpha1.IstioCNIConditionTypeReady,
+				Type:    v1alpha1.IstioCNIConditionReady,
 				Status:  metav1.ConditionFalse,
-				Reason:  v1alpha1.IstioCNIConditionReasonDaemonSetNotReady,
+				Reason:  v1alpha1.IstioCNIDaemonSetNotReady,
 				Message: "no istio-cni-node pods are currently scheduled",
 			},
 		},
@@ -162,9 +162,9 @@ func TestDetermineReadyCondition(t *testing.T) {
 			name:          "CNI not found",
 			clientObjects: []client.Object{},
 			expected: v1alpha1.IstioCNICondition{
-				Type:    v1alpha1.IstioCNIConditionTypeReady,
+				Type:    v1alpha1.IstioCNIConditionReady,
 				Status:  metav1.ConditionFalse,
-				Reason:  v1alpha1.IstioCNIConditionReasonDaemonSetNotReady,
+				Reason:  v1alpha1.IstioCNIDaemonSetNotReady,
 				Message: "istio-cni-node DaemonSet not found",
 			},
 		},
@@ -371,8 +371,8 @@ func TestDetermineStatus(t *testing.T) {
 
 			g.Expect(status.ObservedGeneration).To(Equal(cni.Generation))
 			g.Expect(status.State).To(Equal(deriveState(reconciledCondition, readyCondition)))
-			g.Expect(normalize(status.GetCondition(v1alpha1.IstioCNIConditionTypeReconciled))).To(Equal(normalize(reconciledCondition)))
-			g.Expect(normalize(status.GetCondition(v1alpha1.IstioCNIConditionTypeReady))).To(Equal(normalize(readyCondition)))
+			g.Expect(normalize(status.GetCondition(v1alpha1.IstioCNIConditionReconciled))).To(Equal(normalize(reconciledCondition)))
+			g.Expect(normalize(status.GetCondition(v1alpha1.IstioCNIConditionReady))).To(Equal(normalize(readyCondition)))
 		})
 	}
 }

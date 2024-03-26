@@ -197,32 +197,29 @@ type IstioConditionType string
 type IstioConditionReason string
 
 const (
-	// IstioConditionTypeReconciled signifies whether the controller has
+	// IstioConditionReconciled signifies whether the controller has
 	// successfully reconciled the resources defined through the CR.
-	IstioConditionTypeReconciled IstioConditionType = "Reconciled"
+	IstioConditionReconciled IstioConditionType = "Reconciled"
 
-	// IstioConditionReasonReconcileError indicates that the reconciliation of the resource has failed, but will be retried.
-	IstioConditionReasonReconcileError IstioConditionReason = "ReconcileError"
+	// IstioReasonReconcileError indicates that the reconciliation of the resource has failed, but will be retried.
+	IstioReasonReconcileError IstioConditionReason = "ReconcileError"
 )
 
 const (
-	// IstioConditionTypeReady signifies whether any Deployment, StatefulSet,
+	// IstioConditionReady signifies whether any Deployment, StatefulSet,
 	// etc. resources are Ready.
-	IstioConditionTypeReady IstioConditionType = "Ready"
+	IstioConditionReady IstioConditionType = "Ready"
 
-	// IstioConditionReasonIstioRevisionNotFound indicates that the active IstioRevision is not found.
-	IstioConditionReasonIstioRevisionNotFound IstioConditionReason = "ActiveRevisionNotFound"
+	// IstioReasonRevisionNotFound indicates that the active IstioRevision is not found.
+	IstioReasonRevisionNotFound IstioConditionReason = "ActiveRevisionNotFound"
 
-	// IstioConditionReasonIstiodNotReady indicates that the control plane is fully reconciled, but istiod is not ready.
-	IstioConditionReasonIstiodNotReady IstioConditionReason = "IstiodNotReady"
-
-	// IstioConditionReasonCNINotReady indicates that the control plane is fully reconciled, but istio-cni-node is not ready.
-	IstioConditionReasonCNINotReady IstioConditionReason = "CNINotReady"
+	// IstioReasonIstiodNotReady indicates that the control plane is fully reconciled, but istiod is not ready.
+	IstioReasonIstiodNotReady IstioConditionReason = "IstiodNotReady"
 )
 
 const (
-	// IstioConditionReasonHealthy indicates that the control plane is fully reconciled and that all components are ready.
-	IstioConditionReasonHealthy IstioConditionReason = "Healthy"
+	// IstioReasonHealthy indicates that the control plane is fully reconciled and that all components are ready.
+	IstioReasonHealthy IstioConditionReason = "Healthy"
 )
 
 // +kubebuilder:object:root=true

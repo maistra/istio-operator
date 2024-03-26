@@ -180,7 +180,7 @@ func (r *IstioReconciler) pruneInactiveRevisions(ctx context.Context, istio *v1a
 			log.V(2).Info("IstioRevision is the active revision", "IstioRevision", rev.Name)
 			continue
 		}
-		inUseCondition := rev.Status.GetCondition(v1alpha1.IstioRevisionConditionTypeInUse)
+		inUseCondition := rev.Status.GetCondition(v1alpha1.IstioRevisionConditionInUse)
 		inUse := inUseCondition.Status == metav1.ConditionTrue
 		if inUse {
 			log.V(2).Info("IstioRevision is in use", "IstioRevision", rev.Name)
@@ -405,18 +405,18 @@ func (r *IstioReconciler) updateStatus(ctx context.Context, istio *v1alpha1.Isti
 	// set Reconciled and Ready conditions
 	if reconciliationErr != nil {
 		status.SetCondition(v1alpha1.IstioCondition{
-			Type:    v1alpha1.IstioConditionTypeReconciled,
+			Type:    v1alpha1.IstioConditionReconciled,
 			Status:  metav1.ConditionFalse,
-			Reason:  v1alpha1.IstioConditionReasonReconcileError,
+			Reason:  v1alpha1.IstioReasonReconcileError,
 			Message: reconciliationErr.Error(),
 		})
 		status.SetCondition(v1alpha1.IstioCondition{
-			Type:    v1alpha1.IstioConditionTypeReady,
+			Type:    v1alpha1.IstioConditionReady,
 			Status:  metav1.ConditionUnknown,
-			Reason:  v1alpha1.IstioConditionReasonReconcileError,
+			Reason:  v1alpha1.IstioReasonReconcileError,
 			Message: "cannot determine readiness due to reconciliation error",
 		})
-		status.State = v1alpha1.IstioConditionReasonReconcileError
+		status.State = v1alpha1.IstioReasonReconcileError
 	} else {
 		rev, err := r.getActiveRevision(ctx, istio)
 		if errors.IsNotFound(err) {
@@ -424,17 +424,17 @@ func (r *IstioReconciler) updateStatus(ctx context.Context, istio *v1alpha1.Isti
 				return v1alpha1.IstioCondition{
 					Type:    conditionType,
 					Status:  metav1.ConditionFalse,
-					Reason:  v1alpha1.IstioConditionReasonIstioRevisionNotFound,
+					Reason:  v1alpha1.IstioReasonRevisionNotFound,
 					Message: "active IstioRevision not found",
 				}
 			}
 
-			status.SetCondition(revisionNotFound(v1alpha1.IstioConditionTypeReconciled))
-			status.SetCondition(revisionNotFound(v1alpha1.IstioConditionTypeReady))
-			status.State = v1alpha1.IstioConditionReasonIstioRevisionNotFound
+			status.SetCondition(revisionNotFound(v1alpha1.IstioConditionReconciled))
+			status.SetCondition(revisionNotFound(v1alpha1.IstioConditionReady))
+			status.State = v1alpha1.IstioReasonRevisionNotFound
 		} else if err == nil {
-			status.SetCondition(convertCondition(rev.Status.GetCondition(v1alpha1.IstioRevisionConditionTypeReconciled)))
-			status.SetCondition(convertCondition(rev.Status.GetCondition(v1alpha1.IstioRevisionConditionTypeReady)))
+			status.SetCondition(convertCondition(rev.Status.GetCondition(v1alpha1.IstioRevisionConditionReconciled)))
+			status.SetCondition(convertCondition(rev.Status.GetCondition(v1alpha1.IstioRevisionConditionReady)))
 			status.State = convertConditionReason(rev.Status.State)
 		} else {
 			return err
@@ -447,10 +447,10 @@ func (r *IstioReconciler) updateStatus(ctx context.Context, istio *v1alpha1.Isti
 		status.Revisions.Ready = 0
 		status.Revisions.InUse = 0
 		for _, rev := range revisions {
-			if rev.Status.GetCondition(v1alpha1.IstioRevisionConditionTypeReady).Status == metav1.ConditionTrue {
+			if rev.Status.GetCondition(v1alpha1.IstioRevisionConditionReady).Status == metav1.ConditionTrue {
 				status.Revisions.Ready++
 			}
-			if rev.Status.GetCondition(v1alpha1.IstioRevisionConditionTypeInUse).Status == metav1.ConditionTrue {
+			if rev.Status.GetCondition(v1alpha1.IstioRevisionConditionInUse).Status == metav1.ConditionTrue {
 				status.Revisions.InUse++
 			}
 		}
@@ -480,10 +480,10 @@ func convertCondition(condition v1alpha1.IstioRevisionCondition) v1alpha1.IstioC
 
 func convertConditionType(condition v1alpha1.IstioRevisionCondition) v1alpha1.IstioConditionType {
 	switch condition.Type {
-	case v1alpha1.IstioRevisionConditionTypeReconciled:
-		return v1alpha1.IstioConditionTypeReconciled
-	case v1alpha1.IstioRevisionConditionTypeReady:
-		return v1alpha1.IstioConditionTypeReady
+	case v1alpha1.IstioRevisionConditionReconciled:
+		return v1alpha1.IstioConditionReconciled
+	case v1alpha1.IstioRevisionConditionReady:
+		return v1alpha1.IstioConditionReady
 	default:
 		panic(fmt.Sprintf("can't convert IstioRevisionConditionType: %s", condition.Type))
 	}
@@ -493,12 +493,12 @@ func convertConditionReason(reason v1alpha1.IstioRevisionConditionReason) v1alph
 	switch reason {
 	case "":
 		return ""
-	case v1alpha1.IstioRevisionConditionReasonIstiodNotReady:
-		return v1alpha1.IstioConditionReasonIstiodNotReady
-	case v1alpha1.IstioRevisionConditionReasonHealthy:
-		return v1alpha1.IstioConditionReasonHealthy
-	case v1alpha1.IstioRevisionConditionReasonReconcileError:
-		return v1alpha1.IstioConditionReasonReconcileError
+	case v1alpha1.IstioRevisionReasonIstiodNotReady:
+		return v1alpha1.IstioReasonIstiodNotReady
+	case v1alpha1.IstioRevisionReasonHealthy:
+		return v1alpha1.IstioReasonHealthy
+	case v1alpha1.IstioRevisionReasonReconcileError:
+		return v1alpha1.IstioReasonReconcileError
 	default:
 		panic(fmt.Sprintf("can't convert IstioRevisionConditionReason: %s", reason))
 	}

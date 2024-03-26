@@ -274,21 +274,21 @@ func deriveState(reconciledCondition, readyCondition v1alpha1.IstioCNICondition)
 		return readyCondition.Reason
 	}
 
-	return v1alpha1.IstioCNIConditionReasonHealthy
+	return v1alpha1.IstioCNIReasonHealthy
 }
 
 func (r *IstioCNIReconciler) determineReconciledCondition(err error) v1alpha1.IstioCNICondition {
 	if err == nil {
 		return v1alpha1.IstioCNICondition{
-			Type:   v1alpha1.IstioCNIConditionTypeReconciled,
+			Type:   v1alpha1.IstioCNIConditionReconciled,
 			Status: metav1.ConditionTrue,
 		}
 	}
 
 	return v1alpha1.IstioCNICondition{
-		Type:    v1alpha1.IstioCNIConditionTypeReconciled,
+		Type:    v1alpha1.IstioCNIConditionReconciled,
 		Status:  metav1.ConditionFalse,
-		Reason:  v1alpha1.IstioCNIConditionReasonReconcileError,
+		Reason:  v1alpha1.IstioCNIReasonReconcileError,
 		Message: fmt.Sprintf("error reconciling resource: %v", err),
 	}
 }
@@ -296,7 +296,7 @@ func (r *IstioCNIReconciler) determineReconciledCondition(err error) v1alpha1.Is
 func (r *IstioCNIReconciler) determineReadyCondition(ctx context.Context, cni *v1alpha1.IstioCNI) v1alpha1.IstioCNICondition {
 	notReady := func(reason v1alpha1.IstioCNIConditionReason, message string) v1alpha1.IstioCNICondition {
 		return v1alpha1.IstioCNICondition{
-			Type:    v1alpha1.IstioCNIConditionTypeReady,
+			Type:    v1alpha1.IstioCNIConditionReady,
 			Status:  metav1.ConditionFalse,
 			Reason:  reason,
 			Message: message,
@@ -306,19 +306,19 @@ func (r *IstioCNIReconciler) determineReadyCondition(ctx context.Context, cni *v
 	daemonSet := appsv1.DaemonSet{}
 	if err := r.Client.Get(ctx, r.cniDaemonSetKey(cni), &daemonSet); err != nil {
 		if errors.IsNotFound(err) {
-			return notReady(v1alpha1.IstioCNIConditionReasonDaemonSetNotReady, "istio-cni-node DaemonSet not found")
+			return notReady(v1alpha1.IstioCNIDaemonSetNotReady, "istio-cni-node DaemonSet not found")
 		}
-		return notReady(v1alpha1.IstioCNIConditionReasonReconcileError, fmt.Sprintf("failed to get readiness: %v", err))
+		return notReady(v1alpha1.IstioCNIReasonReconcileError, fmt.Sprintf("failed to get readiness: %v", err))
 	}
 
 	if daemonSet.Status.CurrentNumberScheduled == 0 {
-		return notReady(v1alpha1.IstioCNIConditionReasonDaemonSetNotReady, "no istio-cni-node pods are currently scheduled")
+		return notReady(v1alpha1.IstioCNIDaemonSetNotReady, "no istio-cni-node pods are currently scheduled")
 	} else if daemonSet.Status.NumberReady < daemonSet.Status.CurrentNumberScheduled {
-		return notReady(v1alpha1.IstioCNIConditionReasonDaemonSetNotReady, "not all istio-cni-node pods are ready")
+		return notReady(v1alpha1.IstioCNIDaemonSetNotReady, "not all istio-cni-node pods are ready")
 	}
 
 	return v1alpha1.IstioCNICondition{
-		Type:   v1alpha1.IstioCNIConditionTypeReady,
+		Type:   v1alpha1.IstioCNIConditionReady,
 		Status: metav1.ConditionTrue,
 	}
 }

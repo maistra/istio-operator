@@ -283,21 +283,21 @@ func deriveState(reconciledCondition, readyCondition v1alpha1.IstioRevisionCondi
 		return readyCondition.Reason
 	}
 
-	return v1alpha1.IstioRevisionConditionReasonHealthy
+	return v1alpha1.IstioRevisionReasonHealthy
 }
 
 func (r *IstioRevisionReconciler) determineReconciledCondition(err error) v1alpha1.IstioRevisionCondition {
 	if err == nil {
 		return v1alpha1.IstioRevisionCondition{
-			Type:   v1alpha1.IstioRevisionConditionTypeReconciled,
+			Type:   v1alpha1.IstioRevisionConditionReconciled,
 			Status: metav1.ConditionTrue,
 		}
 	}
 
 	return v1alpha1.IstioRevisionCondition{
-		Type:    v1alpha1.IstioRevisionConditionTypeReconciled,
+		Type:    v1alpha1.IstioRevisionConditionReconciled,
 		Status:  metav1.ConditionFalse,
-		Reason:  v1alpha1.IstioRevisionConditionReasonReconcileError,
+		Reason:  v1alpha1.IstioRevisionReasonReconcileError,
 		Message: fmt.Sprintf("error reconciling resource: %v", err),
 	}
 }
@@ -305,7 +305,7 @@ func (r *IstioRevisionReconciler) determineReconciledCondition(err error) v1alph
 func (r *IstioRevisionReconciler) determineReadyCondition(ctx context.Context, rev *v1alpha1.IstioRevision) v1alpha1.IstioRevisionCondition {
 	notReady := func(reason v1alpha1.IstioRevisionConditionReason, message string) v1alpha1.IstioRevisionCondition {
 		return v1alpha1.IstioRevisionCondition{
-			Type:    v1alpha1.IstioRevisionConditionTypeReady,
+			Type:    v1alpha1.IstioRevisionConditionReady,
 			Status:  metav1.ConditionFalse,
 			Reason:  reason,
 			Message: message,
@@ -315,18 +315,18 @@ func (r *IstioRevisionReconciler) determineReadyCondition(ctx context.Context, r
 	istiod := appsv1.Deployment{}
 	if err := r.Client.Get(ctx, istiodDeploymentKey(rev), &istiod); err != nil {
 		if errors.IsNotFound(err) {
-			return notReady(v1alpha1.IstioRevisionConditionReasonIstiodNotReady, "istiod Deployment not found")
+			return notReady(v1alpha1.IstioRevisionReasonIstiodNotReady, "istiod Deployment not found")
 		}
-		return notReady(v1alpha1.IstioRevisionConditionReasonReconcileError, fmt.Sprintf("failed to get readiness: %v", err))
+		return notReady(v1alpha1.IstioRevisionReasonReconcileError, fmt.Sprintf("failed to get readiness: %v", err))
 	}
 	if istiod.Status.Replicas == 0 {
-		return notReady(v1alpha1.IstioRevisionConditionReasonIstiodNotReady, "istiod Deployment is scaled to zero replicas")
+		return notReady(v1alpha1.IstioRevisionReasonIstiodNotReady, "istiod Deployment is scaled to zero replicas")
 	} else if istiod.Status.ReadyReplicas < istiod.Status.Replicas {
-		return notReady(v1alpha1.IstioRevisionConditionReasonIstiodNotReady, "not all istiod pods are ready")
+		return notReady(v1alpha1.IstioRevisionReasonIstiodNotReady, "not all istiod pods are ready")
 	}
 
 	return v1alpha1.IstioRevisionCondition{
-		Type:   v1alpha1.IstioRevisionConditionTypeReady,
+		Type:   v1alpha1.IstioRevisionConditionReady,
 		Status: metav1.ConditionTrue,
 	}
 }
@@ -339,16 +339,16 @@ func (r *IstioRevisionReconciler) determineInUseCondition(ctx context.Context, r
 
 	if isReferenced {
 		return v1alpha1.IstioRevisionCondition{
-			Type:    v1alpha1.IstioRevisionConditionTypeInUse,
+			Type:    v1alpha1.IstioRevisionConditionInUse,
 			Status:  metav1.ConditionTrue,
-			Reason:  v1alpha1.IstioRevisionConditionReasonReferencedByWorkloads,
+			Reason:  v1alpha1.IstioRevisionReasonReferencedByWorkloads,
 			Message: "Referenced by at least one pod or namespace",
 		}, nil
 	}
 	return v1alpha1.IstioRevisionCondition{
-		Type:    v1alpha1.IstioRevisionConditionTypeInUse,
+		Type:    v1alpha1.IstioRevisionConditionInUse,
 		Status:  metav1.ConditionFalse,
-		Reason:  v1alpha1.IstioRevisionConditionReasonNotReferenced,
+		Reason:  v1alpha1.IstioRevisionReasonNotReferenced,
 		Message: "Not referenced by any pod or namespace",
 	}, nil
 }
