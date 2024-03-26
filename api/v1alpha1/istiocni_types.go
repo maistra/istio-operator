@@ -146,11 +146,10 @@ const (
 )
 
 const (
-	// IstioCNIConditionReady signifies whether any Deployment, StatefulSet,
-	// etc. resources are Ready.
+	// IstioCNIConditionReady signifies whether the istio-cni-node DaemonSet is ready.
 	IstioCNIConditionReady IstioCNIConditionType = "Ready"
 
-	// IstioCNIDaemonSetNotReady indicates that the control plane is fully reconciled, but istio-cni-node is not ready.
+	// IstioCNIDaemonSetNotReady indicates that the istio-cni-node DaemonSet is not ready.
 	IstioCNIDaemonSetNotReady IstioCNIConditionReason = "DaemonSetNotReady"
 
 	// IstioCNIReasonReadinessCheckFailed indicates that the DaemonSet readiness status could not be ascertained.
