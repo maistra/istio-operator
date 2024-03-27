@@ -16,9 +16,9 @@ type HaveConditionMatcher struct {
 }
 
 // HaveCondition creates a new HaveConditionMatcher.
-func HaveCondition(conditionType string, conditionStatus metav1.ConditionStatus) types.GomegaMatcher {
+func HaveCondition[T ~string](conditionType T, conditionStatus metav1.ConditionStatus) types.GomegaMatcher {
 	return &HaveConditionMatcher{
-		conditionType:   conditionType,
+		conditionType:   string(conditionType),
 		conditionStatus: conditionStatus,
 	}
 }

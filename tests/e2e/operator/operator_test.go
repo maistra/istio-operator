@@ -172,9 +172,8 @@ spec:
 					})
 
 					It("updates the status to Reconciled", func(ctx SpecContext) {
-						Eventually(func() (client.Object, error) {
-							return getObject(ctx, cl, getCRDKey(istioCniName), cni)
-						}).Should(HaveCondition("Reconciled", metav1.ConditionTrue), "IstioCNI is not Reconciled; unexpected Condition")
+						Eventually(getObject).WithArguments(ctx, cl, getCRDKey(istioCniName), cni).
+							Should(HaveCondition("Reconciled", metav1.ConditionTrue), "IstioCNI is not Reconciled; unexpected Condition")
 						Success("IstioCNI is Reconciled")
 					})
 
@@ -295,10 +294,8 @@ spec:
 				To(Succeed(), "CNI namespace deletion failed")
 
 			ns := &corev1.Namespace{}
-			Eventually(func() error {
-				_, err := getObject(ctx, cl, getCRDKey(controlPlaneNamespace), ns)
-				return err
-			}).ShouldNot(Succeed(), "Namespace should not exist")
+			Eventually(getObject).WithArguments(ctx, cl, getCRDKey(controlPlaneNamespace), ns).
+				Should(ReturnNotFoundError(), "Namespace should not exist")
 			Success("Cleanup done")
 		})
 	})
@@ -412,8 +409,5 @@ func getCRDKey(name string) client.ObjectKey {
 // getObject returns the object with the given key
 func getObject(ctx context.Context, cl client.Client, key client.ObjectKey, obj client.Object) (client.Object, error) {
 	err := cl.Get(ctx, key, obj)
-	if err != nil {
-		return nil, err // Return the error, letting Eventually handle retries
-	}
-	return obj, nil
+	return obj, err
 }
