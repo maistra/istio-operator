@@ -99,6 +99,7 @@ func TestDetermineReadyCondition(t *testing.T) {
 		clientObjects []client.Object
 		interceptors  interceptor.Funcs
 		expected      v1alpha1.IstioCNICondition
+		expectErr     bool
 	}{
 		{
 			name: "CNI ready",
@@ -185,6 +186,7 @@ func TestDetermineReadyCondition(t *testing.T) {
 				Reason:  v1alpha1.IstioCNIReasonReadinessCheckFailed,
 				Message: "failed to get readiness: simulated error",
 			},
+			expectErr: true,
 		},
 	}
 
@@ -205,7 +207,12 @@ func TestDetermineReadyCondition(t *testing.T) {
 				},
 			}
 
-			result := r.determineReadyCondition(context.TODO(), cni)
+			result, err := r.determineReadyCondition(context.TODO(), cni)
+			if tt.expectErr {
+				g.Expect(err).To(HaveOccurred())
+			} else {
+				g.Expect(err).ToNot(HaveOccurred())
+			}
 			g.Expect(result.Type).To(Equal(tt.expected.Type))
 			g.Expect(result.Status).To(Equal(tt.expected.Status))
 			g.Expect(result.Reason).To(Equal(tt.expected.Reason))
@@ -384,12 +391,15 @@ func TestDetermineStatus(t *testing.T) {
 				},
 			}
 
-			reconciledCondition := r.determineReconciledCondition(tt.reconcileErr)
-			readyCondition := r.determineReadyCondition(ctx, cni)
-
-			status := r.determineStatus(ctx, cni, tt.reconcileErr)
+			status, err := r.determineStatus(ctx, cni, tt.reconcileErr)
+			g.Expect(err).ToNot(HaveOccurred())
 
 			g.Expect(status.ObservedGeneration).To(Equal(cni.Generation))
+
+			reconciledCondition := r.determineReconciledCondition(tt.reconcileErr)
+			readyCondition, err := r.determineReadyCondition(ctx, cni)
+			g.Expect(err).ToNot(HaveOccurred())
+
 			g.Expect(status.State).To(Equal(deriveState(reconciledCondition, readyCondition)))
 			g.Expect(normalize(status.GetCondition(v1alpha1.IstioCNIConditionReconciled))).To(Equal(normalize(reconciledCondition)))
 			g.Expect(normalize(status.GetCondition(v1alpha1.IstioCNIConditionReady))).To(Equal(normalize(readyCondition)))

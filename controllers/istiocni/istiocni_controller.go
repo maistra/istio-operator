@@ -235,25 +235,31 @@ func (r *IstioCNIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *IstioCNIReconciler) determineStatus(ctx context.Context, cni *v1alpha1.IstioCNI, reconcileErr error) v1alpha1.IstioCNIStatus {
+func (r *IstioCNIReconciler) determineStatus(ctx context.Context, cni *v1alpha1.IstioCNI, reconcileErr error) (*v1alpha1.IstioCNIStatus, error) {
 	reconciledCondition := r.determineReconciledCondition(reconcileErr)
-	readyCondition := r.determineReadyCondition(ctx, cni)
+	readyCondition, err := r.determineReadyCondition(ctx, cni)
+	if err != nil {
+		return nil, err
+	}
 
-	status := *cni.Status.DeepCopy()
+	status := cni.Status.DeepCopy()
 	status.ObservedGeneration = cni.Generation
 	status.SetCondition(reconciledCondition)
 	status.SetCondition(readyCondition)
 	status.State = deriveState(reconciledCondition, readyCondition)
-	return status
+	return status, nil
 }
 
 func (r *IstioCNIReconciler) updateStatus(ctx context.Context, cni *v1alpha1.IstioCNI, reconcileErr error) error {
-	status := r.determineStatus(ctx, cni, reconcileErr)
+	status, err := r.determineStatus(ctx, cni, reconcileErr)
+	if err != nil {
+		return err
+	}
 
-	if reflect.DeepEqual(cni.Status, status) {
+	if reflect.DeepEqual(cni.Status, *status) {
 		return nil
 	}
-	return r.Client.Status().Patch(ctx, cni, kube.NewStatusPatch(status))
+	return r.Client.Status().Patch(ctx, cni, kube.NewStatusPatch(*status))
 }
 
 func deriveState(reconciledCondition, readyCondition v1alpha1.IstioCNICondition) v1alpha1.IstioCNIConditionReason {
@@ -278,7 +284,7 @@ func (r *IstioCNIReconciler) determineReconciledCondition(err error) v1alpha1.Is
 	return c
 }
 
-func (r *IstioCNIReconciler) determineReadyCondition(ctx context.Context, cni *v1alpha1.IstioCNI) v1alpha1.IstioCNICondition {
+func (r *IstioCNIReconciler) determineReadyCondition(ctx context.Context, cni *v1alpha1.IstioCNI) (v1alpha1.IstioCNICondition, error) {
 	c := v1alpha1.IstioCNICondition{
 		Type:   v1alpha1.IstioCNIConditionReady,
 		Status: metav1.ConditionFalse,
@@ -302,8 +308,9 @@ func (r *IstioCNIReconciler) determineReadyCondition(ctx context.Context, cni *v
 		c.Status = metav1.ConditionUnknown
 		c.Reason = v1alpha1.IstioCNIReasonReadinessCheckFailed
 		c.Message = fmt.Sprintf("failed to get readiness: %v", err)
+		return c, err
 	}
-	return c
+	return c, nil
 }
 
 func (r *IstioCNIReconciler) cniDaemonSetKey(cni *v1alpha1.IstioCNI) client.ObjectKey {
