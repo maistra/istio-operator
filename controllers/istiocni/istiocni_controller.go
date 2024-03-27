@@ -239,12 +239,12 @@ func (r *IstioCNIReconciler) determineStatus(ctx context.Context, cni *v1alpha1.
 	reconciledCondition := r.determineReconciledCondition(reconcileErr)
 	readyCondition := r.determineReadyCondition(ctx, cni)
 
-	status := cni.Status.DeepCopy()
+	status := *cni.Status.DeepCopy()
 	status.ObservedGeneration = cni.Generation
 	status.SetCondition(reconciledCondition)
 	status.SetCondition(readyCondition)
 	status.State = deriveState(reconciledCondition, readyCondition)
-	return *status
+	return status
 }
 
 func (r *IstioCNIReconciler) updateStatus(ctx context.Context, cni *v1alpha1.IstioCNI, reconcileErr error) error {

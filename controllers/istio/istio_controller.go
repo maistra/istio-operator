@@ -396,7 +396,7 @@ func (r *IstioReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *IstioReconciler) updateStatus(ctx context.Context, istio *v1alpha1.Istio, reconcileErr error) error {
+func (r *IstioReconciler) determineStatus(ctx context.Context, istio *v1alpha1.Istio, reconcileErr error) (*v1alpha1.IstioStatus, error) {
 	status := istio.Status.DeepCopy()
 	status.ObservedGeneration = istio.Generation
 
@@ -435,7 +435,7 @@ func (r *IstioReconciler) updateStatus(ctx context.Context, istio *v1alpha1.Isti
 			status.SetCondition(convertCondition(rev.Status.GetCondition(v1alpha1.IstioRevisionConditionReady)))
 			status.State = convertConditionReason(rev.Status.State)
 		} else {
-			return err
+			return status, err
 		}
 	}
 
@@ -453,13 +453,20 @@ func (r *IstioReconciler) updateStatus(ctx context.Context, istio *v1alpha1.Isti
 			}
 		}
 	} else {
+		return status, err
+	}
+	return status, nil
+}
+
+func (r *IstioReconciler) updateStatus(ctx context.Context, istio *v1alpha1.Istio, reconcileErr error) error {
+	status, err := r.determineStatus(ctx, istio, reconcileErr)
+	if err != nil {
 		return err
 	}
 
 	if reflect.DeepEqual(istio.Status, *status) {
 		return nil
 	}
-
 	return r.Client.Status().Patch(ctx, istio, kube.NewStatusPatch(*status))
 }
 

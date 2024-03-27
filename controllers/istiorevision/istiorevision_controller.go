@@ -239,22 +239,27 @@ func (r *IstioRevisionReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *IstioRevisionReconciler) updateStatus(ctx context.Context, rev *v1alpha1.IstioRevision, reconcileErr error) error {
+func (r *IstioRevisionReconciler) determineStatus(ctx context.Context, rev *v1alpha1.IstioRevision, reconcileErr error) v1alpha1.IstioRevisionStatus {
 	reconciledCondition := r.determineReconciledCondition(reconcileErr)
 	readyCondition := r.determineReadyCondition(ctx, rev)
 	inUseCondition := r.determineInUseCondition(ctx, rev)
 
-	status := rev.Status.DeepCopy()
+	status := *rev.Status.DeepCopy()
 	status.ObservedGeneration = rev.Generation
 	status.SetCondition(reconciledCondition)
 	status.SetCondition(readyCondition)
 	status.SetCondition(inUseCondition)
 	status.State = deriveState(reconciledCondition, readyCondition)
+	return status
+}
 
-	if reflect.DeepEqual(rev.Status, *status) {
+func (r *IstioRevisionReconciler) updateStatus(ctx context.Context, rev *v1alpha1.IstioRevision, reconcileErr error) error {
+	status := r.determineStatus(ctx, rev, reconcileErr)
+
+	if reflect.DeepEqual(rev.Status, status) {
 		return nil
 	}
-	return r.Client.Status().Patch(ctx, rev, kube.NewStatusPatch(*status))
+	return r.Client.Status().Patch(ctx, rev, kube.NewStatusPatch(status))
 }
 
 func deriveState(reconciledCondition, readyCondition v1alpha1.IstioRevisionCondition) v1alpha1.IstioRevisionConditionReason {
