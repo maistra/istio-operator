@@ -94,11 +94,8 @@ var _ = Describe("Operator", Ordered, func() {
 		})
 
 		It("deploys all the CRDs", func(ctx SpecContext) {
-			Eventually(func(g Gomega) {
-				g.Expect(cl.List(ctx, crdList)).To(Succeed(), "Error getting CRDs list from the cluster")
-				crdNames := getCRDsName(crdList)
-				g.Expect(crdNames).To(ContainElements(sailCRDs), "Istio CRDs are not present; expected list to contain all elements")
-			}).Should(Succeed(), "Unexpected error getting CRDs from the cluster")
+			Eventually(getList).WithArguments(ctx, cl, crdList).Should(WithTransform(extractCRDNames, ContainElements(sailCRDs)),
+				"Not all Istio and Sail CRDs are present")
 			Success("Istio CRDs are present")
 		})
 
@@ -331,12 +328,12 @@ func log(a ...any) {
 	GinkgoWriter.Println(a...)
 }
 
-func getCRDsName(crdList *apiextensionsv1.CustomResourceDefinitionList) []string {
-	var crdNames []string
+func extractCRDNames(crdList *apiextensionsv1.CustomResourceDefinitionList) []string {
+	var names []string
 	for _, crd := range crdList.Items {
-		crdNames = append(crdNames, crd.ObjectMeta.Name)
+		names = append(names, crd.ObjectMeta.Name)
 	}
-	return crdNames
+	return names
 }
 
 func LogDebugInfo() {
@@ -381,6 +378,12 @@ func key(name string, namespace ...string) client.ObjectKey {
 func getObject(ctx context.Context, cl client.Client, key client.ObjectKey, obj client.Object) (client.Object, error) {
 	err := cl.Get(ctx, key, obj)
 	return obj, err
+}
+
+// getList invokes client.List and returns the list
+func getList(ctx context.Context, cl client.Client, list client.ObjectList, opts ...client.ListOption) (client.ObjectList, error) {
+	err := cl.List(ctx, list, opts...)
+	return list, err
 }
 
 // checkNamespaceEmpty checks if the given namespace is empty
