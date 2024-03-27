@@ -239,27 +239,37 @@ func (r *IstioRevisionReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *IstioRevisionReconciler) determineStatus(ctx context.Context, rev *v1alpha1.IstioRevision, reconcileErr error) v1alpha1.IstioRevisionStatus {
+func (r *IstioRevisionReconciler) determineStatus(ctx context.Context, rev *v1alpha1.IstioRevision, reconcileErr error) (*v1alpha1.IstioRevisionStatus, error) {
 	reconciledCondition := r.determineReconciledCondition(reconcileErr)
-	readyCondition := r.determineReadyCondition(ctx, rev)
-	inUseCondition := r.determineInUseCondition(ctx, rev)
+	readyCondition, err := r.determineReadyCondition(ctx, rev)
+	if err != nil {
+		return nil, err
+	}
 
-	status := *rev.Status.DeepCopy()
+	inUseCondition, err := r.determineInUseCondition(ctx, rev)
+	if err != nil {
+		return nil, err
+	}
+
+	status := rev.Status.DeepCopy()
 	status.ObservedGeneration = rev.Generation
 	status.SetCondition(reconciledCondition)
 	status.SetCondition(readyCondition)
 	status.SetCondition(inUseCondition)
 	status.State = deriveState(reconciledCondition, readyCondition)
-	return status
+	return status, nil
 }
 
 func (r *IstioRevisionReconciler) updateStatus(ctx context.Context, rev *v1alpha1.IstioRevision, reconcileErr error) error {
-	status := r.determineStatus(ctx, rev, reconcileErr)
+	status, err := r.determineStatus(ctx, rev, reconcileErr)
+	if err != nil {
+		return err
+	}
 
-	if reflect.DeepEqual(rev.Status, status) {
+	if reflect.DeepEqual(rev.Status, *status) {
 		return nil
 	}
-	return r.Client.Status().Patch(ctx, rev, kube.NewStatusPatch(status))
+	return r.Client.Status().Patch(ctx, rev, kube.NewStatusPatch(*status))
 }
 
 func deriveState(reconciledCondition, readyCondition v1alpha1.IstioRevisionCondition) v1alpha1.IstioRevisionConditionReason {
@@ -284,7 +294,7 @@ func (r *IstioRevisionReconciler) determineReconciledCondition(err error) v1alph
 	return c
 }
 
-func (r *IstioRevisionReconciler) determineReadyCondition(ctx context.Context, rev *v1alpha1.IstioRevision) v1alpha1.IstioRevisionCondition {
+func (r *IstioRevisionReconciler) determineReadyCondition(ctx context.Context, rev *v1alpha1.IstioRevision) (v1alpha1.IstioRevisionCondition, error) {
 	c := v1alpha1.IstioRevisionCondition{
 		Type:   v1alpha1.IstioRevisionConditionReady,
 		Status: metav1.ConditionFalse,
@@ -308,14 +318,16 @@ func (r *IstioRevisionReconciler) determineReadyCondition(ctx context.Context, r
 		c.Status = metav1.ConditionUnknown
 		c.Reason = v1alpha1.IstioRevisionReasonReadinessCheckFailed
 		c.Message = fmt.Sprintf("failed to get readiness: %v", err)
+		return c, err
 	}
-	return c
+	return c, nil
 }
 
-func (r *IstioRevisionReconciler) determineInUseCondition(ctx context.Context, rev *v1alpha1.IstioRevision) v1alpha1.IstioRevisionCondition {
+func (r *IstioRevisionReconciler) determineInUseCondition(ctx context.Context, rev *v1alpha1.IstioRevision) (v1alpha1.IstioRevisionCondition, error) {
 	c := v1alpha1.IstioRevisionCondition{Type: v1alpha1.IstioRevisionConditionInUse}
 
-	if isReferenced, err := r.isRevisionReferencedByWorkloads(ctx, rev); err == nil {
+	isReferenced, err := r.isRevisionReferencedByWorkloads(ctx, rev)
+	if err == nil {
 		if isReferenced {
 			c.Status = metav1.ConditionTrue
 			c.Reason = v1alpha1.IstioRevisionReasonReferencedByWorkloads
@@ -330,7 +342,7 @@ func (r *IstioRevisionReconciler) determineInUseCondition(ctx context.Context, r
 		c.Reason = v1alpha1.IstioRevisionReasonUsageCheckFailed
 		c.Message = fmt.Sprintf("failed to determine if revision is in use: %v", err)
 	}
-	return c
+	return c, err
 }
 
 func (r *IstioRevisionReconciler) isRevisionReferencedByWorkloads(ctx context.Context, rev *v1alpha1.IstioRevision) (bool, error) {

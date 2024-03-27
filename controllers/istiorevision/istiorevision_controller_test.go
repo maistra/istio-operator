@@ -98,6 +98,7 @@ func TestDetermineReadyCondition(t *testing.T) {
 		clientObjects []client.Object
 		interceptors  interceptor.Funcs
 		expected      v1alpha1.IstioRevisionCondition
+		expectErr     bool
 	}{
 		{
 			name:   "Istiod ready",
@@ -214,6 +215,7 @@ func TestDetermineReadyCondition(t *testing.T) {
 				Reason:  v1alpha1.IstioRevisionReasonReadinessCheckFailed,
 				Message: "failed to get readiness: simulated error",
 			},
+			expectErr: true,
 		},
 	}
 
@@ -235,7 +237,12 @@ func TestDetermineReadyCondition(t *testing.T) {
 				},
 			}
 
-			result := r.determineReadyCondition(context.TODO(), rev)
+			result, err := r.determineReadyCondition(context.TODO(), rev)
+			if tt.expectErr {
+				g.Expect(err).To(HaveOccurred())
+			} else {
+				g.Expect(err).ToNot(HaveOccurred())
+			}
 			g.Expect(result.Type).To(Equal(tt.expected.Type))
 			g.Expect(result.Status).To(Equal(tt.expected.Status))
 			g.Expect(result.Reason).To(Equal(tt.expected.Reason))
@@ -434,7 +441,7 @@ func TestDetermineInUseCondition(t *testing.T) {
 
 				r := NewIstioRevisionReconciler(cl, scheme.Scheme, "no-resource-dir", nil)
 
-				result := r.determineInUseCondition(context.TODO(), rev)
+				result, _ := r.determineInUseCondition(context.TODO(), rev)
 				g.Expect(result.Type).To(Equal(v1alpha1.IstioRevisionConditionInUse))
 
 				if tc.expectUnknownState {
