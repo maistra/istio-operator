@@ -49,7 +49,7 @@ var (
 	daemonset          = &appsv1.DaemonSet{}
 	cni                = &v1alpha1.IstioCNI{}
 	istio              = &v1alpha1.Istio{}
-	expectedCRDList    = []string{
+	sailCRDs           = []string{
 		// TODO: Find an alternative to this list
 		"authorizationpolicies.security.istio.io",
 		"destinationrules.networking.istio.io",
@@ -96,17 +96,14 @@ var _ = Describe("Operator", Ordered, func() {
 		It("deploys all the CRDs", func(ctx SpecContext) {
 			Eventually(func(g Gomega) {
 				g.Expect(cl.List(ctx, crdList)).To(Succeed(), "Error getting CRDs list from the cluster")
-
-				// TODO: move this and used amoug WithTransform to get the list of CRDs
 				crdNames := getCRDsName()
-
-				g.Expect(crdNames).To(ContainElements(expectedCRDList), "Istio CRDs are not present; expected list to contain all elements")
+				g.Expect(crdNames).To(ContainElements(sailCRDs), "Istio CRDs are not present; expected list to contain all elements")
 			}).Should(Succeed(), "Unexpected error getting CRDs from the cluster")
 			Success("Istio CRDs are present")
 		})
 
 		It("updates the CRDs status to Established", func(ctx SpecContext) {
-			for _, crdName := range expectedCRDList {
+			for _, crdName := range sailCRDs {
 				Eventually(getObject).WithArguments(ctx, cl, key(crdName), crd).
 					Should(HaveCondition(apiextensionsv1.Established, metav1.ConditionTrue), "Error getting Istio CRD")
 			}
@@ -121,8 +118,7 @@ var _ = Describe("Operator", Ordered, func() {
 		})
 
 		It("starts successfully", func(ctx SpecContext) {
-			Eventually(getObject).
-				WithArguments(ctx, cl, key(deploymentName, namespace), deployment).
+			Eventually(getObject).WithArguments(ctx, cl, key(deploymentName, namespace), deployment).
 				Should(HaveCondition(appsv1.DeploymentAvailable, metav1.ConditionTrue), "Error getting Istio CRD")
 		})
 
@@ -170,22 +166,19 @@ spec:
 					})
 
 					It("updates the status to Reconciled", func(ctx SpecContext) {
-						Eventually(getObject).
-							WithArguments(ctx, cl, key(istioCniName), cni).
+						Eventually(getObject).WithArguments(ctx, cl, key(istioCniName), cni).
 							Should(HaveCondition(v1alpha1.IstioCNIConditionTypeReconciled, metav1.ConditionTrue), "IstioCNI is not Reconciled; unexpected Condition")
 						Success("IstioCNI is Reconciled")
 					})
 
 					It("updates the status to Ready", func(ctx SpecContext) {
-						Eventually(getObject).
-							WithArguments(ctx, cl, key(istioCniName), cni).
+						Eventually(getObject).WithArguments(ctx, cl, key(istioCniName), cni).
 							Should(HaveCondition(v1alpha1.IstioCNIConditionTypeReady, metav1.ConditionTrue), "IstioCNI is not Ready; unexpected Condition")
 						Success("IstioCNI is Ready")
 					})
 
 					It("doesn't continuously reconcile the IstioCNI CR", func() {
-						Eventually(kubectl.Logs).
-							WithArguments(namespace, "deploy/"+deploymentName, ptr.Of(30*time.Second)).
+						Eventually(kubectl.Logs).WithArguments(namespace, "deploy/"+deploymentName, ptr.Of(30*time.Second)).
 							ShouldNot(ContainSubstring("Reconciliation done"), "Istio Operator is continuously reconciling")
 						Success("Istio Operator stopped reconciling")
 					})
@@ -209,30 +202,26 @@ spec:
 					})
 
 					It("updates the Istio CR status to Reconciled", func(ctx SpecContext) {
-						Eventually(getObject).
-							WithArguments(ctx, cl, key(istioName), istio).
+						Eventually(getObject).WithArguments(ctx, cl, key(istioName), istio).
 							Should(HaveCondition(v1alpha1.IstioConditionTypeReconciled, metav1.ConditionTrue), "Istio is not Reconciled; unexpected Condition")
 						Success("Istio CR is Reconciled")
 					})
 
 					It("updates the Istio CR status to Ready", func(ctx SpecContext) {
-						Eventually(getObject).
-							WithArguments(ctx, cl, key(istioName), istio).
+						Eventually(getObject).WithArguments(ctx, cl, key(istioName), istio).
 							Should(HaveCondition(v1alpha1.IstioConditionTypeReady, metav1.ConditionTrue), "Istio is not Ready; unexpected Condition")
 						Success("Istio CR is Ready")
 					})
 
 					It("deploys istiod", func(ctx SpecContext) {
-						Eventually(getObject).
-							WithArguments(ctx, cl, key("istiod", controlPlaneNamespace), deployment).
+						Eventually(getObject).WithArguments(ctx, cl, key("istiod", controlPlaneNamespace), deployment).
 							Should(HaveCondition(appsv1.DeploymentAvailable, metav1.ConditionTrue), "Istiod is not Available; unexpected Condition")
 						Expect(getVersionFromIstiod()).To(Equal(version.Version), "Unexpected istiod version")
 						Success("Istiod is deployed in the namespace and Running")
 					})
 
 					It("doesn't continuously reconcile the Istio CR", func() {
-						Eventually(kubectl.Logs).
-							WithArguments(namespace, "deploy/"+deploymentName, ptr.Of(30*time.Second)).
+						Eventually(kubectl.Logs).WithArguments(namespace, "deploy/"+deploymentName, ptr.Of(30*time.Second)).
 							ShouldNot(ContainSubstring("Reconciliation done"), "Istio Operator is continuously reconciling")
 						Success("Istio Operator stopped reconciling")
 					})
@@ -245,8 +234,7 @@ spec:
 					})
 
 					It("removes everything from the namespace", func(ctx SpecContext) {
-						Eventually(cl.Get).
-							WithArguments(ctx, key("istiod", controlPlaneNamespace), deployment).
+						Eventually(cl.Get).WithArguments(ctx, key("istiod", controlPlaneNamespace), deployment).
 							Should(ReturnNotFoundError(), "Istiod should not exist anymore")
 
 						// TODO: Add more validations to ensure that all resources are deleted from this namespace
@@ -262,8 +250,7 @@ spec:
 					})
 
 					It("removes everything from the CNI namespace", func(ctx SpecContext) {
-						Eventually(cl.Get).
-							WithArguments(ctx, key("istio-cni-node", istioCniNamespace), daemonset).
+						Eventually(cl.Get).WithArguments(ctx, key("istio-cni-node", istioCniNamespace), daemonset).
 							Should(ReturnNotFoundError(), "IstioCNI DaemonSet should not exist anymore")
 
 						// TODO: Add more validations to ensure that all resources are deleted from this namespace
@@ -310,7 +297,7 @@ spec:
 		Success("Operator uninstalled")
 
 		By("Deleting the CRDs")
-		Expect(kubectl.DeleteCRDs(expectedCRDList)).To(Succeed(), "CRDs failed to be deleted")
+		Expect(kubectl.DeleteCRDs(sailCRDs)).To(Succeed(), "CRDs failed to be deleted")
 		Success("CRDs deleted")
 	})
 })
