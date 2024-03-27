@@ -40,7 +40,7 @@ func setup() {
 	GinkgoWriter.Println("************ Running Setup ************")
 
 	GinkgoWriter.Println("Initializing k8s client")
-	cl, err = k8sclient.InitK8sClient(kubeconfigPath)
+	cl, err = k8sclient.InitK8sClient()
 	Expect(err).NotTo(HaveOccurred())
 
 	if ocp {

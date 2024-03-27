@@ -107,24 +107,24 @@ var _ = Describe("Operator", Ordered, func() {
 
 		It("updates the CRDs status to Established", func(ctx SpecContext) {
 			for _, expectedCRD := range expectedCRDList {
-				Eventually(func() (client.Object, error) {
-					return getObject(ctx, cl, getCRDKey(expectedCRD), crd)
-				}).Should(HaveCondition("Established", metav1.ConditionTrue), "Error getting Istio CRD")
+				Eventually(getObject).
+					WithArguments(ctx, cl, key(expectedCRD), crd).
+					Should(HaveCondition(apiextensionsv1.Established, metav1.ConditionTrue), "Error getting Istio CRD")
 			}
 			Success("CRDs are Established")
 		})
 
 		Specify("istio crd is present", func(ctx SpecContext) {
 			// When the operator runs in OCP cluster, the CRD is created but not available at the moment
-			Eventually(cl.Get).WithArguments(ctx, getCRDKey("istios.operator.istio.io"), crd).
+			Eventually(cl.Get).WithArguments(ctx, key("istios.operator.istio.io"), crd).
 				Should(Succeed(), "Error getting Istio CRD")
 			Success("Istio CRD is present")
 		})
 
 		It("starts successfully", func(ctx SpecContext) {
-			Eventually(func() (client.Object, error) {
-				return getObject(ctx, cl, getKey(namespace, deploymentName), deployment)
-			}).Should(HaveCondition("Available", metav1.ConditionTrue), "Error getting Istio CRD")
+			Eventually(getObject).
+				WithArguments(ctx, cl, key(deploymentName, namespace), deployment).
+				Should(HaveCondition(appsv1.DeploymentAvailable, metav1.ConditionTrue), "Error getting Istio CRD")
 		})
 
 		AfterAll(func() {
@@ -163,7 +163,7 @@ spec:
 
 					It("deploys the CNI DaemonSet", func(ctx SpecContext) {
 						Eventually(func(g Gomega) {
-							_, err := getObject(ctx, cl, getKey(istioCniNamespace, "istio-cni-node"), daemonset)
+							_, err := getObject(ctx, cl, key("istio-cni-node", istioCniNamespace), daemonset)
 							g.Expect(err).ToNot(HaveOccurred(), "Error getting IstioCNI DaemonSet")
 							g.Expect(daemonset.Status.NumberAvailable).
 								To(Equal(daemonset.Status.CurrentNumberScheduled), "CNI DaemonSet Pods not Available; expected numberAvailable to be equal to currentNumberScheduled")
@@ -172,15 +172,16 @@ spec:
 					})
 
 					It("updates the status to Reconciled", func(ctx SpecContext) {
-						Eventually(getObject).WithArguments(ctx, cl, getCRDKey(istioCniName), cni).
-							Should(HaveCondition("Reconciled", metav1.ConditionTrue), "IstioCNI is not Reconciled; unexpected Condition")
+						Eventually(getObject).
+							WithArguments(ctx, cl, key(istioCniName), cni).
+							Should(HaveCondition(v1alpha1.IstioCNIConditionTypeReconciled, metav1.ConditionTrue), "IstioCNI is not Reconciled; unexpected Condition")
 						Success("IstioCNI is Reconciled")
 					})
 
 					It("updates the status to Ready", func(ctx SpecContext) {
-						Eventually(func() (client.Object, error) {
-							return getObject(ctx, cl, getCRDKey(istioCniName), cni)
-						}).Should(HaveCondition("Ready", metav1.ConditionTrue), "IstioCNI is not Ready; unexpected Condition")
+						Eventually(getObject).
+							WithArguments(ctx, cl, key(istioCniName), cni).
+							Should(HaveCondition(v1alpha1.IstioCNIConditionTypeReady, metav1.ConditionTrue), "IstioCNI is not Ready; unexpected Condition")
 						Success("IstioCNI is Ready")
 					})
 
@@ -210,23 +211,23 @@ spec:
 					})
 
 					It("updates the Istio CR status to Reconciled", func(ctx SpecContext) {
-						Eventually(func() (client.Object, error) {
-							return getObject(ctx, cl, getCRDKey(istioName), istio)
-						}).Should(HaveCondition(v1alpha1.IstioCNIConditionTypeReconciled, metav1.ConditionTrue), "Istio is not Reconciled; unexpected Condition")
+						Eventually(getObject).
+							WithArguments(ctx, cl, key(istioName), istio).
+							Should(HaveCondition(v1alpha1.IstioConditionTypeReconciled, metav1.ConditionTrue), "Istio is not Reconciled; unexpected Condition")
 						Success("Istio CR is Reconciled")
 					})
 
 					It("updates the Istio CR status to Ready", func(ctx SpecContext) {
-						Eventually(func() (client.Object, error) {
-							return getObject(ctx, cl, getCRDKey(istioName), istio)
-						}).Should(HaveCondition("Ready", metav1.ConditionTrue), "Istio is not Ready; unexpected Condition")
+						Eventually(getObject).
+							WithArguments(ctx, cl, key(istioName), istio).
+							Should(HaveCondition(v1alpha1.IstioConditionTypeReady, metav1.ConditionTrue), "Istio is not Ready; unexpected Condition")
 						Success("Istio CR is Ready")
 					})
 
 					It("deploys istiod", func(ctx SpecContext) {
-						Eventually(func() (client.Object, error) {
-							return getObject(ctx, cl, getKey(controlPlaneNamespace, "istiod"), deployment)
-						}).Should(HaveCondition("Available", metav1.ConditionTrue), "Istiod is not Available; unexpected Condition")
+						Eventually(getObject).
+							WithArguments(ctx, cl, key("istiod", controlPlaneNamespace), deployment).
+							Should(HaveCondition(appsv1.DeploymentAvailable, metav1.ConditionTrue), "Istiod is not Available; unexpected Condition")
 						Expect(getVersionFromIstiod()).To(Equal(version.Version), "Unexpected istiod version")
 						Success("Istiod is deployed in the namespace and Running")
 					})
@@ -246,11 +247,9 @@ spec:
 					})
 
 					It("removes everything from the namespace", func(ctx SpecContext) {
-						// Check that the istiod deployment does not exist
-						Eventually(func() error {
-							_, err := getObject(ctx, cl, getKey(controlPlaneNamespace, "istiod"), deployment)
-							return err
-						}).ShouldNot(Succeed(), "Istiod should not exist anymore")
+						Eventually(cl.Get).
+							WithArguments(ctx, key("istiod", controlPlaneNamespace), deployment).
+							Should(ReturnNotFoundError(), "Istiod should not exist anymore")
 
 						// TODO: Add more validations to ensure that all resources are deleted from this namespace
 
@@ -265,11 +264,9 @@ spec:
 					})
 
 					It("removes everything from the CNI namespace", func(ctx SpecContext) {
-						// Check that the istio-cni-node daemonset does not exist
-						Eventually(func() error {
-							_, err := getObject(ctx, cl, getKey(istioCniNamespace, "istio-cni-node"), daemonset)
-							return err
-						}).ShouldNot(Succeed(), "IstioCNI DaemonSet should not exist anymore")
+						Eventually(cl.Get).
+							WithArguments(ctx, key("istio-cni-node", istioCniNamespace), daemonset).
+							Should(ReturnNotFoundError(), "IstioCNI DaemonSet should not exist anymore")
 
 						// TODO: Add more validations to ensure that all resources are deleted from this namespace
 
@@ -293,8 +290,11 @@ spec:
 			Expect(kubectl.DeleteNamespace(istioCniNamespace)).
 				To(Succeed(), "CNI namespace deletion failed")
 
+			By("Check namespaces are deleted")
 			ns := &corev1.Namespace{}
-			Eventually(getObject).WithArguments(ctx, cl, getCRDKey(controlPlaneNamespace), ns).
+			Eventually(cl.Get).WithArguments(ctx, key(controlPlaneNamespace), ns).
+				Should(ReturnNotFoundError(), "Namespace should not exist")
+			Eventually(cl.Get).WithArguments(ctx, key(istioCniNamespace), ns).
 				Should(ReturnNotFoundError(), "Namespace should not exist")
 			Success("Cleanup done")
 		})
@@ -370,7 +370,7 @@ func getCRDsName() []string {
 
 func LogDebugInfo() {
 	// General debugging information to help diagnose the failure
-	// TODO: Add more debugging information for IstioCNI
+	// TODO: Add more debugging information for IstioCNI, daemonset, and other resources
 	resource, err := kubectl.GetYAML(controlPlaneNamespace, "istio", istioName)
 	if err != nil {
 		GinkgoWriter.Println("Error getting Istio CR: ", err)
@@ -396,14 +396,14 @@ func LogDebugInfo() {
 	GinkgoWriter.Println("Logs from istiod pod: \n", logs)
 }
 
-// getKey returns the client.ObjectKey for the given object
-func getKey(namespace, name string) client.ObjectKey {
-	return client.ObjectKey{Namespace: namespace, Name: name}
-}
-
-// getCRDKey returns the client.ObjectKey for the given CRD name
-func getCRDKey(name string) client.ObjectKey {
-	return client.ObjectKey{Namespace: "", Name: name}
+// key returns the client.ObjectKey for the given name and namespace. If no namespace is provided, it returns a key cluster scoped
+func key(name string, namespace ...string) client.ObjectKey {
+	if len(namespace) > 1 {
+		panic("you can only provide one namespace")
+	} else if len(namespace) == 1 {
+		return client.ObjectKey{Name: name, Namespace: namespace[0]}
+	}
+	return client.ObjectKey{Name: name}
 }
 
 // getObject returns the object with the given key

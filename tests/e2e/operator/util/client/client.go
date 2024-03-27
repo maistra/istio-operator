@@ -18,6 +18,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/istio-ecosystem/sail-operator/pkg/scheme"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -27,14 +28,8 @@ import (
 )
 
 // getConfig returns the configuration of the kubernetes go-client
-func getConfig(kubeconfigPath string) (*rest.Config, error) {
-	// var kubeconfig *string
-	// if home := homedir.HomeDir(); home != "" {
-	// 	kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
-	// } else {
-	// 	kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
-	// }
-	kubeconfig := flag.String("kubeconfig", kubeconfigPath+"/config", "(optional) absolute path to the kubeconfig file")
+func getConfig() (*rest.Config, error) {
+	kubeconfig := flag.String("kubeconfig", os.Getenv("KUBECONFIG"), "(optional) absolute path to the kubeconfig file")
 	flag.Parse()
 
 	// use the current context in kubeconfig
@@ -47,8 +42,8 @@ func getConfig(kubeconfigPath string) (*rest.Config, error) {
 }
 
 // InitK8sClient returns the kubernetes clientset
-func InitK8sClient(kubeconfigPath string) (client.Client, error) {
-	config, err := getConfig(kubeconfigPath)
+func InitK8sClient() (client.Client, error) {
+	config, err := getConfig()
 	if err != nil {
 		return nil, fmt.Errorf("error getting config for k8s client: %v", err)
 	}
