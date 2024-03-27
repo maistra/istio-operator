@@ -106,9 +106,8 @@ var _ = Describe("Operator", Ordered, func() {
 		})
 
 		It("updates the CRDs status to Established", func(ctx SpecContext) {
-			for _, expectedCRD := range expectedCRDList {
-				Eventually(getObject).
-					WithArguments(ctx, cl, key(expectedCRD), crd).
+			for _, crdName := range expectedCRDList {
+				Eventually(getObject).WithArguments(ctx, cl, key(crdName), crd).
 					Should(HaveCondition(apiextensionsv1.Established, metav1.ConditionTrue), "Error getting Istio CRD")
 			}
 			Success("CRDs are Established")
@@ -163,8 +162,7 @@ spec:
 
 					It("deploys the CNI DaemonSet", func(ctx SpecContext) {
 						Eventually(func(g Gomega) {
-							_, err := getObject(ctx, cl, key("istio-cni-node", istioCniNamespace), daemonset)
-							g.Expect(err).ToNot(HaveOccurred(), "Error getting IstioCNI DaemonSet")
+							g.Expect(cl.Get(ctx, key("istio-cni-node", istioCniNamespace), daemonset)).To(Succeed(), "Error getting IstioCNI DaemonSet")
 							g.Expect(daemonset.Status.NumberAvailable).
 								To(Equal(daemonset.Status.CurrentNumberScheduled), "CNI DaemonSet Pods not Available; expected numberAvailable to be equal to currentNumberScheduled")
 						}).Should(Succeed(), "CNI DaemonSet Pods are not Available")
