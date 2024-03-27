@@ -96,7 +96,7 @@ var _ = Describe("Operator", Ordered, func() {
 		It("deploys all the CRDs", func(ctx SpecContext) {
 			Eventually(func(g Gomega) {
 				g.Expect(cl.List(ctx, crdList)).To(Succeed(), "Error getting CRDs list from the cluster")
-				crdNames := getCRDsName()
+				crdNames := getCRDsName(crdList)
 				g.Expect(crdNames).To(ContainElements(sailCRDs), "Istio CRDs are not present; expected list to contain all elements")
 			}).Should(Succeed(), "Unexpected error getting CRDs from the cluster")
 			Success("Istio CRDs are present")
@@ -331,7 +331,7 @@ func log(a ...any) {
 	GinkgoWriter.Println(a...)
 }
 
-func getCRDsName() []string {
+func getCRDsName(crdList *apiextensionsv1.CustomResourceDefinitionList) []string {
 	var crdNames []string
 	for _, crd := range crdList.Items {
 		crdNames = append(crdNames, crd.ObjectMeta.Name)
@@ -395,27 +395,18 @@ func checkNamespaceEmpty(ctx SpecContext, ns string) {
 	Eventually(func() ([]appsv1.Deployment, error) {
 		deploymentList := &appsv1.DeploymentList{}
 		err := cl.List(ctx, deploymentList, client.InNamespace(ns))
-		if err != nil {
-			return nil, err
-		}
-		return deploymentList.Items, nil
-	}).Should(HaveLen(0), "No Deployments should be present in the namespace")
+		return deploymentList.Items, err
+	}).Should(BeEmpty(), "No Deployments should be present in the namespace")
 
 	Eventually(func() ([]appsv1.DaemonSet, error) {
 		daemonsetList := &appsv1.DaemonSetList{}
 		err := cl.List(ctx, daemonsetList, client.InNamespace(ns))
-		if err != nil {
-			return nil, err
-		}
-		return daemonsetList.Items, nil
-	}).Should(HaveLen(0), "No DaemonSets should be present in the namespace")
+		return daemonsetList.Items, err
+	}).Should(BeEmpty(), "No DaemonSets should be present in the namespace")
 
 	Eventually(func() ([]corev1.Service, error) {
 		serviceList := &corev1.ServiceList{}
 		err := cl.List(ctx, serviceList, client.InNamespace(ns))
-		if err != nil {
-			return nil, err
-		}
-		return serviceList.Items, nil
-	}).Should(HaveLen(0), "No Services should be present in the namespace")
+		return serviceList.Items, err
+	}).Should(BeEmpty(), "No Services should be present in the namespace")
 }
