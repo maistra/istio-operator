@@ -212,7 +212,7 @@ spec:
 					It("updates the Istio CR status to Reconciled", func(ctx SpecContext) {
 						Eventually(func() (client.Object, error) {
 							return getObject(ctx, cl, getCRDKey(istioName), istio)
-						}).Should(HaveCondition("Reconciled", metav1.ConditionTrue), "Istio is not Reconciled; unexpected Condition")
+						}).Should(HaveCondition(v1alpha1.IstioCNIConditionTypeReconciled, metav1.ConditionTrue), "Istio is not Reconciled; unexpected Condition")
 						Success("Istio CR is Reconciled")
 					})
 
