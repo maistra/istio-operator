@@ -236,9 +236,7 @@ spec:
 					It("removes everything from the namespace", func(ctx SpecContext) {
 						Eventually(cl.Get).WithArguments(ctx, key("istiod", controlPlaneNamespace), deployment).
 							Should(ReturnNotFoundError(), "Istiod should not exist anymore")
-
-						// TODO: Add more validations to ensure that all resources are deleted from this namespace
-
+						checkNamespaceEmpty(ctx, controlPlaneNamespace)
 						Success("Namespace is empty")
 					})
 				})
@@ -252,9 +250,7 @@ spec:
 					It("removes everything from the CNI namespace", func(ctx SpecContext) {
 						Eventually(cl.Get).WithArguments(ctx, key("istio-cni-node", istioCniNamespace), daemonset).
 							Should(ReturnNotFoundError(), "IstioCNI DaemonSet should not exist anymore")
-
-						// TODO: Add more validations to ensure that all resources are deleted from this namespace
-
+						checkNamespaceEmpty(ctx, istioCniNamespace)
 						Success("CNI namespace is empty")
 					})
 				})
@@ -266,27 +262,17 @@ spec:
 				LogDebugInfo()
 			}
 
-			// TODO: make clean up also by using the client
 			By("Cleaning up the Istio namespace")
-			Expect(kubectl.DeleteNamespace(controlPlaneNamespace)).
-				To(Succeed(), "Namespace failed to be deleted")
+			Expect(cl.Delete(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: controlPlaneNamespace}})).To(Succeed(), "Istio Namespace failed to be deleted")
 
 			By("Cleaning up the IstioCNI namespace")
-			Expect(kubectl.DeleteNamespace(istioCniNamespace)).
-				To(Succeed(), "CNI namespace deletion failed")
+			Expect(cl.Delete(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: istioCniNamespace}})).To(Succeed(), "IstioCNI Namespace failed to be deleted")
 
-			By("Check namespaces are deleted")
-			ns := &corev1.Namespace{}
-			Eventually(cl.Get).WithArguments(ctx, key(controlPlaneNamespace), ns).
-				Should(ReturnNotFoundError(), "Namespace should not exist")
-			Eventually(cl.Get).WithArguments(ctx, key(istioCniNamespace), ns).
-				Should(ReturnNotFoundError(), "Namespace should not exist")
 			Success("Cleanup done")
 		})
 	})
 
 	AfterAll(func() {
-		// TODO: move this to use client
 		By("Deleting any left-over Istio and IstioRevision resources")
 		Expect(forceDeleteIstioResources()).To(Succeed())
 		Success("Resources deleted")
@@ -355,7 +341,7 @@ func getCRDsName() []string {
 
 func LogDebugInfo() {
 	// General debugging information to help diagnose the failure
-	// TODO: Add more debugging information for IstioCNI, daemonset, and other resources
+	// TODO: Add more debugging information for others resources
 	resource, err := kubectl.GetYAML(controlPlaneNamespace, "istio", istioName)
 	if err != nil {
 		GinkgoWriter.Println("Error getting Istio CR: ", err)
@@ -395,4 +381,44 @@ func key(name string, namespace ...string) client.ObjectKey {
 func getObject(ctx context.Context, cl client.Client, key client.ObjectKey, obj client.Object) (client.Object, error) {
 	err := cl.Get(ctx, key, obj)
 	return obj, err
+}
+
+// checkNamespaceEmpty checks if the given namespace is empty
+func checkNamespaceEmpty(ctx SpecContext, ns string) {
+	// TODO: Check to add more validations
+	Eventually(func() ([]corev1.Pod, error) {
+		podList := &corev1.PodList{}
+		err := cl.List(ctx, podList, client.InNamespace(ns))
+		if err != nil {
+			return nil, err
+		}
+		return podList.Items, nil
+	}).Should(HaveLen(0), "No pods should be present in the namespace")
+
+	Eventually(func() ([]appsv1.Deployment, error) {
+		deploymentList := &appsv1.DeploymentList{}
+		err := cl.List(ctx, deploymentList, client.InNamespace(ns))
+		if err != nil {
+			return nil, err
+		}
+		return deploymentList.Items, nil
+	}).Should(HaveLen(0), "No Deployments should be present in the namespace")
+
+	Eventually(func() ([]appsv1.DaemonSet, error) {
+		daemonsetList := &appsv1.DaemonSetList{}
+		err := cl.List(ctx, daemonsetList, client.InNamespace(ns))
+		if err != nil {
+			return nil, err
+		}
+		return daemonsetList.Items, nil
+	}).Should(HaveLen(0), "No DaemonSets should be present in the namespace")
+
+	Eventually(func() ([]corev1.Service, error) {
+		serviceList := &corev1.ServiceList{}
+		err := cl.List(ctx, serviceList, client.InNamespace(ns))
+		if err != nil {
+			return nil, err
+		}
+		return serviceList.Items, nil
+	}).Should(HaveLen(0), "No Services should be present in the namespace")
 }
