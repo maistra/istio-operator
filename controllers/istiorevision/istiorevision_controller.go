@@ -16,11 +16,11 @@ package istiorevision
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path"
 	"reflect"
 	"regexp"
-	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
@@ -33,7 +33,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -101,7 +101,7 @@ func (r *IstioRevisionReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	log := logf.FromContext(ctx)
 	var rev v1alpha1.IstioRevision
 	if err := r.Client.Get(ctx, req.NamespacedName, &rev); err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			log.V(2).Info("IstioRevision not found. Skipping reconciliation")
 			return ctrl.Result{}, nil
 		}
@@ -124,16 +124,12 @@ func (r *IstioRevisionReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	log.Info("Installing components")
-	err := r.installHelmCharts(ctx, &rev)
+	reconcileErr := r.installHelmCharts(ctx, &rev)
 
 	log.Info("Reconciliation done. Updating status.")
-	err = r.updateStatus(ctx, &rev, err)
-	if errors.IsConflict(err) {
-		log.Info("Status update failed. Requeuing reconciliation")
-		return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
-	}
+	statusErr := r.updateStatus(ctx, &rev, reconcileErr)
 
-	return ctrl.Result{}, err
+	return ctrl.Result{}, errors.Join(reconcileErr, statusErr)
 }
 
 func validateIstioRevision(rev v1alpha1.IstioRevision) error {
@@ -243,9 +239,8 @@ func (r *IstioRevisionReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *IstioRevisionReconciler) updateStatus(ctx context.Context, rev *v1alpha1.IstioRevision, err error) error {
-	log := logf.FromContext(ctx)
-	reconciledCondition := r.determineReconciledCondition(err)
+func (r *IstioRevisionReconciler) updateStatus(ctx context.Context, rev *v1alpha1.IstioRevision, reconcileErr error) error {
+	reconciledCondition := r.determineReconciledCondition(reconcileErr)
 	readyCondition := r.determineReadyCondition(ctx, rev)
 	inUseCondition := r.determineInUseCondition(ctx, rev)
 
@@ -259,18 +254,7 @@ func (r *IstioRevisionReconciler) updateStatus(ctx context.Context, rev *v1alpha
 	if reflect.DeepEqual(rev.Status, *status) {
 		return nil
 	}
-
-	statusErr := r.Client.Status().Patch(ctx, rev, kube.NewStatusPatch(*status))
-	if statusErr != nil {
-		log.Error(statusErr, "failed to patch status")
-
-		// ensure that we retry the reconcile by returning the status error
-		// (but without overriding the original error)
-		if err == nil {
-			return statusErr
-		}
-	}
-	return err
+	return r.Client.Status().Patch(ctx, rev, kube.NewStatusPatch(*status))
 }
 
 func deriveState(reconciledCondition, readyCondition v1alpha1.IstioRevisionCondition) v1alpha1.IstioRevisionConditionReason {
@@ -312,7 +296,7 @@ func (r *IstioRevisionReconciler) determineReadyCondition(ctx context.Context, r
 		} else {
 			c.Status = metav1.ConditionTrue
 		}
-	} else if errors.IsNotFound(err) {
+	} else if apierrors.IsNotFound(err) {
 		c.Reason = v1alpha1.IstioRevisionReasonIstiodNotReady
 		c.Message = "istiod Deployment not found"
 	} else {

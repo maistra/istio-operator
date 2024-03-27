@@ -16,6 +16,7 @@ package istiocni
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path"
 	"reflect"
@@ -29,7 +30,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
@@ -93,7 +94,7 @@ func (r *IstioCNIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	log := logf.FromContext(ctx)
 	var cni v1alpha1.IstioCNI
 	if err := r.Client.Get(ctx, req.NamespacedName, &cni); err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			log.V(2).Info("IstioCNI not found. Skipping reconciliation")
 			return ctrl.Result{}, nil
 		}
@@ -116,12 +117,12 @@ func (r *IstioCNIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	log.Info("Installing components")
-	err := r.installHelmChart(ctx, &cni)
+	reconcileErr := r.installHelmChart(ctx, &cni)
 
 	log.Info("Reconciliation done. Updating status.")
-	err = r.updateStatus(ctx, &cni, err)
+	statusErr := r.updateStatus(ctx, &cni, reconcileErr)
 
-	return ctrl.Result{}, err
+	return ctrl.Result{}, errors.Join(reconcileErr, statusErr)
 }
 
 func validateIstioCNI(cni v1alpha1.IstioCNI) error {
@@ -252,19 +253,7 @@ func (r *IstioCNIReconciler) updateStatus(ctx context.Context, cni *v1alpha1.Ist
 	if reflect.DeepEqual(cni.Status, status) {
 		return nil
 	}
-
-	statusErr := r.Client.Status().Patch(ctx, cni, kube.NewStatusPatch(status))
-	if statusErr != nil {
-		log := logf.FromContext(ctx)
-		log.Error(statusErr, "failed to patch status")
-
-		// ensure that we retry the reconcile by returning the status error
-		// (but without overriding the original error)
-		if reconcileErr == nil {
-			return statusErr
-		}
-	}
-	return reconcileErr
+	return r.Client.Status().Patch(ctx, cni, kube.NewStatusPatch(status))
 }
 
 func deriveState(reconciledCondition, readyCondition v1alpha1.IstioCNICondition) v1alpha1.IstioCNIConditionReason {
@@ -306,7 +295,7 @@ func (r *IstioCNIReconciler) determineReadyCondition(ctx context.Context, cni *v
 		} else {
 			c.Status = metav1.ConditionTrue
 		}
-	} else if errors.IsNotFound(err) {
+	} else if apierrors.IsNotFound(err) {
 		c.Reason = v1alpha1.IstioCNIDaemonSetNotReady
 		c.Message = "istio-cni-node DaemonSet not found"
 	} else {
