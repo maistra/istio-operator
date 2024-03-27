@@ -389,11 +389,8 @@ func checkNamespaceEmpty(ctx SpecContext, ns string) {
 	Eventually(func() ([]corev1.Pod, error) {
 		podList := &corev1.PodList{}
 		err := cl.List(ctx, podList, client.InNamespace(ns))
-		if err != nil {
-			return nil, err
-		}
-		return podList.Items, nil
-	}).Should(HaveLen(0), "No pods should be present in the namespace")
+		return podList.Items, err
+	}).Should(BeEmpty(), "No pods should be present in the namespace")
 
 	Eventually(func() ([]appsv1.Deployment, error) {
 		deploymentList := &appsv1.DeploymentList{}
