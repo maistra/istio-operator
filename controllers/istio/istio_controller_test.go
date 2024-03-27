@@ -271,7 +271,7 @@ func TestUpdateStatus(t *testing.T) {
 		{
 			name:              "reconciliation error",
 			reconciliationErr: fmt.Errorf("reconciliation error"),
-			wantErr:           true,
+			wantErr:           false,
 			expectedStatus: v1alpha1.IstioStatus{
 				State:              v1alpha1.IstioReasonReconcileError,
 				ObservedGeneration: generation,

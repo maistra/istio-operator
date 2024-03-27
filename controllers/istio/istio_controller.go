@@ -16,6 +16,7 @@ package istio
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path"
 	"reflect"
@@ -27,7 +28,7 @@ import (
 	"github.com/istio-ecosystem/sail-operator/pkg/common"
 	"github.com/istio-ecosystem/sail-operator/pkg/kube"
 	"github.com/istio-ecosystem/sail-operator/pkg/profiles"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -71,7 +72,7 @@ func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 	var istio v1alpha1.Istio
 	if err := r.Client.Get(ctx, req.NamespacedName, &istio); err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			log.V(2).Info("Istio not found. Skipping reconciliation")
 			return ctrl.Result{}, nil
 		}
@@ -83,15 +84,12 @@ func (r *IstioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	log.Info("Reconciling")
-	result, err := r.doReconcile(ctx, istio)
+	result, reconcileErr := r.doReconcile(ctx, istio)
 
 	log.Info("Reconciliation done. Updating status.")
-	err = r.updateStatus(ctx, &istio, err)
-	if errors.IsConflict(err) {
-		log.Info("Status update failed. Requeuing reconciliation")
-		return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
-	}
-	return result, err
+	statusErr := r.updateStatus(ctx, &istio, reconcileErr)
+
+	return result, errors.Join(reconcileErr, statusErr)
 }
 
 // doReconcile is the function that actually reconciles the Istio object. Any error reported by this
@@ -129,11 +127,11 @@ func (r *IstioReconciler) reconcileActiveRevision(ctx context.Context, istio *v1
 		rev.Spec.Version = istio.Spec.Version
 		rev.Spec.Values = values
 		log.Info("Updating IstioRevision")
-		if err = r.Client.Update(ctx, &rev); errors.IsConflict(err) {
+		if err = r.Client.Update(ctx, &rev); apierrors.IsConflict(err) {
 			log.Info("IstioRevision update failed. Requeuing reconciliation")
 			return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
 		}
-	} else if errors.IsNotFound(err) {
+	} else if apierrors.IsNotFound(err) {
 		// create new
 		rev = v1alpha1.IstioRevision{
 			ObjectMeta: metav1.ObjectMeta{
@@ -156,7 +154,7 @@ func (r *IstioReconciler) reconcileActiveRevision(ctx context.Context, istio *v1
 			},
 		}
 		log.Info("Creating IstioRevision")
-		if err = r.Client.Create(ctx, &rev); errors.IsForbidden(err) && strings.Contains(err.Error(), "RESTMapping") {
+		if err = r.Client.Create(ctx, &rev); apierrors.IsForbidden(err) && strings.Contains(err.Error(), "RESTMapping") {
 			log.Info("APIServer seems to be not ready - RESTMapper of gc admission plugin is not up to date. Trying again in 5 seconds", "error", err)
 			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 		}
@@ -398,17 +396,17 @@ func (r *IstioReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *IstioReconciler) updateStatus(ctx context.Context, istio *v1alpha1.Istio, reconciliationErr error) error {
+func (r *IstioReconciler) updateStatus(ctx context.Context, istio *v1alpha1.Istio, reconcileErr error) error {
 	status := istio.Status.DeepCopy()
 	status.ObservedGeneration = istio.Generation
 
 	// set Reconciled and Ready conditions
-	if reconciliationErr != nil {
+	if reconcileErr != nil {
 		status.SetCondition(v1alpha1.IstioCondition{
 			Type:    v1alpha1.IstioConditionReconciled,
 			Status:  metav1.ConditionFalse,
 			Reason:  v1alpha1.IstioReasonReconcileError,
-			Message: reconciliationErr.Error(),
+			Message: reconcileErr.Error(),
 		})
 		status.SetCondition(v1alpha1.IstioCondition{
 			Type:    v1alpha1.IstioConditionReady,
@@ -419,7 +417,7 @@ func (r *IstioReconciler) updateStatus(ctx context.Context, istio *v1alpha1.Isti
 		status.State = v1alpha1.IstioReasonReconcileError
 	} else {
 		rev, err := r.getActiveRevision(ctx, istio)
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			revisionNotFound := func(conditionType v1alpha1.IstioConditionType) v1alpha1.IstioCondition {
 				return v1alpha1.IstioCondition{
 					Type:    conditionType,
@@ -462,11 +460,7 @@ func (r *IstioReconciler) updateStatus(ctx context.Context, istio *v1alpha1.Isti
 		return nil
 	}
 
-	statusErr := r.Client.Status().Patch(ctx, istio, kube.NewStatusPatch(*status))
-	if statusErr != nil {
-		return statusErr
-	}
-	return reconciliationErr
+	return r.Client.Status().Patch(ctx, istio, kube.NewStatusPatch(*status))
 }
 
 func convertCondition(condition v1alpha1.IstioRevisionCondition) v1alpha1.IstioCondition {
