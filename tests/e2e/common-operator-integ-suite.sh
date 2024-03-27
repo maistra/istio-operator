@@ -80,6 +80,7 @@ initialize_variables() {
   CONTROL_PLANE_NS="${CONTROL_PLANE_NS:-istio-system}"
   COMMAND="kubectl"
   ARTIFACTS="${ARTIFACTS:-$(mktemp -d)}"
+  KUBECONFIG="${KUBECONFIG:-"${ARTIFACTS}/config"}"
 
   if [ "${OCP}" == "true" ]; then
     COMMAND="oc"
@@ -211,5 +212,5 @@ fi
 # Run the go test passing the env variables defined that are going to be used in the operator tests
 IMAGE="${HUB}/${IMAGE_BASE}:${TAG}" SKIP_DEPLOY="${SKIP_DEPLOY}" OCP="${OCP}" ISTIO_MANIFEST="${ISTIO_MANIFEST}" \
 NAMESPACE="${NAMESPACE}" CONTROL_PLANE_NS="${CONTROL_PLANE_NS}" DEPLOYMENT_NAME="${DEPLOYMENT_NAME}" \
-ISTIO_NAME="${ISTIO_NAME}" COMMAND="${COMMAND}" VERSIONS_YAML_FILE="${VERSIONS_YAML_FILE}" KUBECONFIG="${ARTIFACTS}/config" \
+ISTIO_NAME="${ISTIO_NAME}" COMMAND="${COMMAND}" VERSIONS_YAML_FILE="${VERSIONS_YAML_FILE}" KUBECONFIG="${KUBECONFIG}" \
 go run github.com/onsi/ginkgo/v2/ginkgo -tags e2e "${VERBOSE_FLAG}" --timeout 30m --junit-report=report.xml "${NOCOLOR}" "${WD}"/operator/...
