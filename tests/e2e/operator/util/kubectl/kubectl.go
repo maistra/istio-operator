@@ -15,7 +15,6 @@
 package kubectl
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -79,131 +78,6 @@ func DeleteString(yamlString string) error {
 	return nil
 }
 
-// GetConditions returns the condition of a resource
-func GetConditions(ns, kind, name string) ([]Condition, error) {
-	output, err := GetJSON(ns, kind, name)
-	if err != nil {
-		return []Condition{}, err
-	}
-
-	var resource Resource
-	err = json.Unmarshal([]byte(output), &resource)
-	if err != nil {
-		return []Condition{}, err
-	}
-
-	return resource.Status.Conditions, nil
-}
-
-// GetPodPhase returns the phase of a pod
-func GetPodPhase(ns, selector string) (string, error) {
-	podName, err := GetPodName(ns, selector)
-	if err != nil {
-		return "", err
-	}
-
-	output, err := GetJSON(ns, "pod", podName)
-	if err != nil {
-		return "", err
-	}
-
-	var resource Resource
-	err = json.Unmarshal([]byte(output), &resource)
-	if err != nil {
-		return "", err
-	}
-
-	return resource.Status.Phase, nil
-}
-
-// GetCRDs returns all the CRDs names in a list
-func GetCRDs() ([]string, error) {
-	cmd := kubectl("get crds -o name")
-	output, err := shell.ExecuteCommand(cmd)
-	if err != nil {
-		return []string{}, fmt.Errorf("error getting crds: %v", err)
-	}
-	return extractNames(output), nil
-}
-
-// GetResourceList returns a json list of the resources of a namespace by resource name
-func GetResourceList(ns, kind string) (ResourceList, error) {
-	// TODO: improve the function to get all the resources
-	output, err := GetJSON(ns, kind, "")
-	if err != nil {
-		return EmptyResourceList, err
-	}
-
-	var resourceList ResourceList
-	err = json.Unmarshal([]byte(output), &resourceList)
-	if err != nil {
-		return EmptyResourceList, err
-	}
-
-	// Return an empty list if there are no resources
-	if len(resourceList.Items) == 0 {
-		return EmptyResourceList, nil
-	}
-
-	return resourceList, nil
-}
-
-// GetJSON returns the json of a resource
-// Arguments:
-// - ns: namespace
-// - kind: type of the resource
-// - name: name of the resource
-func GetJSON(ns, kind, name string) (string, error) {
-	cmd := kubectl("get %s %s %s -o json", kind, name, nsflag(ns))
-	return shell.ExecuteCommand(cmd)
-}
-
-// GetYAML returns the yaml of a resource
-// Arguments:
-// - ns: namespace
-// - kind: type of the resource
-// - name: name of the resource
-func GetYAML(ns, kind, name string) (string, error) {
-	cmd := kubectl("get %s %s %s -o yaml", kind, name, nsflag(ns))
-	return shell.ExecuteCommand(cmd)
-}
-
-// GetPodName returns the pod name from a selector, if there is more than one pod, it will return an error
-func GetPodName(ns, selector string) (string, error) {
-	podList, err := GetPodsNames(ns, selector)
-	if err != nil {
-		return "", err
-	}
-	if len(podList) > 1 {
-		return "", fmt.Errorf("more than one pod found with selector %s", selector)
-	}
-	if len(podList) == 0 {
-		return "", fmt.Errorf("no pod found with selector %s", selector)
-	}
-
-	return podList[0], nil
-}
-
-// GetPodsNames returns the pods names from a given selector
-func GetPodsNames(ns, selector string) ([]string, error) {
-	output, err := GetPods(ns, "-l", selector, "-o name")
-	if err != nil {
-		return nil, err
-	}
-	return extractNames(output), nil
-}
-
-// GetPods returns the pods of a namespace
-func GetPods(ns string, args ...string) (string, error) {
-	cmd := kubectl("get pods %s %s", nsflag(ns), strings.Join(args, " "))
-	output, err := shell.ExecuteCommand(cmd)
-	if err != nil {
-		return "", fmt.Errorf("error getting pods: %v, output: %s", err, output)
-	}
-
-	return output, nil
-}
-
 // CreateNamespace creates a namespace
 // If the namespace already exists, it will return nil
 func CreateNamespace(ns string) error {
@@ -231,39 +105,25 @@ func DeleteNamespace(ns string) error {
 	return nil
 }
 
-// CheckNamespaceExist checks if a namespace exists
-// If the namespace exists, it will return nil
-// If the namespace does not exist, it will return an error
-func CheckNamespaceExist(ns string) error {
-	cmd := kubectl("get namespace %s -o jsonpath={metadata.name}", ns)
-	_, err := shell.ExecuteCommand(cmd)
-	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			return ErrNotFound
-		}
-
-		return fmt.Errorf("error checking namespace: %v", err)
-	}
-
-	return nil
-}
-
-// GetDeployments returns the deployments of a namespace
-func GetDeployments(ns string) ([]string, error) {
-	cmd := kubectl("get deployments %s -o name", nsflag(ns))
-	output, err := shell.ExecuteCommand(cmd)
-	if err != nil {
-		return nil, fmt.Errorf("error getting deployments names: %v, output: %s", err, output)
-	}
-	return extractNames(output), nil
-}
-
 // Delete deletes a resource based on the namespace, kind and the name
 func Delete(ns, kind, name string) error {
 	cmd := kubectl("delete %s %s %s", kind, name, nsflag(ns))
 	_, err := shell.ExecuteCommand(cmd)
 	if err != nil {
 		return fmt.Errorf("error deleting deployment: %v", err)
+	}
+
+	return nil
+}
+
+// DeleteCRDs deletes the CRDs by given list of crds names
+func DeleteCRDs(crds []string) error {
+	for _, crd := range crds {
+		cmd := kubectl("delete crd %s", crd)
+		_, err := shell.ExecuteCommand(cmd)
+		if err != nil {
+			return fmt.Errorf("error deleting crd %s: %v", crd, err)
+		}
 	}
 
 	return nil
@@ -285,6 +145,27 @@ func ForceDelete(ns, kind, name string) error {
 		return err
 	}
 	return Delete(ns, kind, name)
+}
+
+// GetYAML returns the yaml of a resource
+// Arguments:
+// - ns: namespace
+// - kind: type of the resource
+// - name: name of the resource
+func GetYAML(ns, kind, name string) (string, error) {
+	cmd := kubectl("get %s %s %s -o yaml", kind, name, nsflag(ns))
+	return shell.ExecuteCommand(cmd)
+}
+
+// GetPods returns the pods of a namespace
+func GetPods(ns string, args ...string) (string, error) {
+	cmd := kubectl("get pods %s %s", nsflag(ns), strings.Join(args, " "))
+	output, err := shell.ExecuteCommand(cmd)
+	if err != nil {
+		return "", fmt.Errorf("error getting pods: %v, output: %s", err, output)
+	}
+
+	return output, nil
 }
 
 // Logs returns the logs of a deployment
@@ -318,44 +199,6 @@ func Exec(ns, pod string, command string) (string, error) {
 	return output, nil
 }
 
-// GetDaemonSets returns the daemonsets of a namespace
-// Return a list of daemonsets
-func GetDaemonSets(ns string) ([]string, error) {
-	cmd := kubectl("get daemonsets %s -o name", nsflag(ns))
-	output, err := shell.ExecuteCommand(cmd)
-	if err != nil {
-		return nil, fmt.Errorf("error getting daemonsets names: %v, output: %s", err, output)
-	}
-	return extractNames(output), nil
-}
-
-// GetDaemonSetStatusField returns the status field requested of a daemonset
-// Parameters examples:
-// - numberAvailable
-// - currentNumberScheduled
-// - desiredNumberScheduled
-func GetDaemonSetStatusField(ns, daemonsetName, field string) (string, error) {
-	cmd := kubectl("get daemonset %s %s -o jsonpath='{.status.%s}'", daemonsetName, nsflag(ns), field)
-	output, err := shell.ExecuteCommand(cmd)
-	if err != nil {
-		return "", fmt.Errorf("error getting daemonset %s: %v", daemonsetName, err)
-	}
-
-	return output, nil
-}
-
-func extractNames(str string) []string {
-	var names []string
-	for _, name := range strings.Split(str, "\n") {
-		if name != "" {
-			// -o name return the resource name with the kind, for example: deployment.apps/istiod
-			names = append(names, strings.Split(name, "/")[1])
-		}
-	}
-
-	return names
-}
-
 // prepend prepends the prefix, but only if str is not empty
 func prepend(prefix, str string) string {
 	if str == "" {
@@ -369,17 +212,4 @@ func nsflag(ns string) string {
 		return "--all-namespaces"
 	}
 	return "-n " + ns
-}
-
-// DeleteCRDs deletes the CRDs by given list of crds names
-func DeleteCRDs(crds []string) error {
-	for _, crd := range crds {
-		cmd := kubectl("delete crd %s", crd)
-		_, err := shell.ExecuteCommand(cmd)
-		if err != nil {
-			return fmt.Errorf("error deleting crd %s: %v", crd, err)
-		}
-	}
-
-	return nil
 }

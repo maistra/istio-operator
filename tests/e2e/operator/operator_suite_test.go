@@ -19,8 +19,15 @@ package operator
 import (
 	"testing"
 
+	k8sclient "github.com/istio-ecosystem/sail-operator/tests/e2e/operator/util/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+var (
+	cl  client.Client
+	err error
 )
 
 func TestInstall(t *testing.T) {
@@ -31,6 +38,11 @@ func TestInstall(t *testing.T) {
 
 func setup() {
 	GinkgoWriter.Println("************ Running Setup ************")
+
+	GinkgoWriter.Println("Initializing k8s client")
+	cl, err = k8sclient.InitK8sClient()
+	Expect(err).NotTo(HaveOccurred())
+
 	if ocp {
 		GinkgoWriter.Println("Running on OCP cluster")
 		GinkgoWriter.Printf("Absolute Path: %s\n", wd)

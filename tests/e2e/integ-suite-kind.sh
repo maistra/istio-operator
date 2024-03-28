@@ -36,7 +36,7 @@ export KIND_CLUSTER_NAME="${KIND_CLUSTER_NAME:-operator-integration-tests}"
 # Use the local registry instead of the default HUB
 export HUB="${KIND_REGISTRY}"
 # Workaround make inside make: ovewrite this variable so it is not recomputed in Makefile.core.mk
-export IMAGE="${HUB}/${IMAGE_BASE:-istio-operator}:${TAG:-latest}"
+export IMAGE="${HUB}/${IMAGE_BASE:-sail-operator}:${TAG:-latest}"
 
 # Copied from Istio: https://github.com/istio/istio/blob/861abfbc050c5be41154054853fe70336a851ce9/prow/lib.sh#L149
 function setup_kind_registry() {
@@ -59,9 +59,9 @@ function setup_kind_registry() {
   done
 }
 
-setup_kind_cluster "${KIND_CLUSTER_NAME}" "" "" "true" "true"
+KUBECONFIG="${ARTIFACTS}/config" setup_kind_cluster "${KIND_CLUSTER_NAME}" "" "" "true" "true"
 setup_kind_registry
 
 # Run the integration tests
 echo "Running integration tests"
-./tests/e2e/common-operator-integ-suite.sh --kind
+ARTIFACTS="${ARTIFACTS}" ./tests/e2e/common-operator-integ-suite.sh --kind

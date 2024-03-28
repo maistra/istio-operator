@@ -20,4 +20,11 @@ set -eux -o pipefail
 
 # Run the integration tests
 echo "Running integration tests"
-./tests/e2e/common-operator-integ-suite.sh --ocp
+
+# Check if KUBECONFIG is set
+if [ -z "${KUBECONFIG}" ]; then
+    echo "KUBECONFIG is not set. KUBECTL will not be able to connect to the cluster. Exiting."
+    exit 1
+fi
+
+KUBECONFIG="${KUBECONFIG}" ./tests/e2e/common-operator-integ-suite.sh --ocp
