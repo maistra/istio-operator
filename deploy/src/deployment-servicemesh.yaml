@@ -43,8 +43,8 @@ spec:
         olm.relatedImage.v2_5.cni: ${OSSM_CNI_IMAGE}
         olm.relatedImage.v2_5.grafana: ${OSSM_GRAFANA_IMAGE}
         olm.relatedImage.v2_5.pilot: ${OSSM_PILOT_IMAGE}
-        olm.relatedImage.v2_5.prometheus: registry.redhat.io/openshift4/ose-prometheus:v4.13
-        olm.relatedImage.v2_5.prometheus-config-reloader: registry.redhat.io/openshift4/ose-prometheus-config-reloader:v4.13
+        olm.relatedImage.v2_5.prometheus: registry.redhat.io/openshift4/ose-prometheus:v4.12
+        olm.relatedImage.v2_5.prometheus-config-reloader: registry.redhat.io/openshift4/ose-prometheus-config-reloader:v4.12
         olm.relatedImage.v2_5.proxyv2: ${OSSM_PROXY_IMAGE}
         olm.relatedImage.v2_5.rls: ${OSSM_RATELIMIT_IMAGE}
 
