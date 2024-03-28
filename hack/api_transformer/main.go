@@ -141,7 +141,7 @@ func merge(local, global *Transformations) *Transformations {
 }
 
 func mergeStringArrays(arrays ...[]string) []string {
-	result := []string{}
+	var result []string
 	for _, a := range arrays {
 		if a != nil {
 			result = append(result, a...)

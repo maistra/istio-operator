@@ -237,7 +237,7 @@ func (r *IstioReconciler) getRevisions(ctx context.Context, istio *v1alpha1.Isti
 		return nil, err
 	}
 
-	revisions := []v1alpha1.IstioRevision{}
+	var revisions []v1alpha1.IstioRevision
 	for _, rev := range revList.Items {
 		if isRevisionOwnedByIstio(rev, istio) {
 			revisions = append(revisions, rev)
