@@ -87,7 +87,7 @@ func main() {
 
 	setupLog.Info(version.Info.String())
 	setupLog.Info("reading config")
-	err := config.ReadConfig(configFile)
+	err := config.Read(configFile)
 	if err != nil {
 		setupLog.Error(err, "unable to read config file at "+configFile)
 		os.Exit(1)

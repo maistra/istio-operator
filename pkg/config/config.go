@@ -42,7 +42,7 @@ type IstioImageConfig struct {
 	ZTunnelImage string `properties:"ztunnel"`
 }
 
-func ReadConfig(configFile string) error {
+func Read(configFile string) error {
 	p, err := properties.LoadFile(configFile, properties.UTF8)
 	if err != nil {
 		return err

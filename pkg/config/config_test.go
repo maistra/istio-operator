@@ -28,7 +28,7 @@ var testImages = IstioImageConfig{
 	ZTunnelImage: "ztunnel-test",
 }
 
-func TestReadConfig(t *testing.T) {
+func TestRead(t *testing.T) {
 	testCases := []struct {
 		name           string
 		configFile     string
@@ -99,7 +99,7 @@ images.v1_20_0.ztunnel=ztunnel-test
 		}()
 
 		file.WriteString(tc.configFile)
-		err = ReadConfig(file.Name())
+		err = Read(file.Name())
 		if !tc.success {
 			if err != nil {
 				return
