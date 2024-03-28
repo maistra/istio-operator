@@ -26,7 +26,7 @@ import (
 	"istio.io/istio/pkg/util/sets"
 )
 
-func Apply(profilesDir string, profiles []string, userValues helm.HelmValues) (helm.HelmValues, error) {
+func Apply(profilesDir string, profiles []string, userValues helm.Values) (helm.Values, error) {
 	defaultValues, err := getValuesFromProfiles(profilesDir, profiles)
 	if err != nil {
 		return nil, err
@@ -34,9 +34,9 @@ func Apply(profilesDir string, profiles []string, userValues helm.HelmValues) (h
 	return mergeOverwrite(defaultValues, userValues), nil
 }
 
-func getValuesFromProfiles(profilesDir string, profiles []string) (helm.HelmValues, error) {
+func getValuesFromProfiles(profilesDir string, profiles []string) (helm.Values, error) {
 	// start with an empty values map
-	values := helm.HelmValues{}
+	values := helm.Values{}
 
 	// apply profiles in order, overwriting values from previous profiles
 	alreadyApplied := sets.New[string]()
@@ -65,7 +65,7 @@ func getValuesFromProfiles(profilesDir string, profiles []string) (helm.HelmValu
 	return values, nil
 }
 
-func getProfileValues(file string) (helm.HelmValues, error) {
+func getProfileValues(file string) (helm.Values, error) {
 	fileContents, err := os.ReadFile(file)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read profile file %v: %v", file, err)

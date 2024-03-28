@@ -53,18 +53,18 @@ spec:
 	tests := []struct {
 		name         string
 		profiles     []string
-		expectValues helm.HelmValues
+		expectValues helm.Values
 		expectErr    bool
 	}{
 		{
 			name:         "nil default profiles",
 			profiles:     nil,
-			expectValues: helm.HelmValues{},
+			expectValues: helm.Values{},
 		},
 		{
 			name:     "default profile only",
 			profiles: []string{"default"},
-			expectValues: helm.HelmValues{
+			expectValues: helm.Values{
 				"value1": "1-from-default",
 				"value2": "2-from-default",
 			},
@@ -72,7 +72,7 @@ spec:
 		{
 			name:     "default and overlay",
 			profiles: []string{"default", "overlay"},
-			expectValues: helm.HelmValues{
+			expectValues: helm.Values{
 				"value1": "1-from-default",
 				"value2": "2-from-overlay",
 			},
@@ -80,7 +80,7 @@ spec:
 		{
 			name:     "default and overlay and custom",
 			profiles: []string{"default", "overlay", "custom"},
-			expectValues: helm.HelmValues{
+			expectValues: helm.Values{
 				"value1": "1-from-custom",
 				"value2": "2-from-overlay",
 			},

@@ -22,23 +22,23 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-type HelmValues map[string]any
+type Values map[string]any
 
 // GetBool returns the bool value of a nested field.
 // Returns false if value is not found and an error if not a bool.
-func (h *HelmValues) GetBool(key string) (bool, bool, error) {
+func (h *Values) GetBool(key string) (bool, bool, error) {
 	return unstructured.NestedBool(*h, toKeys(key)...)
 }
 
 // GetString returns the string value of a nested field.
 // Returns false if value is not found and an error if not a string.
-func (h HelmValues) GetString(key string) (string, bool, error) {
+func (h Values) GetString(key string) (string, bool, error) {
 	return unstructured.NestedString(h, toKeys(key)...)
 }
 
 // Set sets the value of a nested field to a deep copy of the value provided.
 // Returns an error if value cannot be set because one of the nesting levels is not a map[string]any.
-func (h HelmValues) Set(key string, val any) error {
+func (h Values) Set(key string, val any) error {
 	return unstructured.SetNestedField(h, val, toKeys(key)...)
 }
 
@@ -46,8 +46,8 @@ func toKeys(key string) []string {
 	return strings.Split(key, ".")
 }
 
-func FromValues(values any) HelmValues {
-	var obj HelmValues
+func FromValues(values any) Values {
+	var obj Values
 	data, err := json.Marshal(values)
 	if err != nil {
 		panic(err)
@@ -58,7 +58,7 @@ func FromValues(values any) HelmValues {
 	return obj
 }
 
-func ToValues[V any](helmValues HelmValues, values V) (V, error) {
+func ToValues[V any](helmValues Values, values V) (V, error) {
 	data, err := json.Marshal(helmValues)
 	if err != nil {
 		return values, err
