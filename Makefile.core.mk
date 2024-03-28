@@ -72,6 +72,7 @@ ENVTEST_K8S_VERSION ?= 1.29.0
 DOCKER_BUILD_FLAGS ?= "--platform=$(TARGET_OS)/$(TARGET_ARCH)"
 
 VERBOSE_FLAG := $(if $(VERBOSE),-v)
+NOCOLOR_FLAG := $(if [ -t 1 ],--no-color,)
 
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
@@ -153,7 +154,7 @@ test.unit: envtest  ## Run unit tests.
 .PHONY: test.integration
 test.integration: envtest ## Run integration tests located in the tests/integration directory.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" \
-	go run github.com/onsi/ginkgo/v2/ginkgo --tags=integration $(VERBOSE_FLAG) ./tests/integration/...
+	go run github.com/onsi/ginkgo/v2/ginkgo --tags=integration $(VERBOSE_FLAG) $(NOCOLOR_FLAG) ./tests/integration/...
 
 .PHONY: test.scorecard
 test.scorecard: operator-sdk ## Run the operator scorecard test.
