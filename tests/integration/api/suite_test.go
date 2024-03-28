@@ -24,7 +24,7 @@ import (
 	"github.com/istio-ecosystem/sail-operator/controllers/istio"
 	"github.com/istio-ecosystem/sail-operator/controllers/istiocni"
 	"github.com/istio-ecosystem/sail-operator/controllers/istiorevision"
-	"github.com/istio-ecosystem/sail-operator/pkg/common"
+	"github.com/istio-ecosystem/sail-operator/pkg/config"
 	"github.com/istio-ecosystem/sail-operator/pkg/helm"
 	"github.com/istio-ecosystem/sail-operator/pkg/scheme"
 	"github.com/istio-ecosystem/sail-operator/pkg/test"
@@ -69,7 +69,7 @@ var _ = BeforeSuite(func() {
 	}
 
 	chartManager := helm.NewChartManager(mgr.GetConfig(), "")
-	resourceDir := path.Join(common.RepositoryRoot, "resources")
+	resourceDir := path.Join(config.RepositoryRoot, "resources")
 	defaultProfiles := []string{"default"}
 
 	Expect(istio.NewIstioReconciler(mgr.GetClient(), mgr.GetScheme(), resourceDir, defaultProfiles).
@@ -78,7 +78,7 @@ var _ = BeforeSuite(func() {
 	Expect(istiorevision.NewIstioRevisionReconciler(mgr.GetClient(), mgr.GetScheme(), resourceDir, chartManager).
 		SetupWithManager(mgr)).To(Succeed())
 
-	Expect(istiocni.NewIstioCNIReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), resourceDir, chartManager, defaultProfiles).
+	Expect(istiocni.NewIstioCNIReconciler(mgr.GetClient(), mgr.GetScheme(), resourceDir, chartManager, defaultProfiles).
 		SetupWithManager(mgr)).To(Succeed())
 
 	// create new cancellable context

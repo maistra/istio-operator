@@ -24,7 +24,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
-	"github.com/istio-ecosystem/sail-operator/pkg/common"
+	"github.com/istio-ecosystem/sail-operator/pkg/constants"
 	"github.com/istio-ecosystem/sail-operator/pkg/helm"
 	"github.com/istio-ecosystem/sail-operator/pkg/kube"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
@@ -57,7 +57,7 @@ const (
 	IstioRevLabel              = "istio.io/rev"
 	IstioSidecarInjectLabel    = "sidecar.istio.io/inject"
 
-	finalizer = common.FinalizerName
+	finalizer = constants.FinalizerName
 )
 
 // IstioRevisionReconciler reconciles an IstioRevision object

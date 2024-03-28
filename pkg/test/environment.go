@@ -18,7 +18,7 @@ import (
 	"io"
 	"path"
 
-	"github.com/istio-ecosystem/sail-operator/pkg/common"
+	"github.com/istio-ecosystem/sail-operator/pkg/config"
 	"github.com/istio-ecosystem/sail-operator/pkg/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,7 +32,7 @@ func SetupEnv(logWriter io.Writer, installCRDs bool) (*envtest.Environment, clie
 
 	var crdDirectoryPaths []string
 	if installCRDs {
-		crdDirectoryPaths = append(crdDirectoryPaths, path.Join(common.RepositoryRoot, "chart", "crds"))
+		crdDirectoryPaths = append(crdDirectoryPaths, path.Join(config.RepositoryRoot, "chart", "crds"))
 	}
 
 	testEnv := &envtest.Environment{

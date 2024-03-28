@@ -25,7 +25,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
-	"github.com/istio-ecosystem/sail-operator/pkg/common"
+	"github.com/istio-ecosystem/sail-operator/pkg/config"
 	"github.com/istio-ecosystem/sail-operator/pkg/helm"
 	"github.com/istio-ecosystem/sail-operator/pkg/kube"
 	"github.com/istio-ecosystem/sail-operator/pkg/profiles"
@@ -237,7 +237,7 @@ func (r *IstioReconciler) getRevisions(ctx context.Context, istio *v1alpha1.Isti
 		return nil, err
 	}
 
-	revisions := []v1alpha1.IstioRevision{}
+	var revisions []v1alpha1.IstioRevision
 	for _, rev := range revList.Items {
 		if isRevisionOwnedByIstio(rev, istio) {
 			revisions = append(revisions, rev)
@@ -289,7 +289,7 @@ func computeIstioRevisionValues(istio v1alpha1.Istio, defaultProfiles []string, 
 	userValues := istio.Spec.Values
 
 	// apply image digests from configuration, if not already set by user
-	userValues = applyImageDigests(&istio, userValues, common.Config)
+	userValues = applyImageDigests(&istio, userValues, config.Config)
 
 	// apply userValues on top of defaultValues from profiles
 	mergedHelmValues, err := profiles.Apply(getProfilesDir(resourceDir, istio), getProfiles(istio, defaultProfiles), helm.FromValues(userValues))
@@ -336,7 +336,7 @@ func applyOverrides(istio *v1alpha1.Istio, values *v1alpha1.Values) (*v1alpha1.V
 	return values, nil
 }
 
-func applyImageDigests(istio *v1alpha1.Istio, values *v1alpha1.Values, config common.OperatorConfig) *v1alpha1.Values {
+func applyImageDigests(istio *v1alpha1.Istio, values *v1alpha1.Values, config config.OperatorConfig) *v1alpha1.Values {
 	imageDigests, digestsDefined := config.ImageDigests[istio.Spec.Version]
 	// if we don't have default image digests defined for this version, it's a no-op
 	if !digestsDefined {

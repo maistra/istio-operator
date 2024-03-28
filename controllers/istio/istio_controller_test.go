@@ -26,7 +26,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
-	"github.com/istio-ecosystem/sail-operator/pkg/common"
+	"github.com/istio-ecosystem/sail-operator/pkg/config"
 	"github.com/istio-ecosystem/sail-operator/pkg/helm"
 	"github.com/istio-ecosystem/sail-operator/pkg/scheme"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -1123,15 +1123,15 @@ spec:
 func TestApplyImageDigests(t *testing.T) {
 	testCases := []struct {
 		name         string
-		config       common.OperatorConfig
+		config       config.OperatorConfig
 		inputIstio   *v1alpha1.Istio
 		inputValues  *v1alpha1.Values
 		expectValues *v1alpha1.Values
 	}{
 		{
 			name: "no-config",
-			config: common.OperatorConfig{
-				ImageDigests: map[string]common.IstioImageConfig{},
+			config: config.OperatorConfig{
+				ImageDigests: map[string]config.IstioImageConfig{},
 			},
 			inputIstio: &v1alpha1.Istio{
 				Spec: v1alpha1.IstioSpec{
@@ -1151,8 +1151,8 @@ func TestApplyImageDigests(t *testing.T) {
 		},
 		{
 			name: "no-user-values",
-			config: common.OperatorConfig{
-				ImageDigests: map[string]common.IstioImageConfig{
+			config: config.OperatorConfig{
+				ImageDigests: map[string]config.IstioImageConfig{
 					"v1.20.0": {
 						IstiodImage:  "istiod-test",
 						ProxyImage:   "proxy-test",
@@ -1185,8 +1185,8 @@ func TestApplyImageDigests(t *testing.T) {
 		},
 		{
 			name: "user-supplied-image",
-			config: common.OperatorConfig{
-				ImageDigests: map[string]common.IstioImageConfig{
+			config: config.OperatorConfig{
+				ImageDigests: map[string]config.IstioImageConfig{
 					"v1.20.0": {
 						IstiodImage:  "istiod-test",
 						ProxyImage:   "proxy-test",
@@ -1223,8 +1223,8 @@ func TestApplyImageDigests(t *testing.T) {
 		},
 		{
 			name: "user-supplied-hub-tag",
-			config: common.OperatorConfig{
-				ImageDigests: map[string]common.IstioImageConfig{
+			config: config.OperatorConfig{
+				ImageDigests: map[string]config.IstioImageConfig{
 					"v1.20.0": {
 						IstiodImage:  "istiod-test",
 						ProxyImage:   "proxy-test",
@@ -1263,8 +1263,8 @@ func TestApplyImageDigests(t *testing.T) {
 		},
 		{
 			name: "version-without-defaults",
-			config: common.OperatorConfig{
-				ImageDigests: map[string]common.IstioImageConfig{
+			config: config.OperatorConfig{
+				ImageDigests: map[string]config.IstioImageConfig{
 					"v1.20.0": {
 						IstiodImage:  "istiod-test",
 						ProxyImage:   "proxy-test",

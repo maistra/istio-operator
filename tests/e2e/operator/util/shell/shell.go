@@ -27,12 +27,12 @@ func ExecuteCommandWithInput(command string, input string) (string, error) {
 	return ExecuteShell(command, input)
 }
 
-// ExecuteCommandWithInput executes a command given the input string and returns the output and err if any
+// ExecuteCommand executes a command given the input string and returns the output and err if any
 func ExecuteCommand(command string) (string, error) {
 	return ExecuteShell(command, "")
 }
 
-// ExecuteCommand executes a command given the input string and returns the output and err if any
+// ExecuteShell executes a command given the input string and returns the output and err if any
 func ExecuteShell(command string, input string) (string, error) {
 	cmd := exec.Command("sh", "-c", command)
 	if input != "" {

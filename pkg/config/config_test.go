@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package common
+package config
 
 import (
 	"os"
@@ -28,7 +28,7 @@ var testImages = IstioImageConfig{
 	ZTunnelImage: "ztunnel-test",
 }
 
-func TestReadConfig(t *testing.T) {
+func TestRead(t *testing.T) {
 	testCases := []struct {
 		name           string
 		configFile     string
@@ -86,30 +86,38 @@ images.v1_20_0.ztunnel=ztunnel-test
 		},
 	}
 	for _, tc := range testCases {
-		file, err := os.CreateTemp("", "operator-unit-")
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer func() {
-			err = file.Close()
+		t.Run(tc.name, func(t *testing.T) {
+			file, err := os.CreateTemp("", "operator-unit-")
 			if err != nil {
 				t.Fatal(err)
 			}
-			os.Remove(file.Name())
-		}()
+			defer func() {
+				err = file.Close()
+				if err != nil {
+					t.Fatal(err)
+				}
+				err = os.Remove(file.Name())
+				if err != nil {
+					t.Fatal(err)
+				}
+			}()
 
-		file.WriteString(tc.configFile)
-		err = ReadConfig(file.Name())
-		if !tc.success {
+			_, err = file.WriteString(tc.configFile)
 			if err != nil {
-				return
+				t.Fatal(err)
 			}
-			t.Fatal("expected error but got:", err)
-		} else if err != nil {
-			t.Fatal("expected no error but got:", err)
-		}
-		if diff := cmp.Diff(Config, tc.expectedConfig); diff != "" {
-			t.Fatal("config did not match expectation:\n\n", diff)
-		}
+			err = Read(file.Name())
+			if !tc.success {
+				if err != nil {
+					return
+				}
+				t.Fatal("expected error but got:", err)
+			} else if err != nil {
+				t.Fatal("expected no error but got:", err)
+			}
+			if diff := cmp.Diff(Config, tc.expectedConfig); diff != "" {
+				t.Fatal("config did not match expectation:\n\n", diff)
+			}
+		})
 	}
 }

@@ -24,7 +24,7 @@ import (
 	"github.com/istio-ecosystem/sail-operator/controllers/istio"
 	"github.com/istio-ecosystem/sail-operator/controllers/istiocni"
 	"github.com/istio-ecosystem/sail-operator/controllers/istiorevision"
-	"github.com/istio-ecosystem/sail-operator/pkg/common"
+	"github.com/istio-ecosystem/sail-operator/pkg/config"
 	"github.com/istio-ecosystem/sail-operator/pkg/helm"
 	"github.com/istio-ecosystem/sail-operator/pkg/scheme"
 	"github.com/istio-ecosystem/sail-operator/pkg/version"
@@ -87,12 +87,12 @@ func main() {
 
 	setupLog.Info(version.Info.String())
 	setupLog.Info("reading config")
-	err := common.ReadConfig(configFile)
+	err := config.Read(configFile)
 	if err != nil {
 		setupLog.Error(err, "unable to read config file at "+configFile)
 		os.Exit(1)
 	}
-	setupLog.Info("config loaded", "config", common.Config)
+	setupLog.Info("config loaded", "config", config.Config)
 
 	cfg := ctrl.GetConfigOrDie()
 	if logAPIRequests {
@@ -142,7 +142,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = istiocni.NewIstioCNIReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), resourceDirectory, chartManager, defaultProfiles).
+	err = istiocni.NewIstioCNIReconciler(mgr.GetClient(), mgr.GetScheme(), resourceDirectory, chartManager, defaultProfiles).
 		SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "IstioCNI")

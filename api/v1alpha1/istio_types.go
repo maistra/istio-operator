@@ -114,7 +114,7 @@ type IstioStatus struct {
 	Revisions RevisionSummary `json:"revisions,omitempty"`
 }
 
-// IstioRevisions contains information on the number of IstioRevisions associated with this Istio.
+// RevisionSummary contains information on the number of IstioRevisions associated with this Istio.
 type RevisionSummary struct {
 	// Total number of IstioRevisions currently associated with this Istio.
 	Total int32 `json:"total"`
@@ -170,7 +170,7 @@ func (s *IstioStatus) SetCondition(condition IstioCondition) {
 	s.Conditions = append(s.Conditions, condition)
 }
 
-// A Condition represents a specific observation of the object's state.
+// IstioCondition represents a specific observation of the IstioCondition object's state.
 type IstioCondition struct {
 	// The type of this condition.
 	Type IstioConditionType `json:"type,omitempty"`

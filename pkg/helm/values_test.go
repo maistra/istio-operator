@@ -22,7 +22,7 @@ import (
 func TestGetString(t *testing.T) {
 	testCases := []struct {
 		name        string
-		input       HelmValues
+		input       Values
 		key         string
 		expectFound bool
 		expected    string
@@ -30,7 +30,7 @@ func TestGetString(t *testing.T) {
 	}{
 		{
 			name: "valid Key",
-			input: HelmValues{
+			input: Values{
 				"foo": map[string]any{
 					"bar": "baz",
 				},
@@ -41,7 +41,7 @@ func TestGetString(t *testing.T) {
 		},
 		{
 			name: "invalid Key",
-			input: HelmValues{
+			input: Values{
 				"foo": "baz",
 			},
 			key:         "foo.bar",
@@ -50,7 +50,7 @@ func TestGetString(t *testing.T) {
 		},
 		{
 			name: "nonexistent key",
-			input: HelmValues{
+			input: Values{
 				"foo": map[string]any{
 					"bar": "baz",
 				},
@@ -87,22 +87,22 @@ func TestGetString(t *testing.T) {
 func TestSet(t *testing.T) {
 	tests := []struct {
 		name      string
-		input     HelmValues
+		input     Values
 		key       string
 		val       string
-		expected  HelmValues
+		expected  Values
 		expectErr bool
 	}{
 		{
 			name: "Valid Key",
-			input: HelmValues{
+			input: Values{
 				"foo": map[string]any{
 					"bar": "baz",
 				},
 			},
 			key: "foo.bar",
 			val: "newVal",
-			expected: HelmValues{
+			expected: Values{
 				"foo": map[string]any{
 					"bar": "newVal",
 				},
@@ -110,14 +110,14 @@ func TestSet(t *testing.T) {
 		},
 		{
 			name: "Non-Existent Key",
-			input: HelmValues{
+			input: Values{
 				"foo": map[string]any{
 					"bar": "baz",
 				},
 			},
 			key: "foo.baz",
 			val: "newVal",
-			expected: HelmValues{
+			expected: Values{
 				"foo": map[string]any{
 					"bar": "baz",
 					"baz": "newVal",

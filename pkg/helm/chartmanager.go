@@ -63,7 +63,7 @@ func (h *ChartManager) newActionConfig(ctx context.Context, namespace string) (*
 
 // UpgradeOrInstallChart upgrades a chart in cluster or installs it new if it does not already exist
 func (h *ChartManager) UpgradeOrInstallChart(
-	ctx context.Context, chartDir string, values HelmValues,
+	ctx context.Context, chartDir string, values Values,
 	namespace, releaseName string, ownerReference metav1.OwnerReference,
 ) (*release.Release, error) {
 	log := logf.FromContext(ctx)

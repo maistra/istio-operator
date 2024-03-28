@@ -23,7 +23,8 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
-	"github.com/istio-ecosystem/sail-operator/pkg/common"
+	"github.com/istio-ecosystem/sail-operator/pkg/config"
+	"github.com/istio-ecosystem/sail-operator/pkg/constants"
 	"github.com/istio-ecosystem/sail-operator/pkg/helm"
 	"github.com/istio-ecosystem/sail-operator/pkg/kube"
 	"github.com/istio-ecosystem/sail-operator/pkg/profiles"
@@ -33,7 +34,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -46,7 +46,7 @@ import (
 
 const (
 	cniReleaseName = "istio-cni"
-	finalizer      = common.FinalizerName
+	finalizer      = constants.FinalizerName
 )
 
 // IstioCNIReconciler reconciles an IstioCNI object
@@ -58,8 +58,8 @@ type IstioCNIReconciler struct {
 	ChartManager *helm.ChartManager
 }
 
-func NewIstioCNIReconciler(client client.Client, scheme *runtime.Scheme, restConfig *rest.Config,
-	resourceDir string, chartManager *helm.ChartManager, defaultProfiles []string,
+func NewIstioCNIReconciler(
+	client client.Client, scheme *runtime.Scheme, resourceDir string, chartManager *helm.ChartManager, defaultProfiles []string,
 ) *IstioCNIReconciler {
 	return &IstioCNIReconciler{
 		ResourceDirectory: resourceDir,
@@ -149,7 +149,7 @@ func (r *IstioCNIReconciler) installHelmChart(ctx context.Context, cni *v1alpha1
 	userValues := cni.Spec.Values
 
 	// apply image digests from configuration, if not already set by user
-	userValues = applyImageDigests(cni, userValues, common.Config)
+	userValues = applyImageDigests(cni, userValues, config.Config)
 
 	// apply userValues on top of defaultValues from profiles
 	mergedHelmValues, err := profiles.Apply(getProfilesDir(r.ResourceDirectory, cni), getProfiles(cni, r.DefaultProfiles), helm.FromValues(userValues))
@@ -176,7 +176,7 @@ func getProfilesDir(resourceDir string, cni *v1alpha1.IstioCNI) string {
 	return path.Join(resourceDir, cni.Spec.Version, "profiles")
 }
 
-func applyImageDigests(cni *v1alpha1.IstioCNI, values *v1alpha1.CNIValues, config common.OperatorConfig) *v1alpha1.CNIValues {
+func applyImageDigests(cni *v1alpha1.IstioCNI, values *v1alpha1.CNIValues, config config.OperatorConfig) *v1alpha1.CNIValues {
 	imageDigests, digestsDefined := config.ImageDigests[cni.Spec.Version]
 	// if we don't have default image digests defined for this version, it's a no-op
 	if !digestsDefined {

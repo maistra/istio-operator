@@ -464,10 +464,3 @@ func TestDetermineInUseCondition(t *testing.T) {
 		}
 	}
 }
-
-func Must(t *testing.T, err error) {
-	t.Helper()
-	if err != nil {
-		t.Fatal(err)
-	}
-}
