@@ -96,10 +96,16 @@ images.v1_20_0.ztunnel=ztunnel-test
 				if err != nil {
 					t.Fatal(err)
 				}
-				os.Remove(file.Name())
+				err = os.Remove(file.Name())
+				if err != nil {
+					t.Fatal(err)
+				}
 			}()
 
-			file.WriteString(tc.configFile)
+			_, err = file.WriteString(tc.configFile)
+			if err != nil {
+				t.Fatal(err)
+			}
 			err = Read(file.Name())
 			if !tc.success {
 				if err != nil {
