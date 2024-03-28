@@ -17,6 +17,16 @@
 
 set -euo pipefail
 
+CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+source "${CUR_DIR}"/../validate_semver.sh
+
+GITHUB_TOKEN="${GITHUB_TOKEN:-}"
+GIT_USER="${GIT_USER:-}"
+
+# The OPERATOR_NAME is defined in Makefile
+: "${OPERATOR_NAME:?"Missing OPERATOR_NAME variable"}"
+: "${OPERATOR_VERSION:?"Missing OPERATOR_VERSION variable"}"
+
 show_help() {
   echo "publish-bundle - raises PR to Operator Hub"
   echo " "
@@ -27,11 +37,14 @@ show_help() {
   echo "-d, --dry-run     skips push to GH and PR"
 }
 
-dryRun=false
+dryRun=""
 
 skipInDryRun() {
-  if $dryRun; then echo "# $*";  fi
-  if ! $dryRun; then "$@";  fi
+  if [ -n "${dryRun}" ]; then
+    echo "# $*"
+  else
+    "$@"
+  fi
 }
 
 while test $# -gt 0; do
@@ -51,20 +64,18 @@ while test $# -gt 0; do
   esac
 done
 
-CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-BUNDLE_DIR="${CUR_DIR}"/../../bundle/
 
-GITHUB_TOKEN="${GITHUB_TOKEN:-}"
-GIT_USER="${GIT_USER:-}"
+# Validations
+validate_semantic_versioning "v${OPERATOR_VERSION}"
 
-# The OPERATOR_NAME is defined in Makefile
-: "${OPERATOR_NAME:?"Missing OPERATOR_NAME variable"}"
-: "${OPERATOR_VERSION:?"Missing OPERATOR_VERSION variable"}"
+if [ -z "${dryRun}" ] && [ -z "${GITHUB_TOKEN}" ]; then
+  die "Please provide GITHUB_TOKEN"
+fi
+
+TMP_DIR=$(mktemp -d)
+trap 'rm -rf "${TMP_DIR}"' EXIT
+
 OPERATOR_HUB=${OPERATOR_HUB:-"community-operators-prod"}
-
-TMP_DIR=$(mktemp -d -t "${OPERATOR_NAME}.XXXXXXXXXX")
-trap '{ rm -rf -- "$TMP_DIR"; }' EXIT
-
 OWNER="${OWNER:-"redhat-openshift-ecosystem"}"
 HUB_REPO_URL="${HUB_REPO_URL:-https://github.com/${OWNER}/${OPERATOR_HUB}.git}"
 HUB_BASE_BRANCH="${HUB_BASE_BRANCH:-main}"
@@ -74,32 +85,23 @@ FORK_REPO_URL="${FORK_REPO_URL:-https://${GIT_USER}:${GITHUB_TOKEN}@github.com/$
 
 BRANCH=${BRANCH:-"${OPERATOR_NAME}-${OPERATOR_VERSION}"}
 
-source "${CUR_DIR}"/../validate_semver.sh
+git clone --single-branch --depth=1 --branch "${HUB_BASE_BRANCH}" "${HUB_REPO_URL}" "${TMP_DIR}/${OPERATOR_HUB}"
 
-validate_semantic_versioning "v${OPERATOR_VERSION}"
-
-git clone "${HUB_REPO_URL}" "${TMP_DIR}"
-
-cd "${TMP_DIR}"
+cd "${TMP_DIR}/${OPERATOR_HUB}"
 git remote add fork "${FORK_REPO_URL}"
-skipInDryRun git push fork "${HUB_BASE_BRANCH}" # ensures our fork is in sync with upstream
 git checkout -b "${BRANCH}"
 
 OPERATORS_DIR="operators/${OPERATOR_NAME}/${OPERATOR_VERSION}/"
+BUNDLE_DIR="${CUR_DIR}"/../../bundle
 mkdir -p "${OPERATORS_DIR}"
 cp -a "${BUNDLE_DIR}"/. "${OPERATORS_DIR}"
 
 TITLE="operator ${OPERATOR_NAME} (${OPERATOR_VERSION})"
 skipInDryRun git add .
 skipInDryRun git commit -s -m"${TITLE}"
+skipInDryRun git push fork "${BRANCH}"
 
-if [[ ! $dryRun && -z $GITHUB_TOKEN ]]; then
-  echo "Please provide GITHUB_TOKEN" && exit 1
-fi
-
-skipInDryRun git push -f fork "${BRANCH}"
-
-PAYLOAD=$(mktemp)
+PAYLOAD="${TMP_DIR}/PAYLOAD"
 
 jq -c -n \
   --arg msg "$(cat "${CUR_DIR}"/operatorhub-pr-template.md)" \
@@ -114,6 +116,7 @@ if $dryRun; then
 fi
 
 skipInDryRun curl \
+  --fail-with-body \
   -X POST \
   -H "Authorization: token ${GITHUB_TOKEN}" \
   -H "Accept: application/vnd.github.v3+json" \

@@ -240,7 +240,7 @@ undefine BUILDX
 endif
 
 .PHONY: docker-buildx
-docker-buildx: test build-all ## Build and push docker image with cross-platform support.
+docker-buildx: build-all ## Build and push docker image with cross-platform support.
 	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
 	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile.cross
 	docker buildx ls --format "{{.Name}}" | grep project-v4-builder || docker buildx create --name project-v4-builder
@@ -462,7 +462,7 @@ bundle-push: ## Push the bundle image.
 
 .PHONY: bundle-publish
 bundle-publish: ## Create a PR for publishing in OperatorHub.
-	export GIT_USER=$(GITHUB_USER); \
+	@export GIT_USER=$(GITHUB_USER); \
 	export GITHUB_TOKEN=$(GITHUB_TOKEN); \
 	export OPERATOR_VERSION=$(OPERATOR_VERSION); \
 	export OPERATOR_NAME=$(OPERATOR_NAME); \
