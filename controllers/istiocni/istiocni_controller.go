@@ -34,7 +34,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -59,8 +58,8 @@ type IstioCNIReconciler struct {
 	ChartManager *helm.ChartManager
 }
 
-func NewIstioCNIReconciler(client client.Client, scheme *runtime.Scheme, restConfig *rest.Config,
-	resourceDir string, chartManager *helm.ChartManager, defaultProfiles []string,
+func NewIstioCNIReconciler(
+	client client.Client, scheme *runtime.Scheme, resourceDir string, chartManager *helm.ChartManager, defaultProfiles []string,
 ) *IstioCNIReconciler {
 	return &IstioCNIReconciler{
 		ResourceDirectory: resourceDir,

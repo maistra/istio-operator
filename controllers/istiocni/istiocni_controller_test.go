@@ -196,7 +196,7 @@ func TestDetermineReadyCondition(t *testing.T) {
 
 			cl := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(tt.clientObjects...).WithInterceptorFuncs(tt.interceptors).Build()
 
-			r := NewIstioCNIReconciler(cl, scheme.Scheme, nil, resourceDir, nil, nil)
+			r := NewIstioCNIReconciler(cl, scheme.Scheme, resourceDir, nil, nil)
 
 			cni := &v1alpha1.IstioCNI{
 				ObjectMeta: metav1.ObjectMeta{
@@ -378,7 +378,7 @@ func TestDetermineStatus(t *testing.T) {
 	ctx := context.TODO()
 	resourceDir := t.TempDir()
 	cl := fake.NewClientBuilder().WithScheme(scheme.Scheme).Build()
-	r := NewIstioCNIReconciler(cl, scheme.Scheme, nil, resourceDir, nil, nil)
+	r := NewIstioCNIReconciler(cl, scheme.Scheme, resourceDir, nil, nil)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

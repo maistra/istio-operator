@@ -78,7 +78,7 @@ var _ = BeforeSuite(func() {
 	Expect(istiorevision.NewIstioRevisionReconciler(mgr.GetClient(), mgr.GetScheme(), resourceDir, chartManager).
 		SetupWithManager(mgr)).To(Succeed())
 
-	Expect(istiocni.NewIstioCNIReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), resourceDir, chartManager, defaultProfiles).
+	Expect(istiocni.NewIstioCNIReconciler(mgr.GetClient(), mgr.GetScheme(), resourceDir, chartManager, defaultProfiles).
 		SetupWithManager(mgr)).To(Succeed())
 
 	// create new cancellable context
