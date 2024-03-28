@@ -23,7 +23,6 @@ import (
 	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
 	"github.com/istio-ecosystem/sail-operator/pkg/constants"
 	"github.com/istio-ecosystem/sail-operator/pkg/scheme"
-	"github.com/istio-ecosystem/sail-operator/pkg/util/tests/kube"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -165,7 +164,7 @@ func TestRemoveFinalizer(t *testing.T) {
 			}
 
 			if tc.checkFinalizers {
-				g.Expect(cl.Get(ctx, kube.GetObjectKey(obj), obj)).To(Succeed())
+				g.Expect(cl.Get(ctx, client.ObjectKeyFromObject(obj), obj)).To(Succeed())
 				g.Expect(obj.GetFinalizers()).To(ConsistOf(tc.expectedFinalizers))
 			}
 		})
@@ -266,7 +265,7 @@ func TestAddFinalizer(t *testing.T) {
 			}
 
 			if tc.checkFinalizers {
-				g.Expect(cl.Get(ctx, kube.GetObjectKey(obj), obj)).To(Succeed())
+				g.Expect(cl.Get(ctx, client.ObjectKeyFromObject(obj), obj)).To(Succeed())
 				g.Expect(obj.GetFinalizers()).To(ConsistOf(tc.expectedFinalizers))
 			}
 		})
