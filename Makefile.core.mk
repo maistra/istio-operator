@@ -71,8 +71,8 @@ ENVTEST_K8S_VERSION ?= 1.29.0
 # Set DOCKER_BUILD_FLAGS to specify flags to pass to 'docker build', default to empty. Example: --platform=linux/arm64
 DOCKER_BUILD_FLAGS ?= "--platform=$(TARGET_OS)/$(TARGET_ARCH)"
 
-VERBOSE_FLAG := $(if $(VERBOSE),-v)
-NOCOLOR_FLAG := $(if [ -t 1 ],--no-color,)
+GOTEST_FLAGS := $(if $(VERBOSE),-v)
+GINKGO_FLAGS := $(if $(VERBOSE),-v) $(if $(CI),--no-color)
 
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
@@ -149,12 +149,12 @@ test: test.unit test.integration ## Run both unit tests and integration test.
 .PHONY: test.unit
 test.unit: envtest  ## Run unit tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" \
-	go test $(VERBOSE_FLAG) ./...
+	go test $(GOTEST_FLAGS) ./...
 
 .PHONY: test.integration
 test.integration: envtest ## Run integration tests located in the tests/integration directory.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" \
-	go run github.com/onsi/ginkgo/v2/ginkgo --tags=integration $(VERBOSE_FLAG) $(NOCOLOR_FLAG) ./tests/integration/...
+	go run github.com/onsi/ginkgo/v2/ginkgo --tags=integration $(GINKGO_FLAGS) ./tests/integration/...
 
 .PHONY: test.scorecard
 test.scorecard: operator-sdk ## Run the operator scorecard test.
@@ -162,15 +162,15 @@ test.scorecard: operator-sdk ## Run the operator scorecard test.
 
 .PHONY: test.e2e.ocp
 test.e2e.ocp: ## Run the end-to-end tests against an existing OCP cluster.
-	${SOURCE_DIR}/tests/e2e/integ-suite-ocp.sh
+	GINKGO_FLAGS="$(GINKGO_FLAGS)" ${SOURCE_DIR}/tests/e2e/integ-suite-ocp.sh
 
 .PHONY: test.e2e.kind
 test.e2e.kind: ## Deploy a KinD cluster and run the end-to-end tests against it.
-	${SOURCE_DIR}/tests/e2e/integ-suite-kind.sh
+	GINKGO_FLAGS="$(GINKGO_FLAGS)" ${SOURCE_DIR}/tests/e2e/integ-suite-kind.sh
 
 .PHONY: test.e2e.describe
 test.e2e.describe: ## Runs ginkgo outline -format indent over the e2e test to show in BDD style the steps and test structure
-	${SOURCE_DIR}/tests/e2e/common-operator-integ-suite.sh --describe
+	GINKGO_FLAGS="$(GINKGO_FLAGS)" ${SOURCE_DIR}/tests/e2e/common-operator-integ-suite.sh --describe
 
 ##@ Build
 
