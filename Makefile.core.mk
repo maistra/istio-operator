@@ -146,7 +146,8 @@ export
 test: test.unit test.integration ## Run both unit tests and integration test.
 
 .PHONY: test.unit
-test.unit:  ## Run unit tests.
+test.unit: envtest  ## Run unit tests.
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" \
 	go test $(VERBOSE_FLAG) ./...
 
 .PHONY: test.integration

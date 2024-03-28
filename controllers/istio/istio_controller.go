@@ -26,6 +26,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
 	"github.com/istio-ecosystem/sail-operator/pkg/common"
+	"github.com/istio-ecosystem/sail-operator/pkg/helm"
 	"github.com/istio-ecosystem/sail-operator/pkg/kube"
 	"github.com/istio-ecosystem/sail-operator/pkg/profiles"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -291,12 +292,12 @@ func computeIstioRevisionValues(istio v1alpha1.Istio, defaultProfiles []string, 
 	userValues = applyImageDigests(&istio, userValues, common.Config)
 
 	// apply userValues on top of defaultValues from profiles
-	mergedHelmValues, err := profiles.Apply(getProfilesDir(resourceDir, istio), getProfiles(istio, defaultProfiles), userValues.ToHelmValues())
+	mergedHelmValues, err := profiles.Apply(getProfilesDir(resourceDir, istio), getProfiles(istio, defaultProfiles), helm.FromValues(userValues))
 	if err != nil {
 		return nil, err
 	}
 
-	values, err := v1alpha1.FromHelmValues(mergedHelmValues, &v1alpha1.Values{})
+	values, err := helm.ToValues(mergedHelmValues, &v1alpha1.Values{})
 	if err != nil {
 		return nil, err
 	}

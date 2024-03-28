@@ -27,6 +27,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
 	"github.com/istio-ecosystem/sail-operator/pkg/common"
+	"github.com/istio-ecosystem/sail-operator/pkg/helm"
 	"github.com/istio-ecosystem/sail-operator/pkg/scheme"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -724,7 +725,7 @@ func TestReconcileActiveRevision(t *testing.T) {
 						t.Errorf("IstioRevision.spec.version doesn't match Istio.spec.version; expected %s, got %s", istio.Spec.Version, rev.Spec.Version)
 					}
 
-					if diff := cmp.Diff(tc.istioValues.ToHelmValues(), rev.Spec.Values.ToHelmValues()); diff != "" {
+					if diff := cmp.Diff(helm.FromValues(&tc.istioValues), helm.FromValues(rev.Spec.Values)); diff != "" {
 						t.Errorf("IstioRevision.spec.values don't match Istio.spec.values; diff (-expected, +actual):\n%v", diff)
 					}
 				})

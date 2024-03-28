@@ -56,7 +56,7 @@ func TestAPIs(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	testEnv, k8sClient, cfg = test.SetupEnv(GinkgoWriter)
+	testEnv, k8sClient, cfg = test.SetupEnv(GinkgoWriter, true)
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme.Scheme,

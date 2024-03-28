@@ -152,7 +152,7 @@ func (r *IstioCNIReconciler) installHelmChart(ctx context.Context, cni *v1alpha1
 	userValues = applyImageDigests(cni, userValues, common.Config)
 
 	// apply userValues on top of defaultValues from profiles
-	mergedHelmValues, err := profiles.Apply(getProfilesDir(r.ResourceDirectory, cni), getProfiles(cni, r.DefaultProfiles), userValues.ToHelmValues())
+	mergedHelmValues, err := profiles.Apply(getProfilesDir(r.ResourceDirectory, cni), getProfiles(cni, r.DefaultProfiles), helm.FromValues(userValues))
 	if err != nil {
 		return err
 	}

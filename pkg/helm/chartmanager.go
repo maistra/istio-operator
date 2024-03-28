@@ -16,11 +16,13 @@ package helm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"helm.sh/helm/v3/pkg/action"
 	chartLoader "helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/storage/driver"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/rest"
@@ -76,12 +78,35 @@ func (h *ChartManager) UpgradeOrInstallChart(
 		return nil, err
 	}
 
-	releaseExists, err := releaseExists(cfg, namespace, releaseName)
+	rel, err := getRelease(cfg, releaseName)
 	if err != nil {
-		return nil, err
+		return rel, err
 	}
 
-	var rel *release.Release
+	var releaseExists bool
+
+	if rel == nil {
+		releaseExists = false
+	} else if rel.Info.Status == release.StatusDeployed {
+		releaseExists = true
+	} else if rel.Info.Status == release.StatusPendingUpgrade || (rel.Info.Status == release.StatusFailed && rel.Version > 1) {
+		log.V(2).Info("Performing helm rollback", "release", releaseName)
+		if err := action.NewRollback(cfg).Run(releaseName); err != nil {
+			return nil, fmt.Errorf("failed to roll back helm release %s: %v", releaseName, err)
+		}
+		releaseExists = true
+	} else if rel.Info.Status == release.StatusPendingInstall || (rel.Info.Status == release.StatusFailed && rel.Version <= 1) {
+		log.V(2).Info("Performing helm uninstall", "release", releaseName)
+		if _, err := action.NewUninstall(cfg).Run(releaseName); err != nil {
+			return nil, fmt.Errorf("failed to uninstall failed helm release %s: %v", releaseName, err)
+		}
+		releaseExists = false
+	} else if rel.Info.Status == release.StatusPendingRollback {
+		return nil, fmt.Errorf("unrecoverable helm release status %s", rel.Info.Status)
+	} else {
+		return nil, fmt.Errorf("unexpected helm release status %s", rel.Info.Status)
+	}
+
 	if releaseExists {
 		log.V(2).Info("Performing helm upgrade", "chartName", chart.Name())
 
@@ -118,32 +143,21 @@ func (h *ChartManager) UninstallChart(ctx context.Context, releaseName, namespac
 		return nil, err
 	}
 
-	if exists, err := releaseExists(cfg, namespace, releaseName); !exists {
-		return nil, nil
-	} else if err != nil {
+	if rel, err := getRelease(cfg, releaseName); err != nil {
 		return nil, err
+	} else if rel == nil {
+		// release does not exist; no need for uninstall
+		return &release.UninstallReleaseResponse{Info: "release not found"}, nil
 	}
 
-	uninstallAction := action.NewUninstall(cfg)
-	response, err := uninstallAction.Run(releaseName)
-	if err != nil {
-		return nil, err
-	}
-
-	return response, nil
+	return action.NewUninstall(cfg).Run(releaseName)
 }
 
-func releaseExists(cfg *action.Configuration, namespace string, name string) (bool, error) {
-	listAction := action.NewList(cfg)
-	releases, err := listAction.Run()
-	if err != nil {
-		return false, fmt.Errorf("failed to list installed helm releases: %v", err)
+func getRelease(cfg *action.Configuration, releaseName string) (*release.Release, error) {
+	getAction := action.NewGet(cfg)
+	rel, err := getAction.Run(releaseName)
+	if err != nil && !errors.Is(err, driver.ErrReleaseNotFound) {
+		return nil, fmt.Errorf("failed to get helm release %s: %v", releaseName, err)
 	}
-
-	for _, rel := range releases {
-		if rel.Name == name && rel.Namespace == namespace {
-			return true, nil
-		}
-	}
-	return false, nil
+	return rel, nil
 }
