@@ -32,14 +32,14 @@ func (h *Values) GetBool(key string) (bool, bool, error) {
 
 // GetString returns the string value of a nested field.
 // Returns false if value is not found and an error if not a string.
-func (h Values) GetString(key string) (string, bool, error) {
-	return unstructured.NestedString(h, toKeys(key)...)
+func (h *Values) GetString(key string) (string, bool, error) {
+	return unstructured.NestedString(*h, toKeys(key)...)
 }
 
 // Set sets the value of a nested field to a deep copy of the value provided.
 // Returns an error if value cannot be set because one of the nesting levels is not a map[string]any.
-func (h Values) Set(key string, val any) error {
-	return unstructured.SetNestedField(h, val, toKeys(key)...)
+func (h *Values) Set(key string, val any) error {
+	return unstructured.SetNestedField(*h, val, toKeys(key)...)
 }
 
 func toKeys(key string) []string {
