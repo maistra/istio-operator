@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package common
+package constants
 
 const (
 	// MetadataNamespace is the namespace for service mesh metadata (labels, annotations)

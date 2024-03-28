@@ -21,7 +21,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
-	"github.com/istio-ecosystem/sail-operator/pkg/common"
+	"github.com/istio-ecosystem/sail-operator/pkg/config"
 	"github.com/istio-ecosystem/sail-operator/pkg/scheme"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
@@ -224,14 +224,14 @@ func TestDetermineReadyCondition(t *testing.T) {
 func TestApplyImageDigests(t *testing.T) {
 	testCases := []struct {
 		name         string
-		config       common.OperatorConfig
+		config       config.OperatorConfig
 		input        *v1alpha1.IstioCNI
 		expectValues *v1alpha1.CNIValues
 	}{
 		{
 			name: "no-config",
-			config: common.OperatorConfig{
-				ImageDigests: map[string]common.IstioImageConfig{},
+			config: config.OperatorConfig{
+				ImageDigests: map[string]config.IstioImageConfig{},
 			},
 			input: &v1alpha1.IstioCNI{
 				Spec: v1alpha1.IstioCNISpec{
@@ -251,8 +251,8 @@ func TestApplyImageDigests(t *testing.T) {
 		},
 		{
 			name: "no-user-values",
-			config: common.OperatorConfig{
-				ImageDigests: map[string]common.IstioImageConfig{
+			config: config.OperatorConfig{
+				ImageDigests: map[string]config.IstioImageConfig{
 					"v1.20.0": {
 						CNIImage: "cni-test",
 					},
@@ -272,8 +272,8 @@ func TestApplyImageDigests(t *testing.T) {
 		},
 		{
 			name: "user-supplied-image",
-			config: common.OperatorConfig{
-				ImageDigests: map[string]common.IstioImageConfig{
+			config: config.OperatorConfig{
+				ImageDigests: map[string]config.IstioImageConfig{
 					"v1.20.0": {
 						CNIImage: "cni-test",
 					},
@@ -297,8 +297,8 @@ func TestApplyImageDigests(t *testing.T) {
 		},
 		{
 			name: "user-supplied-hub-tag",
-			config: common.OperatorConfig{
-				ImageDigests: map[string]common.IstioImageConfig{
+			config: config.OperatorConfig{
+				ImageDigests: map[string]config.IstioImageConfig{
 					"v1.20.0": {
 						CNIImage: "cni-test",
 					},
@@ -324,8 +324,8 @@ func TestApplyImageDigests(t *testing.T) {
 		},
 		{
 			name: "version-without-defaults",
-			config: common.OperatorConfig{
-				ImageDigests: map[string]common.IstioImageConfig{
+			config: config.OperatorConfig{
+				ImageDigests: map[string]config.IstioImageConfig{
 					"v1.20.0": {
 						CNIImage: "cni-test",
 					},

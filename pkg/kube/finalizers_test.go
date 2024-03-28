@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
-	"github.com/istio-ecosystem/sail-operator/pkg/common"
+	"github.com/istio-ecosystem/sail-operator/pkg/constants"
 	"github.com/istio-ecosystem/sail-operator/pkg/scheme"
 	"github.com/istio-ecosystem/sail-operator/pkg/util/tests/kube"
 	. "github.com/onsi/gomega"
@@ -54,7 +54,7 @@ func TestHasFinalizer(t *testing.T) {
 		},
 		{
 			name:           "has finalizer in question",
-			finalizers:     []string{common.FinalizerName},
+			finalizers:     []string{constants.FinalizerName},
 			expectedResult: true,
 		},
 	}
@@ -66,7 +66,7 @@ func TestHasFinalizer(t *testing.T) {
 					Finalizers: tc.finalizers,
 				},
 			}
-			g.Expect(HasFinalizer(obj, common.FinalizerName)).To(Equal(tc.expectedResult))
+			g.Expect(HasFinalizer(obj, constants.FinalizerName)).To(Equal(tc.expectedResult))
 		})
 	}
 }
@@ -93,7 +93,7 @@ func TestRemoveFinalizer(t *testing.T) {
 		},
 		{
 			name:              "update conflict",
-			initialFinalizers: []string{common.FinalizerName},
+			initialFinalizers: []string{constants.FinalizerName},
 			interceptorFuncs: interceptor.Funcs{
 				Update: func(ctx context.Context, client client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
 					return errors.NewConflict(schema.GroupResource{}, "dummy", fmt.Errorf("simulated conflict error"))
@@ -104,7 +104,7 @@ func TestRemoveFinalizer(t *testing.T) {
 		},
 		{
 			name:              "update error",
-			initialFinalizers: []string{common.FinalizerName},
+			initialFinalizers: []string{constants.FinalizerName},
 			interceptorFuncs: interceptor.Funcs{
 				Update: func(ctx context.Context, client client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
 					return fmt.Errorf("simulated update error")
@@ -115,7 +115,7 @@ func TestRemoveFinalizer(t *testing.T) {
 		},
 		{
 			name:               "success with single finalizer",
-			initialFinalizers:  []string{common.FinalizerName},
+			initialFinalizers:  []string{constants.FinalizerName},
 			expectResult:       ctrl.Result{},
 			expectError:        false,
 			checkFinalizers:    true,
@@ -123,7 +123,7 @@ func TestRemoveFinalizer(t *testing.T) {
 		},
 		{
 			name:               "success with other finalizers",
-			initialFinalizers:  []string{common.FinalizerName, "example.com/some-finalizer"},
+			initialFinalizers:  []string{constants.FinalizerName, "example.com/some-finalizer"},
 			expectResult:       ctrl.Result{},
 			expectError:        false,
 			checkFinalizers:    true,
@@ -154,7 +154,7 @@ func TestRemoveFinalizer(t *testing.T) {
 				WithInterceptorFuncs(tc.interceptorFuncs).
 				Build()
 
-			result, err := RemoveFinalizer(ctx, cl, obj, common.FinalizerName)
+			result, err := RemoveFinalizer(ctx, cl, obj, constants.FinalizerName)
 
 			g.Expect(result).To(Equal(tc.expectResult))
 
@@ -220,7 +220,7 @@ func TestAddFinalizer(t *testing.T) {
 			expectResult:       ctrl.Result{},
 			expectError:        false,
 			checkFinalizers:    true,
-			expectedFinalizers: []string{common.FinalizerName},
+			expectedFinalizers: []string{constants.FinalizerName},
 		},
 		{
 			name:               "success with other finalizers",
@@ -228,15 +228,15 @@ func TestAddFinalizer(t *testing.T) {
 			expectResult:       ctrl.Result{},
 			expectError:        false,
 			checkFinalizers:    true,
-			expectedFinalizers: []string{"example.com/some-finalizer", common.FinalizerName},
+			expectedFinalizers: []string{"example.com/some-finalizer", constants.FinalizerName},
 		},
 		{
 			name:               "finalizer already present",
-			initialFinalizers:  []string{common.FinalizerName},
+			initialFinalizers:  []string{constants.FinalizerName},
 			expectResult:       ctrl.Result{},
 			expectError:        false,
 			checkFinalizers:    true,
-			expectedFinalizers: []string{common.FinalizerName},
+			expectedFinalizers: []string{constants.FinalizerName},
 		},
 	}
 	for _, tc := range tests {
@@ -255,7 +255,7 @@ func TestAddFinalizer(t *testing.T) {
 				WithInterceptorFuncs(tc.interceptorFuncs).
 				Build()
 
-			result, err := AddFinalizer(ctx, cl, obj, common.FinalizerName)
+			result, err := AddFinalizer(ctx, cl, obj, constants.FinalizerName)
 
 			g.Expect(result).To(Equal(tc.expectResult))
 
