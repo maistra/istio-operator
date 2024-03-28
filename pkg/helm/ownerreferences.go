@@ -24,7 +24,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -111,26 +110,4 @@ func (pr OwnerReferencePostRenderer) addOwnerReference(manifest map[string]any) 
 		}
 	}
 	return manifest, nil
-}
-
-func GetOwnerFromAnnotations(annotations map[string]string) (*types.NamespacedName, string, string) {
-	if annotations == nil {
-		return nil, "", ""
-	}
-	primaryResource := annotations[AnnotationPrimaryResource]
-	primaryResourceType := annotations[AnnotationPrimaryResourceType]
-
-	if primaryResource == "" || primaryResourceType == "" {
-		return nil, "", ""
-	}
-	nameParts := strings.Split(primaryResource, "/")
-	typeParts := strings.SplitN(primaryResourceType, ".", 2)
-
-	if len(nameParts) != 2 || len(typeParts) != 2 {
-		return nil, "", ""
-	}
-	return &types.NamespacedName{
-		Namespace: nameParts[0],
-		Name:      nameParts[1],
-	}, typeParts[0], typeParts[1]
 }
