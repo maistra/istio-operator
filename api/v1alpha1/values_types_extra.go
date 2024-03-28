@@ -31,7 +31,7 @@ type CNIValues struct {
 	Global *CNIGlobalConfig `json:"global,omitempty"`
 }
 
-// Part of the Global Configuration used in the Istio CNI chart.
+// CNIGlobalConfig is a subset of the Global Configuration used in the Istio CNI chart.
 type CNIGlobalConfig struct {
 	// Default k8s resources settings for all Istio control plane components.
 	//

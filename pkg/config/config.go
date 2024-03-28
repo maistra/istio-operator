@@ -26,8 +26,8 @@ var (
 	Config     = OperatorConfig{}
 	_, b, _, _ = runtime.Caller(0)
 
-	// Root folder of this project
-	// This relies on the fact this file is 2 levels up from the root; if this changes, adjust the path below
+	// RepositoryRoot is the root folder of this project.
+	// This relies on the fact this file is 2 levels up from the root; if this changes, adjust the path below.
 	RepositoryRoot = filepath.Join(filepath.Dir(b), "../../")
 )
 

@@ -103,7 +103,7 @@ func (s *IstioRevisionStatus) SetCondition(condition IstioRevisionCondition) {
 	s.Conditions = append(s.Conditions, condition)
 }
 
-// A Condition represents a specific observation of the object's state.
+// IstioRevisionCondition represents a specific observation of the IstioRevision object's state.
 type IstioRevisionCondition struct {
 	// The type of this condition.
 	Type IstioRevisionConditionType `json:"type,omitempty"`

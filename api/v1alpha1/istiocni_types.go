@@ -110,7 +110,7 @@ func (s *IstioCNIStatus) SetCondition(condition IstioCNICondition) {
 	s.Conditions = append(s.Conditions, condition)
 }
 
-// A Condition represents a specific observation of the object's state.
+// IstioCNICondition represents a specific observation of the IstioCNI object's state.
 type IstioCNICondition struct {
 	// The type of this condition.
 	Type IstioCNIConditionType `json:"type,omitempty"`
