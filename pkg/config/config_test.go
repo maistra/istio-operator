@@ -86,30 +86,32 @@ images.v1_20_0.ztunnel=ztunnel-test
 		},
 	}
 	for _, tc := range testCases {
-		file, err := os.CreateTemp("", "operator-unit-")
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer func() {
-			err = file.Close()
+		t.Run(tc.name, func(t *testing.T) {
+			file, err := os.CreateTemp("", "operator-unit-")
 			if err != nil {
 				t.Fatal(err)
 			}
-			os.Remove(file.Name())
-		}()
+			defer func() {
+				err = file.Close()
+				if err != nil {
+					t.Fatal(err)
+				}
+				os.Remove(file.Name())
+			}()
 
-		file.WriteString(tc.configFile)
-		err = Read(file.Name())
-		if !tc.success {
-			if err != nil {
-				return
+			file.WriteString(tc.configFile)
+			err = Read(file.Name())
+			if !tc.success {
+				if err != nil {
+					return
+				}
+				t.Fatal("expected error but got:", err)
+			} else if err != nil {
+				t.Fatal("expected no error but got:", err)
 			}
-			t.Fatal("expected error but got:", err)
-		} else if err != nil {
-			t.Fatal("expected no error but got:", err)
-		}
-		if diff := cmp.Diff(Config, tc.expectedConfig); diff != "" {
-			t.Fatal("config did not match expectation:\n\n", diff)
-		}
+			if diff := cmp.Diff(Config, tc.expectedConfig); diff != "" {
+				t.Fatal("config did not match expectation:\n\n", diff)
+			}
+		})
 	}
 }
