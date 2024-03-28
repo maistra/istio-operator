@@ -75,6 +75,7 @@ var v2_5ChartMapping = map[string]chartRenderingDetails{
 		path:         "rls",
 		enabledField: "rateLimiting.rls",
 	},
+	// Add in path to MultiCluster/gen-istio (location of directory???)
 }
 
 var v2_5ChartOrder = [][]string{
