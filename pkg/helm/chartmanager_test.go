@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/istio-ecosystem/sail-operator/pkg/test"
+	. "github.com/istio-ecosystem/sail-operator/pkg/test/util/ginkgo"
 	. "github.com/onsi/gomega"
 	"helm.sh/helm/v3/pkg/release"
 	corev1 "k8s.io/api/core/v1"
@@ -34,13 +35,11 @@ import (
 
 var ctx = context.TODO()
 
-func TestUpgradeOrInstallChart(t *testing.T) {
-	_, cl, cfg := test.SetupEnv(os.Stdout, false)
+var (
+	relName  = "my-release"
+	chartDir = filepath.Join("testdata", "chart")
 
-	relName := "my-release"
-	chartDir := filepath.Join("testdata", "chart")
-
-	owner := metav1.OwnerReference{
+	owner = metav1.OwnerReference{
 		APIVersion: "v1",
 		Kind:       "Istio",
 		Name:       "my-istio",
@@ -48,10 +47,11 @@ func TestUpgradeOrInstallChart(t *testing.T) {
 		Controller: ptr.Of(true),
 	}
 
-	tests := []struct {
-		name    string
-		setup   func(*WithT, client.Client, *ChartManager, string)
-		wantErr bool
+	tests = []struct {
+		name              string
+		setup             func(*WithT, client.Client, *ChartManager, string)
+		wantErrOnInstall  bool
+		skipUninstallTest bool
 	}{
 		{
 			name: "release does not exist",
@@ -98,7 +98,8 @@ func TestUpgradeOrInstallChart(t *testing.T) {
 				install(g, helm, chartDir, ns, relName, owner)
 				setReleaseStatus(g, helm, ns, relName, release.StatusUninstalled)
 			},
-			wantErr: true,
+			wantErrOnInstall:  true,
+			skipUninstallTest: true, // If the release is marked as Uninstalled, helm doesn't uninstall it
 		},
 		{
 			name: "release in uninstalling state",
@@ -106,7 +107,7 @@ func TestUpgradeOrInstallChart(t *testing.T) {
 				install(g, helm, chartDir, ns, relName, owner)
 				setReleaseStatus(g, helm, ns, relName, release.StatusUninstalling)
 			},
-			wantErr: true,
+			wantErrOnInstall: true,
 		},
 		{
 			name: "release in unknown state",
@@ -114,7 +115,7 @@ func TestUpgradeOrInstallChart(t *testing.T) {
 				install(g, helm, chartDir, ns, relName, owner)
 				setReleaseStatus(g, helm, ns, relName, release.StatusUnknown)
 			},
-			wantErr: true,
+			wantErrOnInstall: true,
 		},
 		{
 			name: "release in superseded state",
@@ -122,7 +123,7 @@ func TestUpgradeOrInstallChart(t *testing.T) {
 				install(g, helm, chartDir, ns, relName, owner)
 				setReleaseStatus(g, helm, ns, relName, release.StatusSuperseded)
 			},
-			wantErr: true,
+			wantErrOnInstall: true,
 		},
 		{
 			name: "release in pending-rollback state",
@@ -130,24 +131,29 @@ func TestUpgradeOrInstallChart(t *testing.T) {
 				install(g, helm, chartDir, ns, relName, owner)
 				setReleaseStatus(g, helm, ns, relName, release.StatusPendingRollback)
 			},
-			wantErr: true,
+			wantErrOnInstall: true,
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+)
+
+func TestUpgradeOrInstallChart(t *testing.T) {
+	_, cl, cfg := test.SetupEnv(os.Stdout, false)
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
 			g := NewWithT(t)
 			helm := NewChartManager(cfg, "")
 			ns := "test-" + rand.String(8)
 
 			g.Expect(createNamespace(cl, ns)).To(Succeed())
 
-			if tt.setup != nil {
-				tt.setup(g, cl, helm, ns)
+			if tc.setup != nil {
+				tc.setup(g, cl, helm, ns)
 			}
 
 			rel, err := helm.UpgradeOrInstallChart(ctx, chartDir, HelmValues{"value": "my-value"}, ns, relName, owner)
 
-			if tt.wantErr {
+			if tc.wantErrOnInstall {
 				g.Expect(err).To(HaveOccurred())
 			} else {
 				g.Expect(err).ToNot(HaveOccurred())
@@ -159,6 +165,36 @@ func TestUpgradeOrInstallChart(t *testing.T) {
 				g.Expect(configMap.Data).To(HaveKeyWithValue("value", "my-value"))
 				g.Expect(configMap.OwnerReferences).To(ContainElement(owner))
 			}
+		})
+	}
+}
+
+func TestUninstallChart(t *testing.T) {
+	_, cl, cfg := test.SetupEnv(os.Stdout, false)
+
+	for _, tc := range tests {
+		if tc.skipUninstallTest {
+			continue
+		}
+
+		t.Run(tc.name, func(t *testing.T) {
+			g := NewWithT(t)
+			helm := NewChartManager(cfg, "")
+			ns := "test-" + rand.String(8)
+
+			g.Expect(createNamespace(cl, ns)).To(Succeed())
+
+			if tc.setup != nil {
+				tc.setup(g, cl, helm, ns)
+			}
+
+			response, err := helm.UninstallChart(ctx, relName, ns)
+
+			g.Expect(err).ToNot(HaveOccurred())
+			g.Expect(response).ToNot(BeNil())
+
+			configMap := &corev1.ConfigMap{}
+			g.Expect(cl.Get(ctx, types.NamespacedName{Name: "test", Namespace: ns}, configMap)).To(ReturnNotFoundError())
 		})
 	}
 }

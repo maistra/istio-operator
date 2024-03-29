@@ -47,7 +47,6 @@ func NewChartManager(cfg *rest.Config, driver string) *ChartManager {
 
 // newActionConfig Create a new Helm action config from in-cluster service account
 func (h *ChartManager) newActionConfig(ctx context.Context, namespace string) (*action.Configuration, error) {
-	actionConfig := new(action.Configuration)
 	logAdapter := func(format string, v ...interface{}) {
 		log := logf.FromContext(ctx)
 		logv2 := log.V(2)
@@ -55,10 +54,10 @@ func (h *ChartManager) newActionConfig(ctx context.Context, namespace string) (*
 			logv2.Info(fmt.Sprintf(format, v...))
 		}
 	}
-	if err := actionConfig.Init(h.restClientGetter, namespace, h.driver, logAdapter); err != nil {
-		return nil, err
-	}
-	return actionConfig, nil
+
+	actionConfig := new(action.Configuration)
+	err := actionConfig.Init(h.restClientGetter, namespace, h.driver, logAdapter)
+	return actionConfig, err
 }
 
 // UpgradeOrInstallChart upgrades a chart in cluster or installs it new if it does not already exist
