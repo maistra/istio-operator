@@ -25,6 +25,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
 	"github.com/istio-ecosystem/sail-operator/pkg/constants"
+	"github.com/istio-ecosystem/sail-operator/pkg/errlist"
 	"github.com/istio-ecosystem/sail-operator/pkg/helm"
 	"github.com/istio-ecosystem/sail-operator/pkg/kube"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
@@ -239,37 +240,34 @@ func (r *IstioRevisionReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *IstioRevisionReconciler) determineStatus(ctx context.Context, rev *v1alpha1.IstioRevision, reconcileErr error) (*v1alpha1.IstioRevisionStatus, error) {
+func (r *IstioRevisionReconciler) determineStatus(ctx context.Context, rev *v1alpha1.IstioRevision, reconcileErr error) (v1alpha1.IstioRevisionStatus, error) {
+	var errs errlist.Builder
 	reconciledCondition := r.determineReconciledCondition(reconcileErr)
 	readyCondition, err := r.determineReadyCondition(ctx, rev)
-	if err != nil {
-		return nil, err
-	}
+	errs.Add(err)
 
 	inUseCondition, err := r.determineInUseCondition(ctx, rev)
-	if err != nil {
-		return nil, err
-	}
+	errs.Add(err)
 
-	status := rev.Status.DeepCopy()
+	status := *rev.Status.DeepCopy()
 	status.ObservedGeneration = rev.Generation
 	status.SetCondition(reconciledCondition)
 	status.SetCondition(readyCondition)
 	status.SetCondition(inUseCondition)
 	status.State = deriveState(reconciledCondition, readyCondition)
-	return status, nil
+	return status, errs.Error()
 }
 
 func (r *IstioRevisionReconciler) updateStatus(ctx context.Context, rev *v1alpha1.IstioRevision, reconcileErr error) error {
-	status, err := r.determineStatus(ctx, rev, reconcileErr)
-	if err != nil {
-		return err
-	}
+	var errs errlist.Builder
 
-	if reflect.DeepEqual(rev.Status, *status) {
-		return nil
+	status, err := r.determineStatus(ctx, rev, reconcileErr)
+	errs.Add(err)
+
+	if !reflect.DeepEqual(rev.Status, status) {
+		errs.Add(r.Client.Status().Patch(ctx, rev, kube.NewStatusPatch(status)))
 	}
-	return r.Client.Status().Patch(ctx, rev, kube.NewStatusPatch(*status))
+	return errs.Error()
 }
 
 func deriveState(reconciledCondition, readyCondition v1alpha1.IstioRevisionCondition) v1alpha1.IstioRevisionConditionReason {

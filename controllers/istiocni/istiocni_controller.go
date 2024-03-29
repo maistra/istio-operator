@@ -25,6 +25,7 @@ import (
 	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
 	"github.com/istio-ecosystem/sail-operator/pkg/config"
 	"github.com/istio-ecosystem/sail-operator/pkg/constants"
+	"github.com/istio-ecosystem/sail-operator/pkg/errlist"
 	"github.com/istio-ecosystem/sail-operator/pkg/helm"
 	"github.com/istio-ecosystem/sail-operator/pkg/kube"
 	"github.com/istio-ecosystem/sail-operator/pkg/profiles"
@@ -235,31 +236,30 @@ func (r *IstioCNIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *IstioCNIReconciler) determineStatus(ctx context.Context, cni *v1alpha1.IstioCNI, reconcileErr error) (*v1alpha1.IstioCNIStatus, error) {
+func (r *IstioCNIReconciler) determineStatus(ctx context.Context, cni *v1alpha1.IstioCNI, reconcileErr error) (v1alpha1.IstioCNIStatus, error) {
+	var errs errlist.Builder
 	reconciledCondition := r.determineReconciledCondition(reconcileErr)
 	readyCondition, err := r.determineReadyCondition(ctx, cni)
-	if err != nil {
-		return nil, err
-	}
+	errs.Add(err)
 
-	status := cni.Status.DeepCopy()
+	status := *cni.Status.DeepCopy()
 	status.ObservedGeneration = cni.Generation
 	status.SetCondition(reconciledCondition)
 	status.SetCondition(readyCondition)
 	status.State = deriveState(reconciledCondition, readyCondition)
-	return status, nil
+	return status, errs.Error()
 }
 
 func (r *IstioCNIReconciler) updateStatus(ctx context.Context, cni *v1alpha1.IstioCNI, reconcileErr error) error {
-	status, err := r.determineStatus(ctx, cni, reconcileErr)
-	if err != nil {
-		return err
-	}
+	var errs errlist.Builder
 
-	if reflect.DeepEqual(cni.Status, *status) {
-		return nil
+	status, err := r.determineStatus(ctx, cni, reconcileErr)
+	errs.Add(err)
+
+	if !reflect.DeepEqual(cni.Status, status) {
+		errs.Add(r.Client.Status().Patch(ctx, cni, kube.NewStatusPatch(status)))
 	}
-	return r.Client.Status().Patch(ctx, cni, kube.NewStatusPatch(*status))
+	return errs.Error()
 }
 
 func deriveState(reconciledCondition, readyCondition v1alpha1.IstioCNICondition) v1alpha1.IstioCNIConditionReason {

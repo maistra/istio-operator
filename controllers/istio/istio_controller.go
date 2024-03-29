@@ -26,6 +26,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/istio-ecosystem/sail-operator/api/v1alpha1"
 	"github.com/istio-ecosystem/sail-operator/pkg/config"
+	"github.com/istio-ecosystem/sail-operator/pkg/errlist"
 	"github.com/istio-ecosystem/sail-operator/pkg/helm"
 	"github.com/istio-ecosystem/sail-operator/pkg/kube"
 	"github.com/istio-ecosystem/sail-operator/pkg/profiles"
@@ -397,8 +398,9 @@ func (r *IstioReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *IstioReconciler) determineStatus(ctx context.Context, istio *v1alpha1.Istio, reconcileErr error) (*v1alpha1.IstioStatus, error) {
-	status := istio.Status.DeepCopy()
+func (r *IstioReconciler) determineStatus(ctx context.Context, istio *v1alpha1.Istio, reconcileErr error) (v1alpha1.IstioStatus, error) {
+	var errs errlist.Builder
+	status := *istio.Status.DeepCopy()
 	status.ObservedGeneration = istio.Generation
 
 	// set Reconciled and Ready conditions
@@ -436,7 +438,18 @@ func (r *IstioReconciler) determineStatus(ctx context.Context, istio *v1alpha1.I
 			status.SetCondition(convertCondition(rev.Status.GetCondition(v1alpha1.IstioRevisionConditionReady)))
 			status.State = convertConditionReason(rev.Status.State)
 		} else {
-			return status, err
+			activeRevisionGetFailed := func(conditionType v1alpha1.IstioConditionType) v1alpha1.IstioCondition {
+				return v1alpha1.IstioCondition{
+					Type:    conditionType,
+					Status:  metav1.ConditionUnknown,
+					Reason:  v1alpha1.IstioReasonFailedToGetActiveRevision,
+					Message: fmt.Sprintf("failed to get active IstioRevision: %s", err),
+				}
+			}
+			status.SetCondition(activeRevisionGetFailed(v1alpha1.IstioConditionReconciled))
+			status.SetCondition(activeRevisionGetFailed(v1alpha1.IstioConditionReady))
+			status.State = v1alpha1.IstioReasonFailedToGetActiveRevision
+			errs.Add(err)
 		}
 	}
 
@@ -454,21 +467,23 @@ func (r *IstioReconciler) determineStatus(ctx context.Context, istio *v1alpha1.I
 			}
 		}
 	} else {
-		return status, err
+		status.Revisions.Total = -1
+		status.Revisions.Ready = -1
+		status.Revisions.InUse = -1
+		errs.Add(err)
 	}
-	return status, nil
+	return status, errs.Error()
 }
 
 func (r *IstioReconciler) updateStatus(ctx context.Context, istio *v1alpha1.Istio, reconcileErr error) error {
+	var errs errlist.Builder
 	status, err := r.determineStatus(ctx, istio, reconcileErr)
-	if err != nil {
-		return err
-	}
+	errs.Add(err)
 
-	if reflect.DeepEqual(istio.Status, *status) {
-		return nil
+	if !reflect.DeepEqual(istio.Status, status) {
+		errs.Add(r.Client.Status().Patch(ctx, istio, kube.NewStatusPatch(status)))
 	}
-	return r.Client.Status().Patch(ctx, istio, kube.NewStatusPatch(*status))
+	return errs.Error()
 }
 
 func convertCondition(condition v1alpha1.IstioRevisionCondition) v1alpha1.IstioCondition {

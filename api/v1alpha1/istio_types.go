@@ -213,6 +213,9 @@ const (
 	// IstioReasonRevisionNotFound indicates that the active IstioRevision is not found.
 	IstioReasonRevisionNotFound IstioConditionReason = "ActiveRevisionNotFound"
 
+	// IstioReasonFailedToGetActiveRevision indicates that a failure occurred when getting the active IstioRevision
+	IstioReasonFailedToGetActiveRevision IstioConditionReason = "FailedToGetActiveRevision"
+
 	// IstioReasonIstiodNotReady indicates that the control plane is fully reconciled, but istiod is not ready.
 	IstioReasonIstiodNotReady IstioConditionReason = "IstiodNotReady"
 

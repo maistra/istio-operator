@@ -217,11 +217,10 @@ func TestReconcile(t *testing.T) {
 	})
 }
 
-func TestUpdateStatus(t *testing.T) {
+func TestDetermineStatus(t *testing.T) {
 	resourceDir := t.TempDir()
 
 	generation := int64(100)
-	oneMinuteAgo := oneMinuteAgo()
 
 	ownedByIstio := metav1.OwnerReference{
 		APIVersion:         v1alpha1.GroupVersion.String(),
@@ -265,7 +264,6 @@ func TestUpdateStatus(t *testing.T) {
 		istio             *v1alpha1.Istio
 		revisions         []v1alpha1.IstioRevision
 		interceptorFuncs  *interceptor.Funcs
-		disallowWrites    bool
 		wantErr           bool
 		expectedStatus    v1alpha1.IstioStatus
 	}{
@@ -431,12 +429,167 @@ func TestUpdateStatus(t *testing.T) {
 			interceptorFuncs: &interceptor.Funcs{
 				Get: func(_ context.Context, _ client.WithWatch, _ client.ObjectKey, obj client.Object, _ ...client.GetOption) error {
 					if _, ok := obj.(*v1alpha1.IstioRevision); ok {
-						return fmt.Errorf("get error")
+						return fmt.Errorf("simulated error")
 					}
 					return nil
 				},
 			},
 			wantErr: true,
+			expectedStatus: v1alpha1.IstioStatus{
+				State:              v1alpha1.IstioReasonFailedToGetActiveRevision,
+				ObservedGeneration: generation,
+				Conditions: []v1alpha1.IstioCondition{
+					{
+						Type:    v1alpha1.IstioConditionReconciled,
+						Status:  metav1.ConditionUnknown,
+						Reason:  v1alpha1.IstioReasonFailedToGetActiveRevision,
+						Message: "failed to get active IstioRevision: simulated error",
+					},
+					{
+						Type:    v1alpha1.IstioConditionReady,
+						Status:  metav1.ConditionUnknown,
+						Reason:  v1alpha1.IstioReasonFailedToGetActiveRevision,
+						Message: "failed to get active IstioRevision: simulated error",
+					},
+				},
+				Revisions: v1alpha1.RevisionSummary{},
+			},
+		},
+		{
+			name: "list revisions error",
+			interceptorFuncs: &interceptor.Funcs{
+				List: func(_ context.Context, _ client.WithWatch, list client.ObjectList, _ ...client.ListOption) error {
+					if _, ok := list.(*v1alpha1.IstioRevisionList); ok {
+						return fmt.Errorf("simulated error")
+					}
+					return nil
+				},
+			},
+			wantErr: true,
+			expectedStatus: v1alpha1.IstioStatus{
+				State:              v1alpha1.IstioReasonRevisionNotFound,
+				ObservedGeneration: generation,
+				Conditions: []v1alpha1.IstioCondition{
+					{
+						Type:    v1alpha1.IstioConditionReconciled,
+						Status:  metav1.ConditionFalse,
+						Reason:  v1alpha1.IstioReasonRevisionNotFound,
+						Message: "active IstioRevision not found",
+					},
+					{
+						Type:    v1alpha1.IstioConditionReady,
+						Status:  metav1.ConditionFalse,
+						Reason:  v1alpha1.IstioReasonRevisionNotFound,
+						Message: "active IstioRevision not found",
+					},
+				},
+				Revisions: v1alpha1.RevisionSummary{
+					Total: -1,
+					Ready: -1,
+					InUse: -1,
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var interceptorFuncs interceptor.Funcs
+			if tc.interceptorFuncs != nil {
+				interceptorFuncs = *tc.interceptorFuncs
+			}
+
+			istio := tc.istio
+			if istio == nil {
+				istio = &v1alpha1.Istio{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:       istioKey.Name,
+						UID:        istioUID,
+						Generation: 100,
+					},
+					Spec: v1alpha1.IstioSpec{
+						Version:   "my-version",
+						Namespace: istioNamespace,
+					},
+				}
+			}
+
+			initObjs := []client.Object{istio}
+			for _, rev := range tc.revisions {
+				rev := rev
+				initObjs = append(initObjs, &rev)
+			}
+
+			cl := newFakeClientBuilder().
+				WithObjects(initObjs...).
+				WithInterceptorFuncs(interceptorFuncs).
+				Build()
+			reconciler := NewIstioReconciler(cl, scheme.Scheme, resourceDir, nil)
+
+			status, err := reconciler.determineStatus(ctx, istio, tc.reconciliationErr)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("determineStatus() error = %v, wantErr %v", err, tc.wantErr)
+			}
+
+			if diff := cmp.Diff(tc.expectedStatus, clearTimestamps(status)); diff != "" {
+				t.Errorf("returned status wasn't as expected; diff (-expected, +actual):\n%v", diff)
+			}
+		})
+	}
+}
+
+func TestUpdateStatus(t *testing.T) {
+	resourceDir := t.TempDir()
+
+	generation := int64(100)
+	oneMinuteAgo := oneMinuteAgo()
+
+	testCases := []struct {
+		name              string
+		reconciliationErr error
+		istio             *v1alpha1.Istio
+		revisions         []v1alpha1.IstioRevision
+		interceptorFuncs  *interceptor.Funcs
+		disallowWrites    bool
+		wantErr           bool
+		expectedStatus    v1alpha1.IstioStatus
+
+		skipInterceptors bool // used internally by test implementation when it wants to get around the interceptor
+	}{
+		{
+			name: "updates status even when determineStatus returns error",
+			interceptorFuncs: &interceptor.Funcs{
+				List: func(_ context.Context, _ client.WithWatch, list client.ObjectList, _ ...client.ListOption) error {
+					if _, ok := list.(*v1alpha1.IstioRevisionList); ok {
+						return fmt.Errorf("simulated error")
+					}
+					return nil
+				},
+			},
+			wantErr: true,
+			expectedStatus: v1alpha1.IstioStatus{
+				State:              v1alpha1.IstioReasonRevisionNotFound,
+				ObservedGeneration: generation,
+				Conditions: []v1alpha1.IstioCondition{
+					{
+						Type:    v1alpha1.IstioConditionReconciled,
+						Status:  metav1.ConditionFalse,
+						Reason:  v1alpha1.IstioReasonRevisionNotFound,
+						Message: "active IstioRevision not found",
+					},
+					{
+						Type:    v1alpha1.IstioConditionReady,
+						Status:  metav1.ConditionFalse,
+						Reason:  v1alpha1.IstioReasonRevisionNotFound,
+						Message: "active IstioRevision not found",
+					},
+				},
+				Revisions: v1alpha1.RevisionSummary{
+					Total: -1,
+					Ready: -1,
+					InUse: -1,
+				},
+			},
 		},
 		{
 			name: "skips update when status unchanged",
@@ -577,15 +730,18 @@ func TestUpdateStatus(t *testing.T) {
 			}
 
 			Must(t, cl.Get(ctx, istioKey, istio))
-			// clear timestamps for comparison
-			for i := range istio.Status.Conditions {
-				istio.Status.Conditions[i].LastTransitionTime = metav1.Time{}
-			}
-			if diff := cmp.Diff(tc.expectedStatus, istio.Status); diff != "" {
-				t.Errorf("status wasn't updated as expected; diff (-expected, +actual):\n%v", diff)
+			if diff := cmp.Diff(tc.expectedStatus, clearTimestamps(istio.Status)); diff != "" {
+				t.Errorf("returned status wasn't as expected; diff (-expected, +actual):\n%v", diff)
 			}
 		})
 	}
+}
+
+func clearTimestamps(status v1alpha1.IstioStatus) v1alpha1.IstioStatus {
+	for i := range status.Conditions {
+		status.Conditions[i].LastTransitionTime = metav1.Time{}
+	}
+	return status
 }
 
 func toConditionStatus(b bool) metav1.ConditionStatus {
