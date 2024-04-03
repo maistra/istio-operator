@@ -24,6 +24,7 @@ require (
 	istio.io/client-go v1.19.0-alpha.1.0.20240221195622-02d58308125a
 	istio.io/istio v0.0.0-20240221233722-55f12a68b4f9
 	k8s.io/api v0.29.2
+	k8s.io/apiextensions-apiserver v0.29.2
 	k8s.io/apimachinery v0.29.2
 	k8s.io/cli-runtime v0.29.1
 	k8s.io/client-go v0.29.2
@@ -158,7 +159,6 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
 	istio.io/api v1.19.0-alpha.1.0.20240224002031-63dcee0970de // indirect
-	k8s.io/apiextensions-apiserver v0.29.2 // indirect
 	k8s.io/apiserver v0.29.2 // indirect
 	k8s.io/component-base v0.29.2 // indirect
 	k8s.io/klog/v2 v2.120.1 // indirect
