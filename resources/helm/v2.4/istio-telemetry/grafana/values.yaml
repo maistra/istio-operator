@@ -74,9 +74,7 @@ grafana:
         type: prometheus
         url: https://prometheus:9090
         basicAuth: true
-        "secureJsonData": {
-          basicAuthPassword: ""
-        }
+        basicAuthPassword: ""
         basicAuthUser: internal
         version: 1
 
