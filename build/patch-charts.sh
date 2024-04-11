@@ -161,7 +161,12 @@ function patchGalley() {
   - apiGroups: [""]\
     resources: ["pods/finalizers"]\
     verbs: ["update"]' "${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml"
-  sed_wrap -i -e '/- apiGroups:.*admissionregistration\.k8s\.io/,/verbs:/ d' "${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml"
+  sed_wrap -i '/- apiGroups:.*admissionregistration\.k8s\.io/,/verbs:/ {
+     /- apiGroups:.*admissionregistration\.k8s\.io/ i\
+{{ if .Values.global.clusterWide }}
+     /verbs:/ a\
+{{ end }}
+    }'  "${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml"
   sed_wrap -i -e '/- apiGroups:.*certificates\.k8s\.io/,/verbs:/ d' "${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml"
   sed_wrap -i -e '/- apiGroups:.*authentication\.k8s\.io/,/verbs:/ d' "${HELM_DIR}/istio-control/istio-discovery/templates/clusterrole.yaml"
 

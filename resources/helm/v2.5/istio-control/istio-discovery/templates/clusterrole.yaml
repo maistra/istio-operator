@@ -9,8 +9,18 @@ metadata:
     release: {{ .Release.Name }}
 rules:
   # sidecar injection controller
+{{ if .Values.global.clusterWide }}
+  - apiGroups: ["admissionregistration.k8s.io"]
+    resources: ["mutatingwebhookconfigurations"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+{{ end }}
 
   # configuration validation webhook controller
+{{ if .Values.global.clusterWide }}
+  - apiGroups: ["admissionregistration.k8s.io"]
+    resources: ["validatingwebhookconfigurations"]
+    verbs: ["get", "list", "watch", "update"]
+{{ end }}
 
   # istio configuration
   # removing CRD permissions can break older versions of Istio running alongside this control plane (https://github.com/istio/istio/issues/29382)
