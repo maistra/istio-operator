@@ -66,15 +66,14 @@ grafana:
           # XXX: is this still needed?
           # we should be using the CA cert in /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
           tlsSkipVerify: true
+          # OSSM-6267 Grafana 9.2 data source query request: Use a header for oauth proxy authentication
+          httpHeaderName1: 'Authorization'
         name: Prometheus
         orgId: 1
         type: prometheus
         url: https://prometheus:9090
-        basicAuth: true
-        "secureJsonData": {
-          basicAuthPassword: ""
-        }
-        basicAuthUser: internal
+        secureJsonData:
+          httpHeaderValue1: '{AuthToken}'
         version: 1
 
   dashboardProviders:

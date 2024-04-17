@@ -17,6 +17,8 @@ import (
 	"github.com/maistra/istio-operator/pkg/controller/versions"
 )
 
+var username = "internal"
+
 func (r *controlPlaneInstanceReconciler) patchHtpasswdSecret(ctx context.Context, object *unstructured.Unstructured) error {
 	var rawPassword, auth string
 	log := common.LogFromContext(ctx)
@@ -51,6 +53,7 @@ func (r *controlPlaneInstanceReconciler) patchHtpasswdSecret(ctx context.Context
 	b64Password := base64.StdEncoding.EncodeToString([]byte(rawPassword))
 	b64Auth := base64.StdEncoding.EncodeToString([]byte(auth))
 
+	// b/c Keep rawPassword for previous release Kiali, Prometheus and Grafana patching
 	// We store the raw password in order to be able to retrieve it below, when patching Grafana ConfigMap
 	err = unstructured.SetNestedField(object.UnstructuredContent(), b64Password, "data", "rawPassword")
 	if err != nil {
@@ -64,12 +67,21 @@ func (r *controlPlaneInstanceReconciler) patchHtpasswdSecret(ctx context.Context
 		return err
 	}
 
+	// OSSM-6267 Grafana 9.2: We store the username:rawPassword in order to be able to retrieve it below,
+	// when patching Grafana ConfigMap
+	authToken := username + ":" + rawPassword
+	b64authToken := base64.StdEncoding.EncodeToString([]byte(authToken))
+	err = unstructured.SetNestedField(object.UnstructuredContent(), b64authToken, "data", "authToken")
+	if err != nil {
+		log.Error(err, "failed to set htpasswd authToken")
+		return err
+	}
+
 	return nil
 }
 
 func hashPassword(version versions.Version, rawPass string) (string, error) {
 	var auth, hashedPassword string
-	username := "internal"
 
 	// For SMCP versions 2.4 and above, use bcrypt hashing.
 	if version.AtLeast(versions.V2_4) {
@@ -89,6 +101,7 @@ func hashPassword(version versions.Version, rawPass string) (string, error) {
 	return auth, nil
 }
 
+// b/c Keep rawPassword for previous release Kiali, Prometheus and Grafana patching
 func (r *controlPlaneInstanceReconciler) getRawHtPasswd(ctx context.Context) (string, error) {
 	log := common.LogFromContext(ctx)
 	htSecret := &corev1.Secret{}
@@ -101,6 +114,18 @@ func (r *controlPlaneInstanceReconciler) getRawHtPasswd(ctx context.Context) (st
 	return string(htSecret.Data["rawPassword"]), nil
 }
 
+func (r *controlPlaneInstanceReconciler) getHtauthToken(ctx context.Context) (string, error) {
+	log := common.LogFromContext(ctx)
+	htSecret := &corev1.Secret{}
+	err := r.Client.Get(ctx, client.ObjectKey{Namespace: r.Instance.GetNamespace(), Name: "htpasswd"}, htSecret)
+	if err != nil {
+		log.Error(err, "error retrieving htpasswd Secret")
+		return "", err
+	}
+
+	return string(htSecret.Data["authToken"]), nil
+}
+
 func (r *controlPlaneInstanceReconciler) patchGrafanaConfig(ctx context.Context, object *unstructured.Unstructured) error {
 	log := common.LogFromContext(ctx)
 	dsYaml, found, err := unstructured.NestedString(object.UnstructuredContent(), "data", "datasources.yaml")
@@ -111,13 +136,14 @@ func (r *controlPlaneInstanceReconciler) patchGrafanaConfig(ctx context.Context,
 
 	log.Info("patching Grafana-Prometheus link", object.GetKind(), object.GetName())
 
-	rawPassword, err := r.getRawHtPasswd(ctx)
+	authToken, err := r.getHtauthToken(ctx)
 	if err != nil {
 		return err
 	}
+	b64authToken := base64.StdEncoding.EncodeToString([]byte(authToken))
 
-	re := regexp.MustCompile("(?s)(basicAuthPassword:).*?\n")
-	dsYaml = re.ReplaceAllString(dsYaml, fmt.Sprintf("${1} %s\n", rawPassword))
+	re := regexp.MustCompile("(?s)({AuthToken}).*?\n")
+	dsYaml = re.ReplaceAllString(dsYaml, fmt.Sprintf("Basic %s'\n", b64authToken))
 	err = unstructured.SetNestedField(object.UnstructuredContent(), dsYaml, "data", "datasources.yaml")
 	if err != nil {
 		log.Error(err, "failed to set datasources.yaml")
