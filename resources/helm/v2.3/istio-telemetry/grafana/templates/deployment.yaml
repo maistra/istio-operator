@@ -177,6 +177,8 @@ spec:
           - name: config
             mountPath: "/etc/grafana/provisioning/dashboards/dashboardproviders.yaml"
             subPath: dashboardproviders.yaml
+          - name: config
+            mountPath: /etc/grafana/provisioning/alerting
       affinity:
       {{- include "nodeaffinity" . | indent 6 }}
       {{- include "podAntiAffinity" . | indent 6 }}
