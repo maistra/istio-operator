@@ -53,8 +53,7 @@ func (r *controlPlaneInstanceReconciler) patchHtpasswdSecret(ctx context.Context
 	b64Password := base64.StdEncoding.EncodeToString([]byte(rawPassword))
 	b64Auth := base64.StdEncoding.EncodeToString([]byte(auth))
 
-	// b/c Keep rawPassword for previous release Kiali, Prometheus and Grafana patching
-	// We store the raw password in order to be able to retrieve it below, when patching Grafana ConfigMap
+	// we store the raw password in order to be able to retrieve it below, when patching ConfigMap for Grafana 7.5
 	err = unstructured.SetNestedField(object.UnstructuredContent(), b64Password, "data", "rawPassword")
 	if err != nil {
 		log.Error(err, "failed to set htpasswd raw password")
@@ -67,8 +66,7 @@ func (r *controlPlaneInstanceReconciler) patchHtpasswdSecret(ctx context.Context
 		return err
 	}
 
-	// OSSM-6267 Grafana 9.2: We store the username:rawPassword in order to be able to retrieve it below,
-	// when patching Grafana ConfigMap
+	// we store the username:rawPassword in order to be able to retrieve it below, when patching ConfigMap for Grafana 9.2+
 	authToken := username + ":" + rawPassword
 	b64authToken := base64.StdEncoding.EncodeToString([]byte(authToken))
 	err = unstructured.SetNestedField(object.UnstructuredContent(), b64authToken, "data", "authToken")
@@ -101,7 +99,6 @@ func hashPassword(version versions.Version, rawPass string) (string, error) {
 	return auth, nil
 }
 
-// b/c Keep rawPassword for previous release Kiali, Prometheus and Grafana patching
 func (r *controlPlaneInstanceReconciler) getRawHtPasswd(ctx context.Context) (string, error) {
 	log := common.LogFromContext(ctx)
 	htSecret := &corev1.Secret{}
