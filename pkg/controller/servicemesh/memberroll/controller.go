@@ -379,6 +379,8 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 		} else {
 			kialiErr = r.kialiReconciler.reconcileKiali(ctx, kialiName, meshNamespace, allKnownMembers.List(), []string{})
 		}
+	} else if mesh != nil && !mesh.Status.AppliedSpec.IsKialiEnabled() {
+		roll.Status.RemoveAnnotation(statusAnnotationKialiName)
 	}
 
 	// 7. tell Prometheus about all the namespaces in the mesh
@@ -394,6 +396,8 @@ func (r *MemberRollReconciler) reconcileObject(ctx context.Context, roll *maistr
 			roll.Status.SetAnnotation(statusAnnotationPrometheus, strings.Join(scrapingNamespaces, ","))
 			prometheusErr = r.prometheusReconciler.reconcilePrometheus(ctx, prometheusConfigMapName, meshNamespace, scrapingNamespaces)
 		}
+	} else if mesh != nil && !mesh.Status.AppliedSpec.IsPrometheusEnabled() {
+		roll.Status.RemoveAnnotation(statusAnnotationPrometheus)
 	}
 
 	// 7. update the status
