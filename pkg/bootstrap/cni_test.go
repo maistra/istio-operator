@@ -32,13 +32,6 @@ func TestCNISupportedVersionRendering(t *testing.T) {
 		daemonsetName     string
 	}{
 		{
-			name:              "Default Supported Versions SMCP v2.2",
-			supportedVersions: versions.GetSupportedVersions(),
-			instanceVersion:   versions.V2_2.Version(),
-			containerNames:    []string{"install-cni-v2-2"},
-			daemonsetName:     "istio-cni-node",
-		},
-		{
 			name:              "Default Supported Versions SMCP v2.3",
 			supportedVersions: versions.GetSupportedVersions(),
 			instanceVersion:   versions.V2_3.Version(),
@@ -51,13 +44,6 @@ func TestCNISupportedVersionRendering(t *testing.T) {
 			instanceVersion:   versions.V2_4.Version(),
 			containerNames:    []string{"install-cni"},
 			daemonsetName:     "istio-cni-node-v2-4",
-		},
-		{
-			name:              "v2.2 only",
-			supportedVersions: []versions.Version{versions.V2_2},
-			instanceVersion:   versions.V2_2.Version(),
-			containerNames:    []string{"install-cni-v2-2"},
-			daemonsetName:     "istio-cni-node",
 		},
 		{
 			name:              "v2.3 only",

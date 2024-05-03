@@ -16,14 +16,6 @@ spec:
         name: istio-operator
       annotations:
 
-        olm.relatedImage.v2_2.cni: quay.io/maistra/istio-cni-ubi8:2.2.2
-        olm.relatedImage.v2_2.grafana: quay.io/maistra/grafana-ubi8:2.2.2
-        olm.relatedImage.v2_2.pilot: quay.io/maistra/pilot-ubi8:2.2.2
-        olm.relatedImage.v2_2.prometheus: quay.io/maistra/prometheus-ubi8:2.2.2
-        olm.relatedImage.v2_2.proxyv2: quay.io/maistra/proxyv2-ubi8:2.2.2
-        olm.relatedImage.v2_2.wasm-cacher: quay.io/maistra/pilot-ubi8:2.2.2
-        olm.relatedImage.v2_2.rls: quay.io/maistra/ratelimit-ubi8:2.2.2
-
         olm.relatedImage.v2_3.cni: quay.io/maistra/istio-cni-ubi8:2.3.0
         olm.relatedImage.v2_3.grafana: quay.io/maistra/grafana-ubi8:2.3.0
         olm.relatedImage.v2_3.pilot: quay.io/maistra/pilot-ubi8:2.3.0

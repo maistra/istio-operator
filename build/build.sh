@@ -35,7 +35,7 @@ fi
 LD_EXTRAFLAGS+=" -X ${REPO_PATH}/pkg/version.buildStatus=${GITSTATUS}"
 
 : "${GITTAG:=$(git describe 2> /dev/null || echo "unknown")}"
-: "${MINIMUM_SUPPORTED_VERSION:=v2.2}"
+: "${MINIMUM_SUPPORTED_VERSION:=v2.3}"
 LD_EXTRAFLAGS+=" -X ${REPO_PATH}/pkg/version.buildTag=${GITTAG} -X ${REPO_PATH}/pkg/version.minimumSupportedVersion=${MINIMUM_SUPPORTED_VERSION}"
 
 LDFLAGS="-extldflags -static ${LD_EXTRAFLAGS} -s -w"
