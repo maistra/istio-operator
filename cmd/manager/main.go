@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	"github.com/magiconair/properties"
@@ -75,9 +76,12 @@ func main() {
 	var logAPIRequests bool
 	pflag.BoolVar(&logAPIRequests, "logAPIRequests", false, "Log API requests performed by the operator.")
 
-	var leaderElect bool
-	pflag.BoolVar(&leaderElect, "leader-elect", true, "Enable leader election for this operator. "+
-		"Enabling this will ensure there is only one active controller manager.")
+	pflag.Bool("leader-elect", true, "Enable leader election for this operator. Enabling this will ensure there is only one active controller manager.")
+	pflag.Duration("leader-elect-lease-duration", 15*time.Second, "The duration that non-leader candidates will wait after observing a leadership renewal "+
+		"until attempting to acquire leadership of a led but unrenewed leader slot. ")
+	pflag.Duration("leader-elect-renew-deadline", 10*time.Second, "The interval between attempts by the acting master to renew a leadership slot "+
+		"before it stops leading. This must be less than the lease duration. ")
+	pflag.Duration("leader-elect-retry-period", 2*time.Second, "The duration the clients should wait between attempting acquisition and renewal of a leadership.")
 
 	// config file
 	configFile := ""
@@ -138,8 +142,11 @@ func main() {
 		Port:                   admissionControllerPort,
 		MetricsBindAddress:     net.JoinHostPort(metricsHost, fmt.Sprint(metricsPort)),
 		HealthProbeBindAddress: healthProbeBindAddress,
-		LeaderElection:         leaderElect,
+		LeaderElection:         common.Config.LeaderElection.Enabled,
 		LeaderElectionID:       "istio-operator-lock",
+		LeaseDuration:          common.Config.LeaderElection.LeaseDuration,
+		RenewDeadline:          common.Config.LeaderElection.RenewDeadline,
+		RetryPeriod:            common.Config.LeaderElection.RetryPeriod,
 	}
 
 	// Add support for MultiNamespace set in WATCH_NAMESPACE (e.g ns1,ns2)
@@ -298,6 +305,11 @@ func initializeConfiguration(configFile string) error {
 	v.RegisterAlias("controller.apiBurst", "apiBurst")
 	v.RegisterAlias("controller.apiQPS", "apiQPS")
 	v.RegisterAlias("controller.webhookManagementEnabled", "webhookManagementEnabled")
+
+	v.RegisterAlias("leaderElection.enabled", "leader-elect")
+	v.RegisterAlias("leaderElection.leaseDuration", "leader-elect-lease-duration")
+	v.RegisterAlias("leaderElection.renewDeadline", "leader-elect-renew-deadline")
+	v.RegisterAlias("leaderElection.retryPeriod", "leader-elect-retry-period")
 
 	// rendering settings
 	v.RegisterAlias("rendering.resourceDir", "resourceDir")

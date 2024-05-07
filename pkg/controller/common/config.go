@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -18,10 +19,11 @@ func init() {
 
 // config for the operator
 type config struct {
-	OLM        olm              `json:"olm,omitempty"`
-	OAuthProxy oauthProxy       `json:"oauth-proxy,omitempty"`
-	Rendering  renderingOptions `json:"rendering,omitempty"`
-	Controller controller       `json:"controller,omitempty"`
+	OLM            olm              `json:"olm,omitempty"`
+	OAuthProxy     oauthProxy       `json:"oauth-proxy,omitempty"`
+	Rendering      renderingOptions `json:"rendering,omitempty"`
+	Controller     controller       `json:"controller,omitempty"`
+	LeaderElection leaderElection   `json:"leaderElection,omitempty"`
 }
 
 // OLM is intermediate struct for serialization
@@ -167,6 +169,14 @@ type controller struct {
 	// If set to false, the controller does not create and manage webhookconfigurations by itself.
 	// Defaults to 'true'
 	WebhookManagementEnabled bool `json:"webhookManagementEnabled,omitempty"`
+}
+
+// Leader election configuration
+type leaderElection struct {
+	Enabled       bool           `json:"enabled,omitempty"`
+	LeaseDuration *time.Duration `json:"leaseDuration,omitempty"`
+	RenewDeadline *time.Duration `json:"renewDeadline,omitempty"`
+	RetryPeriod   *time.Duration `json:"retryPeriod,omitempty"`
 }
 
 // NewViper returns a new viper.Viper configured with all the common.Config keys
