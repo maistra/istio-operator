@@ -42,6 +42,7 @@ type images struct {
 	V2_3 v2_3ImageNames `json:"v2_3,omitempty"`
 	V2_4 v2_4ImageNames `json:"v2_4,omitempty"`
 	V2_5 v2_5ImageNames `json:"v2_5,omitempty"`
+	V2_6 v2_6ImageNames `json:"v2_6,omitempty"`
 }
 
 // V1_1ImageNames used by deployments
@@ -124,6 +125,17 @@ type v2_4ImageNames struct {
 
 // v2_5ImageNames used by deployments
 type v2_5ImageNames struct {
+	CNI                      string `json:"cni,omitempty"`
+	Grafana                  string `json:"grafana,omitempty"`
+	Pilot                    string `json:"pilot,omitempty"`
+	Prometheus               string `json:"prometheus,omitempty"`
+	PrometheusConfigReloader string `json:"prometheus-config-reloader,omitempty"`
+	ProxyV2                  string `json:"proxyv2,omitempty"`
+	RLS                      string `json:"rls,omitempty"`
+}
+
+// v2_6ImageNames used by deployments
+type v2_6ImageNames struct {
 	CNI                      string `json:"cni,omitempty"`
 	Grafana                  string `json:"grafana,omitempty"`
 	Pilot                    string `json:"pilot,omitempty"`

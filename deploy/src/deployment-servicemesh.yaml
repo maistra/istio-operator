@@ -47,7 +47,15 @@ spec:
         olm.relatedImage.v2_5.prometheus-config-reloader: registry.redhat.io/openshift4/ose-prometheus-config-reloader:v4.12
         olm.relatedImage.v2_5.proxyv2: ${OSSM_PROXY_IMAGE}
         olm.relatedImage.v2_5.rls: ${OSSM_RATELIMIT_IMAGE}
-        olm.relatedImage.v2_5.ossm-must-gather: registry.redhat.io/openshift-service-mesh/istio-must-gather-rhel8:2.5
+        # 2.6 images
+        olm.relatedImage.v2_6.cni: ${OSSM_CNI_IMAGE}
+        olm.relatedImage.v2_6.grafana: ${OSSM_GRAFANA_IMAGE}
+        olm.relatedImage.v2_6.pilot: ${OSSM_PILOT_IMAGE}
+        olm.relatedImage.v2_6.prometheus: registry.redhat.io/openshift4/ose-prometheus:v4.12
+        olm.relatedImage.v2_6.prometheus-config-reloader: registry.redhat.io/openshift4/ose-prometheus-config-reloader:v4.12
+        olm.relatedImage.v2_6.proxyv2: ${OSSM_PROXY_IMAGE}
+        olm.relatedImage.v2_6.rls: ${OSSM_RATELIMIT_IMAGE}
+        olm.relatedImage.v2_6.ossm-must-gather: registry.redhat.io/openshift-service-mesh/istio-must-gather-rhel8:2.5
 
         oauth-proxy.query: "true"
         oauth-proxy.namespace: openshift

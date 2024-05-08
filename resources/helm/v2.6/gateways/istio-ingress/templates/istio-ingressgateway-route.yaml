@@ -1,0 +1,23 @@
+{{ $gateway := index .Values "gateways" "istio-ingressgateway" }}
+{{- if and $gateway.enabled $gateway.routeConfig.enabled }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ $gateway.name | default "istio-ingressgateway" }}
+{{- if or (not $gateway.namespace) (eq $gateway.name "istio-ingressgateway") }}
+  namespace: {{ .Release.Namespace }}
+{{- else }}
+  namespace: {{ $gateway.namespace }}
+{{- end }}
+  labels:
+    release: {{ .Release.Name }}
+    {{- range $key, $val := $gateway.labels }}
+    {{ $key }}: {{ $val }}
+    {{- end }}
+spec:
+  to:
+    kind: Service
+    name: {{ $gateway.name | default "istio-ingressgateway" }}
+  port:
+    targetPort: 8080
+{{- end }}
