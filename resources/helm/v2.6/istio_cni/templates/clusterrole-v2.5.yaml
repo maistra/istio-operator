@@ -2,6 +2,8 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
+  labels:
+    maistra-version: "2.6.0"
   name: {{ .Values.cni.defaultResourceName }}
 rules:
   - apiGroups: [""]

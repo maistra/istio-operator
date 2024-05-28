@@ -82,6 +82,9 @@ pilot:
   ipFamilies: []
 
 sidecarInjectorWebhook:
+  objectSelector:
+    enabled: false
+
   # You can use the field called alwaysInjectSelector and neverInjectSelector which will always inject the sidecar or
   # always skip the injection on pods that match that label selector, regardless of the global policy.
   # See https://istio.io/docs/setup/kubernetes/additional-setup/sidecar-injection/#more-control-adding-exceptions
@@ -140,7 +143,7 @@ sidecarInjectorWebhook:
   #         hello: world
   #
   # defaultTemplates: ["sidecar", "hello"]
-  defaultTemplates: []
+  # defaultTemplates: []
 istiodRemote:
   # Sidecar injector mutating webhook configuration clientConfig.url value.
   # For example: https://$remotePilotAddress:15017/inject
@@ -502,7 +505,10 @@ global:
   # for internal usage only, not to be configured by users.
   autoscalingv2API: true
 
+gateways: {}
+
 base:
+  validationURL: ""
   # For istioctl usage to disable istio config crds in base
   enableIstioConfigCRDs: true
 
@@ -517,3 +523,7 @@ base:
 istio_cni:
   enabled: false
   chained: true
+
+gatewayAPI:
+  enabled: false
+  controllerMode: false

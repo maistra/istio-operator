@@ -3,12 +3,11 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: {{ $gateway.name }}-sds
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ $gateway.namespace | default .Release.Namespace }}
   labels:
+    maistra-version: "2.6.0"
     release: {{ .Release.Name }}
     istio.io/rev: {{ .Values.revision | default "default" }}
-    install.operator.istio.io/owning-resource: {{ .Values.ownerName | default "unknown" }}
-    operator.istio.io/component: "IngressGateways"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role

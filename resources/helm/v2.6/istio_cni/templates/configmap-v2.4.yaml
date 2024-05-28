@@ -3,6 +3,8 @@
 kind: ConfigMap
 apiVersion: v1
 metadata:
+  labels:
+    maistra-version: "2.6.0"
   name: {{ .Values.cni.defaultResourceName }}-config-v2-4
   namespace: {{ .Release.Namespace }}
 data:

@@ -1,16 +1,15 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: istiod{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}
+  name: istiod-{{ .Values.revision | default "default" }}
   namespace: {{ .Release.Namespace }}
   {{- if .Values.pilot.serviceAnnotations }}
   annotations:
 {{ toYaml .Values.pilot.serviceAnnotations | indent 4 }}
   {{- end }}
   labels:
+    maistra-version: "2.6.0"
     istio.io/rev: {{ .Values.revision | default "default" }}
-    install.operator.istio.io/owning-resource: {{ .Values.ownerName | default "unknown" }}
-    operator.istio.io/component: "Pilot"
     app: istiod
     istio: pilot
     release: {{ .Release.Name }}

@@ -4,6 +4,7 @@ metadata:
   name: istio-grafana
   namespace: {{ .Release.Namespace }}
   labels:
+    maistra-version: "2.6.0"
     app: grafana
     release: {{ .Release.Name }}
     istio: grafana

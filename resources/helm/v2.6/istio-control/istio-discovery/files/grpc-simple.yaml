@@ -1,4 +1,6 @@
 metadata:
+  labels:
+    maistra-version: "2.6.0"
   annotations:
     sidecar.istio.io/rewriteAppHTTPProbers: "false"
 spec:
@@ -23,7 +25,7 @@ spec:
               fieldPath: metadata.namespace
         - name: ISTIO_NAMESPACE
           value: |
-             {{ .Values.global.istioNamespace }}
+             {{ .Release.Namespace }}
       command:
         - sh
         - "-c"
