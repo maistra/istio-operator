@@ -1,14 +1,14 @@
 {{- if and .Values.telemetry.enabled .Values.telemetry.v2.enabled }}
-{{ $prom := not (include "prometheus" . | eq "true") }}
-{{ $sdMetrics := not (include "sd-metrics" . | eq "true") }}
-{{ $sdLogs := not (include "sd-logs" . | eq "true") }}
+{{ $customProm := not (include "default-prometheus" . | eq "true") }}
+{{ $customSdMetrics := not (include "default-sd-metrics" . | eq "true") }}
+{{ $customSdLogs := not (include "default-sd-logs" . | eq "true") }}
 ---
 # Note: http stats filter is wasm enabled only in sidecars.
-{{- if and .Values.telemetry.v2.prometheus.enabled $prom }}
+{{- if and .Values.telemetry.v2.prometheus.enabled $customProm }}
 apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
-  name: stats-filter-1.20-{{ .Values.revision | default "default" }}
+  name: stats-filter-1.17-{{ .Values.revision | default "default" }}
   {{- if .Values.meshConfig.rootNamespace }}
   namespace: {{ .Values.meshConfig.rootNamespace }}
   {{- else }}
@@ -24,7 +24,7 @@ spec:
       match:
         context: SIDECAR_OUTBOUND
         proxy:
-          proxyVersion: '^1\.20.*'
+          proxyVersion: '^1\.17.*'
         listener:
           filterChain:
             filter:
@@ -48,7 +48,7 @@ spec:
       match:
         context: SIDECAR_INBOUND
         proxy:
-          proxyVersion: '^1\.20.*'
+          proxyVersion: '^1\.17.*'
         listener:
           filterChain:
             filter:
@@ -74,7 +74,7 @@ spec:
       match:
         context: GATEWAY
         proxy:
-          proxyVersion: '^1\.20.*'
+          proxyVersion: '^1\.17.*'
         listener:
           filterChain:
             filter:
@@ -101,7 +101,7 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
-  name: tcp-stats-filter-1.20-{{ .Values.revision | default "default" }}
+  name: tcp-stats-filter-1.17-{{ .Values.revision | default "default" }}
   {{- if .Values.meshConfig.rootNamespace }}
   namespace: {{ .Values.meshConfig.rootNamespace }}
   {{- else }}
@@ -117,7 +117,7 @@ spec:
       match:
         context: SIDECAR_INBOUND
         proxy:
-          proxyVersion: '^1\.20.*'
+          proxyVersion: '^1\.17.*'
         listener:
           filterChain:
             filter:
@@ -139,7 +139,7 @@ spec:
       match:
         context: SIDECAR_OUTBOUND
         proxy:
-          proxyVersion: '^1\.20.*'
+          proxyVersion: '^1\.17.*'
         listener:
           filterChain:
             filter:
@@ -161,7 +161,7 @@ spec:
       match:
         context: GATEWAY
         proxy:
-          proxyVersion: '^1\.20.*'
+          proxyVersion: '^1\.17.*'
         listener:
           filterChain:
             filter:
@@ -182,11 +182,11 @@ spec:
 ---
 {{- end }}
 {{/*TODO: this is broken, we do not handle the split quite right! */}}
-{{- if and .Values.telemetry.v2.stackdriver.enabled $sdLogs $sdMetrics }}
+{{- if and .Values.telemetry.v2.stackdriver.enabled (or $customSdLogs $customSdMetrics) }}
 apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
-  name: stackdriver-filter-1.20-{{ .Values.revision | default "default" }}
+  name: stackdriver-filter-1.17-{{ .Values.revision | default "default" }}
   {{- if .Values.meshConfig.rootNamespace }}
   namespace: {{ .Values.meshConfig.rootNamespace }}
   {{- else }}
@@ -203,7 +203,7 @@ spec:
       match:
         context: SIDECAR_OUTBOUND
         proxy:
-          proxyVersion: '^1\.20.*'
+          proxyVersion: '^1\.17.*'
         listener:
           filterChain:
             filter:
@@ -241,7 +241,7 @@ spec:
       match:
         context: SIDECAR_INBOUND
         proxy:
-          proxyVersion: '^1\.20.*'
+          proxyVersion: '^1\.17.*'
         listener:
           filterChain:
             filter:
@@ -280,7 +280,7 @@ spec:
       match:
         context: GATEWAY
         proxy:
-          proxyVersion: '^1\.20.*'
+          proxyVersion: '^1\.17.*'
         listener:
           filterChain:
             filter:
@@ -318,7 +318,7 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
-  name: tcp-stackdriver-filter-1.20-{{ .Values.revision | default "default" }}
+  name: tcp-stackdriver-filter-1.17-{{ .Values.revision | default "default" }}
   {{- if .Values.meshConfig.rootNamespace }}
   namespace: {{ .Values.meshConfig.rootNamespace }}
   {{- else }}
@@ -335,7 +335,7 @@ spec:
     match:
       context: SIDECAR_OUTBOUND
       proxy:
-        proxyVersion: '^1\.20.*'
+        proxyVersion: '^1\.17.*'
       listener:
         filterChain:
           filter:
@@ -371,7 +371,7 @@ spec:
     match:
       context: SIDECAR_INBOUND
       proxy:
-        proxyVersion: '^1\.20.*'
+        proxyVersion: '^1\.17.*'
       listener:
         filterChain:
           filter:
@@ -407,7 +407,7 @@ spec:
     match:
       context: GATEWAY
       proxy:
-        proxyVersion: '^1\.20.*'
+        proxyVersion: '^1\.17.*'
       listener:
         filterChain:
           filter:
@@ -443,7 +443,7 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
-  name: stackdriver-sampling-accesslog-filter-1.20-{{ .Values.revision | default "default" }}
+  name: stackdriver-sampling-accesslog-filter-1.17-{{ .Values.revision | default "default" }}
   {{- if .Values.meshConfig.rootNamespace }}
   namespace: {{ .Values.meshConfig.rootNamespace }}
   {{- else }}
@@ -459,7 +459,7 @@ spec:
       match:
         context: SIDECAR_INBOUND
         proxy:
-          proxyVersion: '1\.20.*'
+          proxyVersion: '1\.17.*'
         listener:
           filterChain:
             filter:

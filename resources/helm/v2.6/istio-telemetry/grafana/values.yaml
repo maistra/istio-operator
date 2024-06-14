@@ -26,6 +26,9 @@ grafana:
     secretName: grafana
     usernameKey: username
     passphraseKey: passphrase
+  persistenceResources:
+    requests:
+      storage: "5Gi" # PVC spec.resources.requests.storage default value
 
   contextPath: /grafana
   service:

@@ -6,7 +6,7 @@ metadata:
   labels:
     maistra-version: "2.6.0"
     app: istiod
-    istio.io/rev: {{ .Values.revision | default "default" }}
+    istio.io/rev: {{ .Values.revision | default "default" | quote }}
     istio: pilot
     release: {{ .Release.Name }}
 {{- range $key, $val := .Values.pilot.deploymentLabels }}
@@ -28,7 +28,7 @@ spec:
       istio.io/rev: {{ .Values.revision | default "default" }}
       {{- if ne .Values.revision "" }}
       app: istiod
-      istio.io/rev: {{ .Values.revision | default "default" }}
+      istio.io/rev: {{ .Values.revision | default "default" | quote }}
       {{- else }}
       istio: pilot
       {{- end }}
@@ -37,7 +37,7 @@ spec:
       labels:
         maistra-control-plane: {{ .Release.Namespace }}
         app: istiod
-        istio.io/rev: {{ .Values.revision | default "default" }}
+        istio.io/rev: {{ .Values.revision | default "default" | quote }}
         sidecar.istio.io/inject: "false"
         {{- if ne .Values.revision "" }}
         istio: istiod
@@ -46,6 +46,9 @@ spec:
         {{- end }}
         {{- range $key, $val := .Values.pilot.podLabels }}
         {{ $key }}: "{{ $val }}"
+        {{- end }}
+        {{- if .Values.pilot.podLabels }}
+{{ toYaml .Values.pilot.podLabels | indent 8 }}
         {{- end }}
       annotations:
         {{- if .Values.meshConfig.enablePrometheusMerge }}
@@ -80,6 +83,7 @@ spec:
 {{- end }}
       containers:
         - name: discovery
+          workingDir: "/"
 {{- if contains "/" .Values.pilot.image }}
           image: "{{ .Values.pilot.image }}"
 {{- else }}
@@ -90,6 +94,11 @@ spec:
 {{- end }}
           args:
           - "discovery"
+{{- if .Values.pilot.extraArgs }}
+  {{-  range .Values.pilot.extraArgs }}
+          - {{ . | quote }}
+  {{- end }}
+{{- end }}
 {{- if not .Values.global.clusterWide }}
           - --memberRollName=default
           - --enableNodeAccess=false
@@ -126,6 +135,8 @@ spec:
             protocol: TCP
           - name: webhook
             containerPort: 15017
+            protocol: TCP
+          - containerPort: 8188
             protocol: TCP
           readinessProbe:
             httpGet:
@@ -204,6 +215,8 @@ spec:
             value: "{{ $val }}"
           {{- end }}
           {{- end }}
+          - name: PILOT_ENABLE_FEDERATION
+            value: "{{ .Values.pilot.enableFederation }}"
 {{- if .Values.pilot.traceSampling }}
           - name: PILOT_TRACE_SAMPLING
             value: "{{ .Values.pilot.traceSampling }}"
@@ -224,6 +237,24 @@ spec:
                 resource: limits.cpu
           - name: PLATFORM
             value: "{{ .Values.global.platform }}"
+{{- if .Values.global.tls }}
+{{- if .Values.global.tls.minProtocolVersion }}
+          - name: TLS_MIN_PROTOCOL_VERSION
+            value: {{ .Values.global.tls.minProtocolVersion }}
+{{- end }}
+{{- if .Values.global.tls.maxProtocolVersion }}
+          - name: TLS_MAX_PROTOCOL_VERSION
+            value: {{ .Values.global.tls.maxProtocolVersion }}
+{{- end }}
+{{- if .Values.global.tls.cipherSuites }}
+          - name: TLS_CIPHER_SUITES
+            value: {{ .Values.global.tls.cipherSuites }}
+{{- end }}
+{{- if .Values.global.tls.ecdhCurves }}
+          - name: TLS_ECDH_CURVES
+            value: {{ .Values.global.tls.ecdhCurves }}
+{{- end }}
+{{- end }}
           resources:
 {{- if .Values.pilot.resources }}
 {{ toYaml .Values.pilot.resources | trim | indent 12 }}
@@ -239,6 +270,9 @@ spec:
 {{ toYaml .Values.pilot.seccompProfile | trim | indent 14 }}
 {{- end }}
           volumeMounts:
+{{- if .Values.pilot.extraVolumeMounts }}
+{{ toYaml .Values.pilot.extraVolumeMounts | indent 10 }}
+{{- end }}
           {{- if eq .Values.global.jwtPolicy "third-party-jwt" }}
           - name: istio-token
             mountPath: /var/run/secrets/tokens
@@ -265,6 +299,16 @@ spec:
           {{- with .Values.pilot.volumeMounts }}
             {{- toYaml . | nindent 10 }}
           {{- end }}
+      affinity:
+{{ include "nodeaffinity" (dict "global" .Values.global "nodeSelector" .Values.pilot.nodeSelector) }}
+{{ include "podAntiAffinity" .Values.pilot }}
+{{- if .Values.pilot.tolerations }}
+      tolerations:
+{{ toYaml .Values.pilot.tolerations | indent 6 }}
+{{- else if .Values.global.defaultTolerations }}
+      tolerations:
+{{ toYaml .Values.global.defaultTolerations | indent 6 }}
+{{- end }}
       volumes:
       # Technically not needed on this pod - but it helps debugging/testing SDS
       # Should be removed after everything works.
@@ -296,7 +340,7 @@ spec:
           optional: true
       - name: istio-csr-ca-configmap
         configMap:
-          name: istio-ca-root-cert
+          name: {{ .Values.global.caCertConfigMapName }}
           defaultMode: 420
           optional: true
   {{- if .Values.pilot.jwksResolverExtraRootCA }}
@@ -308,4 +352,7 @@ spec:
         {{- toYaml . | nindent 6}}
       {{- end }}
 
+{{- if .Values.pilot.extraVolumes }}
+{{ toYaml .Values.pilot.extraVolumes | indent 6 }}
+{{- end }}
 ---

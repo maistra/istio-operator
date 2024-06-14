@@ -38,7 +38,7 @@ metadata:
     maistra-version: "2.6.0"
 {{ $gateway.labels | toYaml | indent 4 }}
     release: {{ .Release.Name }}
-    istio.io/rev: {{ .Values.revision | default "default" }}
+    istio.io/rev: {{ .Values.revision | default "default" | quote }}
 spec:
   maxReplicas: {{ $gateway.autoscaleMax }}
   minReplicas: {{ $gateway.autoscaleMin }}

@@ -6,7 +6,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     maistra-version: "2.6.0"
-    istio.io/rev: {{ .Values.revision | default "default" }}
+    istio.io/rev: {{ .Values.revision | default "default" | quote }}
     release: {{ .Release.Name }}
 data:
 {{/* Scope the values to just top level fields used in the template, to reduce the size. */}}

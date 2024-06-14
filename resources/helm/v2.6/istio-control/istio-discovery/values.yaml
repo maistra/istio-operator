@@ -2,6 +2,7 @@
 
 ## Discovery Settings
 pilot:
+  enableFederation: true
   autoscaleEnabled: true
   autoscaleMin: 1
   autoscaleMax: 5
@@ -17,6 +18,9 @@ pilot:
   # Can be a full hub/image:tag
   image: pilot
   traceSampling: 1.0
+  extraArgs: []
+  extraVolumeMounts: []
+  extraVolumes: []
 
   # Resources for a small pilot install
   resources:
@@ -42,10 +46,34 @@ pilot:
   volumes: []
 
   nodeSelector: {}
+  podLabels: {}
   podAnnotations: {}
   serviceAnnotations: {}
 
   topologySpreadConstraints: []
+
+  tolerations: []
+
+  # Specify the pod anti-affinity that allows you to constrain which nodes
+  # your pod is eligible to be scheduled based on labels on pods that are
+  # already running on the node rather than based on labels on nodes.
+  # There are currently two types of anti-affinity:
+  #    "requiredDuringSchedulingIgnoredDuringExecution"
+  #    "preferredDuringSchedulingIgnoredDuringExecution"
+  # which denote "hard" vs. "soft" requirements, you can define your values
+  # in "podAntiAffinityLabelSelector" and "podAntiAffinityTermLabelSelector"
+  # correspondingly.
+  # For example:
+  # podAntiAffinityLabelSelector:
+  # - key: security
+  #   operator: In
+  #   values: S1,S2
+  #   topologyKey: "kubernetes.io/hostname"
+  # This pod anti-affinity rule says that the pod requires not to be scheduled
+  # onto a node if that node is already running a pod with label having key
+  # "security" and value "S1".
+  podAntiAffinityLabelSelector: []
+  podAntiAffinityTermLabelSelector: []
 
   # You can use jwksResolverExtraRootCA to provide a root certificate
   # in PEM format. This will then be trusted by pilot when resolving
@@ -233,6 +261,27 @@ global:
     #   cpu: 100m
     #   memory: 128Mi
 
+  # Default node tolerations to be applied to all deployments so that all pods can be
+  # scheduled to a particular nodes with matching taints. Each component can overwrite
+  # these default values by adding its tolerations block in the relevant section below
+  # and setting the desired values.
+  # Configure this field in case that all pods of Istio control plane are expected to
+  # be scheduled to particular nodes with specified taints.
+  defaultTolerations: []
+
+  # Default node selector key-value pairs to set in the pod's nodeAffinity field
+  defaultNodeSelector: {}
+
+  # Specify pod scheduling arch(amd64, ppc64le, s390x) and weight as follows:
+  #   0 - Never scheduled
+  #   1 - Least preferred
+  #   2 - No preference
+  #   3 - Most preferred
+  arch:
+    amd64: 2
+    s390x: 2
+    ppc64le: 2
+
   # Default hub for Istio images.
   # Releases are published to docker hub under 'istio' project.
   # Dev builds from prow are on gcr.io
@@ -372,7 +421,7 @@ global:
         memory: 1024Mi
 
     # Default port for Pilot agent health checks. A value of 0 will disable health checking.
-    statusPort: 15020
+    statusPort: 15021
 
     # Specify which tracer to use. One of: zipkin, lightstep, datadog, stackdriver.
     # If using stackdriver tracer outside GCP, set env GOOGLE_APPLICATION_CREDENTIALS to the GCP credential file.
@@ -394,6 +443,9 @@ global:
   # CSR clients such as the Istio Agent and ingress gateways can use this to specify the CA endpoint.
   # If not set explicitly, default to the Istio discovery address.
   caAddress: ""
+
+  # The name of the ConfigMap that stores the CA Root Certificate
+  caCertConfigMapName: "istio-ca-root-cert"
 
   # Configure a remote cluster data plane controlled by an external istiod.
   # When set to true, istiod is not deployed locally and only a subset of the other
@@ -462,6 +514,17 @@ global:
   # Use the user-specified, secret volume mounted key and certs for Pilot and workloads.
   mountMtlsCerts: false
 
+  # Default mtls policy. If true, mtls between services will be enabled by default.
+  mtls:
+    # Default setting for service-to-service mtls. Can be set explicitly using
+    # destination rules or service annotations.
+    enabled: false
+    # If set to true, and a given service does not have a corresponding DestinationRule configured,
+    # or its DestinationRule does not have TLSSettings specified, Istio configures client side
+    # TLS configuration automatically, based on the server side mTLS authentication policy and the
+    # availibity of sidecars.
+    auto: true
+
   multiCluster:
     # Set to true to connect two kubernetes clusters via their respective
     # ingressgateway services when pods in each cluster cannot directly
@@ -493,6 +556,17 @@ global:
     # The service port used by Security Token Service (STS) server to handle token exchange requests.
     # Setting this port to a non-zero value enables STS server.
     servicePort: 0
+
+  # Configure TLS parameters for listeners
+  tls:
+    # List of supported cipher suites, e.g. TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+    cipherSuites: []
+    # List of supported ECDH curves, e.g. CurveP384
+    ecdhCurves: []
+    # min supported protocol version, e.g. TLSv1_2
+    minProtocolVersion: ""
+    # max supported protocol version, e.g. TLSv1_3
+    maxProtocolVersion: ""
 
   # The name of the CA for workload certificates.
   # For example, when caName=GkeWorkloadCertificate, GKE workload certificates

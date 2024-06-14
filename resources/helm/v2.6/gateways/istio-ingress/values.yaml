@@ -109,6 +109,10 @@ gateways:
     # whether to run the gateway in a privileged container
     runAsRoot: false
 
+    # specifies whether to create a Route resource (route.openshift.io/v1) for the istio-ingressgateway deployment
+    routeConfig:
+      enabled: true
+
     # The injection template to use for the gateway. If not set, no injection will be performed.
     injectionTemplate: ""
 
@@ -237,6 +241,9 @@ global:
   # CSR clients such as the Istio Agent and ingress gateways can use this to specify the CA endpoint.
   caAddress: ""
 
+  # The name of the ConfigMap that stores the CA Root Certificate
+  caCertConfigMapName: "istio-ca-root-cert"
+
   # Used to locate istiod.
   istioNamespace: istio-system
 
@@ -305,9 +312,21 @@ global:
     # The service port used by Security Token Service (STS) server to handle token exchange requests.
     # Setting this port to a non-zero value enables STS server.
     servicePort: 0
+
   # whether to use autoscaling/v2 template for HPA settings
   # for internal usage only, not to be configured by users.
   autoscalingv2API: true
+
+  # Configure TLS parameters for listeners
+  tls:
+    # List of supported cipher suites, e.g. TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+    cipherSuites: []
+    # List of supported ECDH curves, e.g. CurveP384
+    ecdhCurves: []
+    # min supported protocol version, e.g. TLSv1_2
+    minProtocolVersion: ""
+    # max supported protocol version, e.g. TLSv1_3
+    maxProtocolVersion: ""
 
   # Configuration for each of the supported tracers
   tracer:

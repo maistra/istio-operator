@@ -14,5 +14,5 @@ spec:
     - {{ .Values.grafana.accessMode }}
   resources:
     requests:
-      storage: 5Gi
+      storage: {{ .Values.grafana.persistenceResources.requests.storage | quote }}
 {{- end }}

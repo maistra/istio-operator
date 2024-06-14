@@ -216,6 +216,9 @@ global:
   # CSR clients such as the Istio Agent and ingress gateways can use this to specify the CA endpoint.
   caAddress: ""
 
+  # The name of the ConfigMap that stores the CA Root Certificate
+  caCertConfigMapName: "istio-ca-root-cert"
+
   # Used to locate istiod.
   istioNamespace: istio-system
 
@@ -284,6 +287,17 @@ global:
   # whether to use autoscaling/v2 template for HPA settings
   # for internal usage only, not to be configured by users.
   autoscalingv2API: true
+
+  # Configure TLS parameters for listeners
+  tls:
+    # List of supported cipher suites, e.g. TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+    cipherSuites: []
+    # List of supported ECDH curves, e.g. CurveP384
+    ecdhCurves: []
+    # min supported protocol version, e.g. TLSv1_2
+    minProtocolVersion: ""
+    # max supported protocol version, e.g. TLSv1_3
+    maxProtocolVersion: ""
 
   # Configuration for each of the supported tracers
   tracer:

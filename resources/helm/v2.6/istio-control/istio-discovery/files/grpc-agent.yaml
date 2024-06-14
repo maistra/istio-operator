@@ -33,7 +33,7 @@ metadata:
     service.istio.io/canonical-name: {{ index .ObjectMeta.Labels `service.istio.io/canonical-name` | default (index .ObjectMeta.Labels `app.kubernetes.io/name`) | default (index .ObjectMeta.Labels `app`) | default .DeploymentMeta.Name  | quote }}
     service.istio.io/canonical-revision: {{ index .ObjectMeta.Labels `service.istio.io/canonical-revision` | default (index .ObjectMeta.Labels `app.kubernetes.io/version`) | default (index .ObjectMeta.Labels `version`) | default "latest"  | quote }}
   annotations: {
-    istio.io/rev: {{ .Revision | default "default" }},
+    istio.io/rev: {{ .Revision | default "default" | quote }},
     {{- if ge (len $containers) 1 }}
     {{- if not (isset .ObjectMeta.Annotations `kubectl.kubernetes.io/default-logs-container`) }}
     kubectl.kubernetes.io/default-logs-container: "{{ index $containers 0 }}",
@@ -290,7 +290,7 @@ spec:
   {{- if eq .Values.global.pilotCertProvider "istiod" }}
   - name: istiod-ca-cert
     configMap:
-      name: istio-ca-root-cert
+      name: {{ .Values.global.caCertConfigMapName }}
   {{- end }}
   {{- if .Values.global.mountMtlsCerts }}
   # Use the key and cert mounted to /etc/certs/ for the in-cluster mTLS communications.

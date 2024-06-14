@@ -11,7 +11,7 @@ metadata:
   labels:
     maistra-version: "2.6.0"
     app: istiod
-    istio.io/rev: {{ .Values.revision | default "default" }}
+    istio.io/rev: {{ .Values.revision | default "default" | quote }}
     release: {{ .Release.Name }}
     istio: pilot
 spec:
@@ -20,7 +20,7 @@ spec:
     matchLabels:
       app: istiod
       {{- if ne .Values.revision "" }}
-      istio.io/rev: {{ .Values.revision }}
+      istio.io/rev: {{ .Values.revision | quote }}
       {{- else }}
       istio: pilot
       {{- end }}

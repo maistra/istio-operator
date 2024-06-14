@@ -34,7 +34,7 @@ metadata:
   labels:
     maistra-version: "2.6.0"
     istio.io/tag: "default"
-    istio.io/rev: {{ .Values.revision | default "default" }}
+    istio.io/rev: {{ .Values.revision | default "default" | quote }}
     app: sidecar-injector
     release: {{ .Release.Name }}
 webhooks:
