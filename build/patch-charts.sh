@@ -429,11 +429,6 @@ function patchSidecarInjector() {
         - SETUID
   }' "${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml"
 
-  sed_wrap -i -E -e 's/(^ *)(runAsUser: )1337/\1{{- if .ProxyUID }}\n\1\2{{ .ProxyUID }}\n\1{{- end }}/g' \
-    -e 's/(^ *)(runAsGroup: )1337/\1{{- if .ProxyGID }}\n\1\2{{ .ProxyGID }}\n\1{{- end }}/g' \
-    -e 's/(^ *)(fsGroup: )1337/\1{{- if .ProxyGID }}\n\1\2{{ .ProxyGID }}\n\1{{- end }}/g' "${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml"
-  sed_wrap -i -E -e 's/(^ *)(fsGroup: )1337/\1{{- if .ProxyGID }}\n\1\2{{ .ProxyGID }}\n\1{{- end }}/g' "${HELM_DIR}/istio-control/istio-discovery/files/gateway-injection-template.yaml"
-
   sed_wrap -i -e '/- name: istio-proxy/,/resources:/ {
     / *- ALL/a\
         - KILL\
@@ -452,7 +447,7 @@ function patchSidecarInjector() {
       "${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml"
   # use the correct cni network defintion
   # shellcheck disable=SC2016
-  sed_wrap -i -e '/annotations:/,$s/`istio-cni`/.Values.istio_cni.istio_cni_network/' \
+  sed_wrap -i -e '/annotations:/,$s|`default/istio-cni`|.Values.istio_cni.istio_cni_network|' \
       "${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml"
   # status port is incorrect
   sed_wrap -i -e 's/statusPort: 15020$/statusPort: 15021/' "${HELM_DIR}/istio-control/istio-discovery/values.yaml"
