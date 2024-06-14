@@ -70,6 +70,7 @@ func TestBootstrapping(t *testing.T) {
 		versions.V2_3: "istio-cni-node-v2-3",
 		versions.V2_4: "istio-cni-node-v2-4",
 		versions.V2_5: "istio-cni-node-v2-5",
+		versions.V2_6: "istio-cni-node-v2-6",
 	}
 
 	type testCase struct {
