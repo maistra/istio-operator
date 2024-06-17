@@ -8,6 +8,7 @@ require (
 	github.com/Masterminds/sprig v2.22.0+incompatible // indirect
 	github.com/containerd/containerd v1.4.8 // indirect
 	github.com/containerd/typeurl v0.0.0-20190228175220-2a93cfde8c20 // indirect
+	github.com/distribution/reference v0.6.0 // indirect
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
@@ -20,6 +21,7 @@ require (
 	github.com/magiconair/properties v1.8.1
 	github.com/mikefarah/yq/v4 v4.6.0
 	github.com/mitchellh/mapstructure v1.1.2
+	github.com/moby/term v0.5.0 // indirect
 	github.com/opencontainers/runtime-spec v1.0.0 // indirect
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/openshift/library-go v0.0.0-20200214084717-e77ad9dd8ebd
@@ -30,7 +32,6 @@ require (
 	github.com/spf13/viper v1.7.0
 	go.uber.org/zap v1.14.1
 	golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899
-	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.0.1
 	k8s.io/api v0.19.3
 	k8s.io/apiextensions-apiserver v0.18.6
@@ -48,7 +49,11 @@ require (
 
 replace vbom.ml/util => github.com/fvbommel/util v0.0.0-20180919145318-efcd4e0f9787
 
-replace github.com/docker/docker => github.com/moby/moby v0.7.3-0.20190826074503-38ab9da00309 // Required by Helm
+// Required by Helm
+replace (
+	github.com/docker/distribution => github.com/docker/distribution v2.8.3+incompatible
+	github.com/docker/docker => github.com/moby/moby v20.10.17+incompatible
+)
 
 replace github.com/openshift/api => github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad // Required until https://github.com/operator-framework/operator-lifecycle-manager/pull/1241 is resolved
 
