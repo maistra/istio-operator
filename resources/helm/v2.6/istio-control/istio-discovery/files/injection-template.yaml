@@ -67,6 +67,9 @@ metadata:
   }
 spec:
   {{- $holdProxy := or .ProxyConfig.HoldApplicationUntilProxyStarts.GetValue .Values.global.proxy.holdApplicationUntilProxyStarts }}
+  {{ if $nativeSidecar }}
+  initContainers:
+  {{ else }}
   containers:
   {{ end }}
   - name: istio-proxy

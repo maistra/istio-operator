@@ -442,8 +442,12 @@ function patchSidecarInjector() {
       "${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml" \
       "${HELM_DIR}/istio-control/istio-discovery/files/gateway-injection-template.yaml"
 
-  # never apply init container, even for validation
-  sed_wrap -i -e '/^  initContainers:/,/^  containers:/ {/^  containers:/!d}' \
+  # remove the istio-init/istio-validation init container, but allow running the sidecar as an init container (a.k.a. native sidecar)
+  # shellcheck disable=SC2016
+  sed_wrap -i -e '/^  initContainers:/,/^  containers:/c\  {{ if $nativeSidecar }}\
+  initContainers:\
+  {{ else }}\
+  containers:' \
       "${HELM_DIR}/istio-control/istio-discovery/files/injection-template.yaml"
   # use the correct cni network defintion
   # shellcheck disable=SC2016

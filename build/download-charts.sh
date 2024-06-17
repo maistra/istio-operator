@@ -15,6 +15,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/sed-wrapper.sh"
 
 : "${ISTIO_VERSION:=1.20.0}"
 
+: "${KEEP_ORIGINAL_CHARTS:=false}"
+
 RELEASES_DIR=${OUT_DIR}/helm/istio-releases
 
 # shellcheck disable=SC2034
@@ -73,6 +75,9 @@ source "$(dirname "${BASH_SOURCE[0]}")/patch-charts.sh"
   cd "${RELEASES_DIR}"
   echo "producing diff file for charts: $(pwd)/chart-diffs.diff"
   diff -uNr "${EXTRACT_DIR}/manifests/charts/" "${HELM_DIR}/" > chart-diffs.diff || [ $? -eq 1 ]
-#  cp -r ${EXTRACT_DIR}/manifests/charts/ ${HELM_DIR}-original/
+  if [[ "${KEEP_ORIGINAL_CHARTS}" == "true" ]]; then
+    cp -r "${EXTRACT_DIR}/manifests/charts/" "${HELM_DIR}-original/"
+    echo "Location of original charts: ${HELM_DIR}-original/"
+  fi
   echo "Location of patched charts: ${HELM_DIR}/"
 )
