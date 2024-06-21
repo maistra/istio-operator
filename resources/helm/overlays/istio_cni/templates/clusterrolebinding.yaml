@@ -1,4 +1,5 @@
 {{ if .Values.cni.enabled }}
+{{ if or (eq .Values.cni.instanceVersion "v2.0") (eq .Values.cni.instanceVersion "v2.1") (eq .Values.cni.instanceVersion "v2.2") (eq .Values.cni.instanceVersion "v2.3")}}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -11,4 +12,5 @@ subjects:
   - kind: ServiceAccount
     name: istio-cni
     namespace: {{ .Release.Namespace }}
+{{ end }}
 {{ end }}
