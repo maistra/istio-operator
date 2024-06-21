@@ -1,4 +1,5 @@
-{{- if and .Values.cni.enabled (has "v2.4" .Values.cni.supportedReleases) (eq .Values.cni.instanceVersion "v2.4") }}
+{{ if .Values.cni.enabled }}
+{{ if or (eq .Values.cni.instanceVersion "v2.4") (eq .Values.cni.instanceVersion "v2.5") (eq .Values.cni.instanceVersion "v2.6") }}
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -19,4 +20,5 @@ rules:
       - privileged
     verbs:
       - 'use'
-{{- end }}
+{{ end }}
+{{ end }}
