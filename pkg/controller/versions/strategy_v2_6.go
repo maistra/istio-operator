@@ -426,6 +426,10 @@ func (v *versionStrategyV2_6) Render(ctx context.Context, cr *common.ControllerR
 	if err != nil {
 		return nil, fmt.Errorf("could not set field status.lastAppliedConfiguration.istio.istio_cni.enabled: %v", err)
 	}
+	err = spec.Istio.SetField("istio_cni.chained", !cniConfig.UseMultus)
+	if err != nil {
+		return nil, fmt.Errorf("could not set value istio.istio_cni.chained: %v", err)
+	}
 	err = spec.Istio.SetField("istio_cni.istio_cni_network", v.GetCNINetworkName())
 	if err != nil {
 		return nil, fmt.Errorf("could not set field status.lastAppliedConfiguration.istio.istio_cni.istio_cni_network: %v", err)
