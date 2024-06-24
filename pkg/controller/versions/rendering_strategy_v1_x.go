@@ -59,17 +59,17 @@ func (rs *v1xRenderingStrategy) render(ctx context.Context, v Ver, cr *common.Co
 
 	err = spec.Istio.SetField("istio_cni.enabled", cniConfig.Enabled)
 	if err != nil {
-		return nil, fmt.Errorf("could not set field status.lastAppliedConfiguration.istio.istio_cni.enabled: %v", err)
+		return nil, fmt.Errorf("could not set value istio.istio_cni.enabled: %v", err)
 	}
 	err = spec.Istio.SetField("istio_cni.istio_cni_network", v.GetCNINetworkName())
 	if err != nil {
-		return nil, fmt.Errorf("could not set field status.lastAppliedConfiguration.istio.istio_cni.istio_cni_network: %v", err)
+		return nil, fmt.Errorf("could not set value istio.istio_cni.istio_cni_network: %v", err)
 	}
 
 	// MAISTRA-1330
 	err = spec.Istio.SetField("global.istioNamespace", smcp.GetNamespace())
 	if err != nil {
-		return nil, fmt.Errorf("could not set field status.lastAppliedConfiguration.istio.global.istioNamespace: %v", err)
+		return nil, fmt.Errorf("could not set value istio.global.istioNamespace: %v", err)
 	}
 
 	// MAISTRA-2014 - external jaeger with v2 resource

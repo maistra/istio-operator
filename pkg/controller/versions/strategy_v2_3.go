@@ -397,33 +397,33 @@ func (v *versionStrategyV2_3) Render(ctx context.Context, cr *common.ControllerR
 
 	err = spec.Istio.SetField("istio_cni.enabled", cniConfig.Enabled)
 	if err != nil {
-		return nil, fmt.Errorf("could not set field status.lastAppliedConfiguration.istio.istio_cni.enabled: %v", err)
+		return nil, fmt.Errorf("could not set value istio.istio_cni.enabled: %v", err)
 	}
 	err = spec.Istio.SetField("istio_cni.istio_cni_network", v.GetCNINetworkName())
 	if err != nil {
-		return nil, fmt.Errorf("could not set field status.lastAppliedConfiguration.istio.istio_cni.istio_cni_network: %v", err)
+		return nil, fmt.Errorf("could not set value istio.istio_cni.istio_cni_network: %v", err)
 	}
 
 	// Override these globals to match the install namespace
 	err = spec.Istio.SetField("global.istioNamespace", smcp.GetNamespace())
 	if err != nil {
-		return nil, fmt.Errorf("could not set field status.lastAppliedConfiguration.istio.global.istioNamespace: %v", err)
+		return nil, fmt.Errorf("could not set value istio.global.istioNamespace: %v", err)
 	}
 	err = spec.Istio.SetField("meshConfig.rootNamespace", smcp.GetNamespace())
 	if err != nil {
-		return nil, fmt.Errorf("could not set field status.lastAppliedConfiguration.istio.meshConfig.rootNamespace: %v", err)
+		return nil, fmt.Errorf("could not set value istio.meshConfig.rootNamespace: %v", err)
 	}
 	err = spec.Istio.SetField("global.prometheusNamespace", smcp.GetNamespace())
 	if err != nil {
-		return nil, fmt.Errorf("could not set field status.lastAppliedConfiguration.istio.global.prometheusNamespace: %v", err)
+		return nil, fmt.Errorf("could not set value istio.global.prometheusNamespace: %v", err)
 	}
 	err = spec.Istio.SetField("global.configRootNamespace", smcp.GetNamespace())
 	if err != nil {
-		return nil, fmt.Errorf("could not set field status.lastAppliedConfiguration.istio.global.configRootNamespace: %v", err)
+		return nil, fmt.Errorf("could not set value istio.global.configRootNamespace: %v", err)
 	}
 	err = spec.Istio.SetField("global.configNamespace", smcp.GetNamespace())
 	if err != nil {
-		return nil, fmt.Errorf("could not set field status.lastAppliedConfiguration.istio.global.configNamespace: %v", err)
+		return nil, fmt.Errorf("could not set value istio.global.configNamespace: %v", err)
 	}
 	err = spec.Istio.SetField("meshConfig.ingressControllerMode", "OFF")
 	if err != nil {
