@@ -43,6 +43,7 @@ type controlPlaneInstanceReconciler struct {
 	renderings        map[string][]manifest.Manifest
 	waitForComponents sets.String
 	cniConfig         cni.Config
+	cniPruner         *CNIPruner
 }
 
 // ensure controlPlaneInstanceReconciler implements ControlPlaneInstanceReconciler
@@ -75,6 +76,7 @@ func NewControlPlaneInstanceReconciler(controllerResources common.ControllerReso
 		Instance:            newInstance,
 		Status:              newInstance.Status.DeepCopy(),
 		cniConfig:           cniConfig,
+		cniPruner:           &CNIPruner{Client: controllerResources.Client, OperatorNamespace: controllerResources.OperatorNamespace},
 	}
 }
 

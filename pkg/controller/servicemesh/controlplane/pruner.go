@@ -78,11 +78,15 @@ var (
 )
 
 func (r *controlPlaneInstanceReconciler) prune(ctx context.Context, generation string) error {
-	resourcesToPrune, err := r.findResourcesToPrune(ctx)
-	if err != nil {
+	if resourcesToPrune, err := r.findResourcesToPrune(ctx); err != nil {
 		return err
+	} else {
+		if err = r.pruneResources(ctx, resourcesToPrune, generation); err != nil {
+			return err
+		}
 	}
-	return r.pruneResources(ctx, resourcesToPrune, generation)
+
+	return r.cniPruner.Prune(ctx, r.Instance)
 }
 
 func (r *controlPlaneInstanceReconciler) findResourcesToPrune(ctx context.Context) ([]pruneConfig, error) {
