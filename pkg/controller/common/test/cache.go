@@ -150,7 +150,7 @@ func (c *FakeCache) createListWatcher(gvk schema.GroupVersionKind) (*toolscache.
 			// TODO: OSSM-1925
 			err := c.client.List(context.TODO(), res, &client.ListOptions{Namespace: c.namespace, Raw: &opts})
 			if err != nil {
-				log.Error(err, "OSSM-1925 Error listing resources", "listGVK", listGVK)
+				fmt.Println("OSSM-1925 Error listing resources: listGVK:", listGVK, "; error: ", err)
 			}
 			return res, nil
 		},

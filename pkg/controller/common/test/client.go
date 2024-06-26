@@ -36,12 +36,9 @@ import (
 	"k8s.io/client-go/testing"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // XXX: look for the XXX comments to see how this has changed from sigs.k8s.io/controller-runtime/pkg/client/fake/client.go
-
-var log = logf.Log.WithName("fake-client")
 
 type fakeClient struct {
 	*testing.Fake
@@ -77,7 +74,7 @@ func NewFakeClientWithSchemeAndTracker(clientScheme *runtime.Scheme, tracker tes
 		}
 		err := tracker.Add(obj)
 		if err != nil {
-			log.Error(err, "failed to add object to fake client", "object", obj)
+			fmt.Println("failed to add object to fake client: object: ", obj, "; error: ", err)
 			os.Exit(1)
 			return nil
 		}
