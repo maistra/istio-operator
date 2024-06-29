@@ -110,9 +110,13 @@ spec:
                 ;;
               esac
 
-              # Move the source binary to where install-cni expects it to be located and clean up unused binaries
-              mv $sourcebin /opt/cni/bin/istio-cni
-              rm /opt/cni/bin/istio-cni-rhel*
+              if [ -e "$sourcebin" ]; then
+                # Move the source binary to where install-cni expects it to be located and clean up unused binaries
+                mv "$sourcebin" /opt/cni/bin/istio-cni
+                rm /opt/cni/bin/istio-cni-rhel*
+              else
+                echo "WARNING: $sourcebin does not exist. Using original file /opt/cni/bin/istio-cni."
+              fi
 
               install-cni
           securityContext:
