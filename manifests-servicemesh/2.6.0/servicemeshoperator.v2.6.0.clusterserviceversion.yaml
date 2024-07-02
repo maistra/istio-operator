@@ -18,7 +18,7 @@ metadata:
       The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh. OpenShift Service Mesh is based on the open source Istio project.
 
     containerImage: ${OSSM_OPERATOR_IMAGE}
-    createdAt: 2024-06-25T18:09:37CEST
+    createdAt: 2024-07-02T10:41:37CEST
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <2.6.0-0"
     operators.openshift.io/infrastructure-features: '["Disconnected","fips"]'
@@ -592,9 +592,6 @@ spec:
                     - name: operator-olm-config
                       mountPath: /etc/operator/olm
                       readOnly: true
-                    - name: webhook-tls-volume
-                      readOnly: true
-                      mountPath: /tmp/k8s-webhook-server/serving-certs
                     - name: smcp-templates
                       readOnly: true
                       mountPath: /usr/local/share/istio-operator/templates/
@@ -606,10 +603,6 @@ spec:
                       - fieldRef:
                           fieldPath: metadata.annotations
                         path: config.properties
-                - name: webhook-tls-volume
-                  secret:
-                    secretName: maistra-operator-serving-cert
-                    optional: true # this won't be available until service-ca creates the secret
                 - name: smcp-templates
                   configMap:
                     name: smcp-templates
@@ -733,3 +726,101 @@ spec:
       kind: ServiceMeshMemberRoll
       displayName: Istio Service Mesh Member Roll
       description: A list of namespaces in Service Mesh
+  webhookdefinitions:
+  - type: ValidatingAdmissionWebhook
+    admissionReviewVersions: ["v1beta1"]
+    generateName: smcp.validation.maistra.io
+    deploymentName: istio-operator
+    rules:
+    - operations: ["CREATE", "UPDATE"]
+      apiGroups: ["maistra.io"]
+      apiVersions: ["v1", "v2"]
+      resources: ["servicemeshcontrolplanes"]
+      scope: "*"
+    sideEffects: None
+    timeoutSeconds: 10
+    failurePolicy: Fail
+    matchPolicy: Equivalent
+    containerPort: 443
+    targetPort: 11999
+    webhookPath: /validate-smcp
+  - type: ValidatingAdmissionWebhook
+    admissionReviewVersions: ["v1beta1"]
+    generateName: smmr.validation.maistra.io
+    deploymentName: istio-operator
+    rules:
+    - operations: ["CREATE", "UPDATE"]
+      apiGroups: ["maistra.io"]
+      apiVersions: ["v1"]
+      resources: ["servicemeshmemberrolls"]
+      scope: "*"
+    sideEffects: None
+    timeoutSeconds: 10
+    failurePolicy: Fail
+    matchPolicy: Equivalent
+    containerPort: 443
+    targetPort: 11999
+    webhookPath: /validate-smmr
+  - type: ValidatingAdmissionWebhook
+    admissionReviewVersions: ["v1beta1"]
+    generateName: smm.validation.maistra.io
+    deploymentName: istio-operator
+    rules:
+    - operations: ["CREATE", "UPDATE"]
+      apiGroups: ["maistra.io"]
+      apiVersions: ["v1"]
+      resources: ["servicemeshmembers"]
+      scope: "*"
+    sideEffects: None
+    timeoutSeconds: 10
+    failurePolicy: Fail
+    matchPolicy: Equivalent
+    containerPort: 443
+    targetPort: 11999
+    webhookPath: /validate-smm
+  - type: MutatingAdmissionWebhook
+    admissionReviewVersions: ["v1beta1"]
+    generateName: smcp.mutation.maistra.io
+    deploymentName: istio-operator
+    rules:
+    - operations: ["CREATE", "UPDATE"]
+      apiGroups: ["maistra.io"]
+      apiVersions: ["v1", "v2"]
+      resources: ["servicemeshcontrolplanes"]
+      scope: "*"
+    sideEffects: NoneOnDryRun
+    timeoutSeconds: 10
+    failurePolicy: Fail
+    reinvocationPolicy: Never
+    matchPolicy: Equivalent
+    containerPort: 443
+    targetPort: 11999
+    webhookPath: /mutate-smcp
+  - type: MutatingAdmissionWebhook
+    admissionReviewVersions: ["v1beta1"]
+    generateName: smmr.mutation.maistra.io
+    deploymentName: istio-operator
+    rules:
+    - operations: ["CREATE", "UPDATE"]
+      apiGroups: ["maistra.io"]
+      apiVersions: ["v1"]
+      resources: ["servicemeshmemberrolls"]
+      scope: "*"
+    sideEffects: NoneOnDryRun
+    timeoutSeconds: 10
+    failurePolicy: Fail
+    reinvocationPolicy: Never
+    matchPolicy: Equivalent
+    containerPort: 443
+    targetPort: 11999
+    webhookPath: /mutate-smmr
+  - type: ConversionWebhook
+    conversionCRDs:
+    - servicemeshcontrolplanes.maistra.io
+    admissionReviewVersions: ["v1beta1"]
+    generateName: smcp.conversion.maistra.io
+    deploymentName: istio-operator
+    containerPort: 443
+    targetPort: 11999
+    webhookPath: /convert-smcp
+    sideEffects: NoneOnDryRun

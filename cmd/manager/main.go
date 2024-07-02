@@ -36,6 +36,7 @@ import (
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller"
 	"github.com/maistra/istio-operator/pkg/controller/common"
+	"github.com/maistra/istio-operator/pkg/controller/servicemesh/webhooks"
 	"github.com/maistra/istio-operator/pkg/version"
 )
 
@@ -190,9 +191,21 @@ func main() {
 	// Add the Metrics Service
 	addMetrics(ctx, cfg)
 
+	webhookCleanupRunnable := webhooks.NewCleanupRunnable(mgr.GetClient())
+	err = mgr.Add(webhookCleanupRunnable)
+	if err != nil {
+		log.Error(err, "error adding webhook cleanup")
+		os.Exit(1)
+	}
+
 	err = mgr.AddReadyzCheck("readiness", func(req *http.Request) error {
-		// no need to check anything; the readyz probe succeeds only when the
-		// webhooks are running (which only happens when the serving secret is present)
+		// The operator reports being ready only after the webhooks have been cleaned up.
+		// This is necessary to prevent the API server from invoking the webhooks
+		// with an invalid certificate, which would cause TLS cert errors being
+		// logged in the operator logs.
+		if !webhookCleanupRunnable.Done() {
+			return errors.New("webhook cleanup is still running")
+		}
 		return nil
 	})
 	if err != nil {
@@ -200,7 +213,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	log.Info("Starting the Cmd.")
+	log.Info("Starting controllers...")
 
 	// Start the Cmd
 	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {

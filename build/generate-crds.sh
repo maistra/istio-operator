@@ -32,7 +32,7 @@ function generateCRDs() {
   # Add maistra-version label
   sed -i -e "s/^  annotations:/  labels:\n    maistra-version: $MAISTRA_VERSION\n\\0/" deploy/crds/*
 
-  sed -i -e 's/^  annotations:/  annotations:\n    service.beta.openshift.io\/inject-cabundle: "true"/' \
+  sed -i -e 's/^  annotations:/  annotations:\n    service.beta.openshift.io\/inject-cabundle: "false"/' \
       deploy/crds/maistra.io_servicemeshcontrolplanes.yaml
 
   for bundle_dir in ${BUNDLE_DIRS}; do

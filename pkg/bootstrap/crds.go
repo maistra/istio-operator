@@ -27,8 +27,6 @@ import (
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/controller/hacks"
-	"github.com/maistra/istio-operator/pkg/controller/servicemesh/webhookca"
-	"github.com/maistra/istio-operator/pkg/controller/servicemesh/webhooks"
 )
 
 var (
@@ -61,13 +59,6 @@ func InstallCRDs(ctx context.Context, cl client.Client, chartsDir string) error 
 		}
 		return processCRDFile(ctx, cl, path)
 	})
-	if err != nil {
-		return err
-	}
-
-	// Register conversion webhooks for control plane CRD's - currently only ServiceMeshExtension
-	err = webhooks.RegisterConversionWebhook(ctx, cl, log, common.GetOperatorNamespace(),
-		&webhooks.SmeConverterServicePath, webhookca.ServiceMeshExtensionCRDName, false)
 	if err != nil {
 		return err
 	}

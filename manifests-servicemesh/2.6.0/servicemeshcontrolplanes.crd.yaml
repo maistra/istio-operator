@@ -5,7 +5,7 @@ metadata:
   labels:
     maistra-version: 2.6.0
   annotations:
-    service.beta.openshift.io/inject-cabundle: "true"
+    service.beta.openshift.io/inject-cabundle: "false"
     controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
   name: servicemeshcontrolplanes.maistra.io
