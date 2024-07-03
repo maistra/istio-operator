@@ -3,6 +3,7 @@ package cni
 import (
 	"fmt"
 	"os"
+	"sync"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -10,6 +11,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
+)
+
+var (
+	once   sync.Once
+	config Config
 )
 
 type Config struct {
@@ -23,38 +29,36 @@ type Config struct {
 	ImagePullSecrets []string
 }
 
-// InitConfig initializes the CNI support variable
-func InitConfig(m manager.Manager) (Config, error) {
-	config := Config{}
+// GetConfig initializes the CNI support variable
+func GetConfig(m manager.Manager) Config {
+	once.Do(func() {
+		log := logf.Log.WithName("controller_init")
 
-	log := logf.Log.WithName("controller_init")
-
-	if !common.Config.OLM.CNIEnabled {
-		config.Enabled = false
-		log.Info(fmt.Sprintf("CNI is disabled for this installation: %v", config.Enabled))
-		return config, nil
-	}
-	log.Info(fmt.Sprintf("CNI is enabled for this installation: %v", config.Enabled))
-
-	config.Enabled = true
-
-	_, err := m.GetRESTMapper().ResourcesFor(schema.GroupVersionResource{
-		Group:    "k8s.cni.cncf.io",
-		Version:  "v1",
-		Resource: "network-attachment-definitions",
-	})
-
-	if err == nil {
-		config.UseMultus = true
-
-		secret, _ := os.LookupEnv("ISTIO_CNI_IMAGE_PULL_SECRET")
-		if secret != "" {
-			config.ImagePullSecrets = append(config.ImagePullSecrets, secret)
+		if !common.Config.OLM.CNIEnabled {
+			config.Enabled = false
+			log.Info(fmt.Sprintf("CNI is disabled for this installation: %v", config.Enabled))
 		}
+		log.Info(fmt.Sprintf("CNI is enabled for this installation: %v", config.Enabled))
 
-	} else if !meta.IsNoMatchError(err) {
-		config.UseMultus = false
-	}
+		config.Enabled = true
 
-	return config, nil
+		_, err := m.GetRESTMapper().ResourcesFor(schema.GroupVersionResource{
+			Group:    "k8s.cni.cncf.io",
+			Version:  "v1",
+			Resource: "network-attachment-definitions",
+		})
+
+		if err == nil {
+			config.UseMultus = true
+
+			secret, _ := os.LookupEnv("ISTIO_CNI_IMAGE_PULL_SECRET")
+			if secret != "" {
+				config.ImagePullSecrets = append(config.ImagePullSecrets, secret)
+			}
+
+		} else if !meta.IsNoMatchError(err) {
+			config.UseMultus = false
+		}
+	})
+	return config
 }

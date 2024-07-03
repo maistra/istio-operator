@@ -47,11 +47,7 @@ const (
 // Add creates a new ServiceMeshMember Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
-	cniConfig, err := cni.InitConfig(mgr)
-	if err != nil {
-		return err
-	}
-	return add(mgr, newReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetEventRecorderFor(controllerName), newNamespaceReconciler, cniConfig))
+	return add(mgr, newReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetEventRecorderFor(controllerName), newNamespaceReconciler, cni.GetConfig(mgr)))
 }
 
 // newReconciler returns a new reconcile.Reconciler

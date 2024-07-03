@@ -14,9 +14,8 @@ func TestInitConfig_disablingCNI(t *testing.T) {
 	originalCniValue := InitializeGlobals(operatorNamespace)
 
 	var m manager.Manager
-	config, err := InitConfig(m)
+	config := GetConfig(m)
 
-	assert.Equals(err, nil, "", t)
 	assert.Equals(config.Enabled, false, "", t)
 
 	// Quick test cleanup

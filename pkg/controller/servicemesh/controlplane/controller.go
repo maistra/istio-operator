@@ -39,11 +39,6 @@ const (
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	operatorNamespace := common.GetOperatorNamespace()
-	cniConfig, err := cni.InitConfig(mgr)
-	if err != nil {
-		return err
-	}
-
 	dcProvider, ok := mgr.(common.DiscoveryClientProvider)
 	if !ok {
 		return fmt.Errorf("expected mgr to be a DiscoveryClientProvider")
@@ -53,7 +48,7 @@ func Add(mgr manager.Manager) error {
 		return err
 	}
 
-	reconciler := newReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetEventRecorderFor(controllerName), operatorNamespace, cniConfig, dc)
+	reconciler := newReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetEventRecorderFor(controllerName), operatorNamespace, cni.GetConfig(mgr), dc)
 	return add(mgr, reconciler)
 }
 
