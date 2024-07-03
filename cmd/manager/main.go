@@ -15,7 +15,6 @@ import (
 	"github.com/magiconair/properties"
 	"github.com/mitchellh/mapstructure"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
-	kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"
 	"github.com/operator-framework/operator-sdk/pkg/log/zap"
 	"github.com/operator-framework/operator-sdk/pkg/metrics"
 	"github.com/spf13/pflag"
@@ -32,8 +31,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
 	"github.com/maistra/istio-operator/pkg/apis"
-	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
-	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 	"github.com/maistra/istio-operator/pkg/version"
@@ -43,7 +40,6 @@ import (
 var (
 	metricsHost                   = "0.0.0.0"
 	metricsPort             int32 = 8383
-	operatorMetricsPort     int32 = 8686
 	admissionControllerPort       = 11999
 	healthProbeBindAddress        = ":11200"
 )
@@ -221,14 +217,9 @@ func addMetrics(ctx context.Context, cfg *rest.Config) {
 		}
 	}
 
-	if err := serveCRMetrics(cfg, operatorNs); err != nil {
-		log.Info("Could not generate and serve custom resource metrics", "error", err.Error())
-	}
-
 	// Add to the below struct any other metrics ports you want to expose.
 	servicePorts := []v1.ServicePort{
 		{Port: metricsPort, Name: metrics.OperatorPortName, Protocol: v1.ProtocolTCP, TargetPort: intOrStringFromInt32(metricsPort)},
-		{Port: operatorMetricsPort, Name: metrics.CRPortName, Protocol: v1.ProtocolTCP, TargetPort: intOrStringFromInt32(operatorMetricsPort)},
 	}
 
 	// Create Service object to expose the metrics port(s).
@@ -258,37 +249,6 @@ func intOrStringFromInt32(val int32) intstr.IntOrString {
 		Type:   intstr.Int,
 		IntVal: val,
 	}
-}
-
-// serveCRMetrics gets the Operator/CustomResource GVKs and generates metrics based on those types.
-// It serves those metrics on "http://metricsHost:operatorMetricsPort".
-func serveCRMetrics(cfg *rest.Config, operatorNs string) error {
-	// The function below returns a list of filtered operator/CR specific GVKs. For more control, override the GVK list below
-	// with your own custom logic. Note that if you are adding third party API schemas, probably you will need to
-	// customize this implementation to avoid permissions issues.
-	filteredGVK, err := k8sutil.GetGVKsFromAddToScheme(maistrav1.SchemeBuilder.AddToScheme)
-	if err != nil {
-		return err
-	}
-	filteredV2GVK, err := k8sutil.GetGVKsFromAddToScheme(maistrav2.SchemeBuilder.AddToScheme)
-	if err != nil {
-		return err
-	}
-	filteredGVK = append(filteredGVK, filteredV2GVK...)
-
-	// The metrics will be generated from the namespaces which are returned here.
-	// NOTE that passing nil or an empty list of namespaces in GenerateAndServeCRMetrics will result in an error.
-	ns, err := kubemetrics.GetNamespacesForMetrics(operatorNs)
-	if err != nil {
-		return err
-	}
-
-	// Generate and serve custom resource specific metrics.
-	err = kubemetrics.GenerateAndServeCRMetrics(cfg, ns, filteredGVK, metricsHost, operatorMetricsPort)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func initializeConfiguration(configFile string) error {
