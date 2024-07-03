@@ -37,6 +37,7 @@ func GetConfig(m manager.Manager) Config {
 		if !common.Config.OLM.CNIEnabled {
 			config.Enabled = false
 			log.Info(fmt.Sprintf("CNI is disabled for this installation: %v", config.Enabled))
+			return
 		}
 		log.Info(fmt.Sprintf("CNI is enabled for this installation: %v", config.Enabled))
 

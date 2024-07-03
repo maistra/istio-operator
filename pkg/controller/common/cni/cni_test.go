@@ -1,6 +1,7 @@
 package cni
 
 import (
+	"sync"
 	"testing"
 
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -10,8 +11,11 @@ import (
 )
 
 func TestInitConfig_disablingCNI(t *testing.T) {
-	operatorNamespace := "istio-operator"
-	originalCniValue := InitializeGlobals(operatorNamespace)
+	originalCniValue := common.Config.OLM.CNIEnabled
+	common.Config.OLM.CNIEnabled = false
+
+	// reset the global vars in cni.go so that GetConfig will actually run in this test
+	resetCNIConfig()
 
 	var m manager.Manager
 	config := GetConfig(m)
@@ -20,12 +24,15 @@ func TestInitConfig_disablingCNI(t *testing.T) {
 
 	// Quick test cleanup
 	common.Config.OLM.CNIEnabled = originalCniValue
+
+	// reset the global vars in cni.go so that GetConfig will run again when called by other tests
+	resetCNIConfig()
+	once = sync.Once{}
 }
 
-func InitializeGlobals(operatorNamespace string) (originalValue bool) {
-	originalValue = common.Config.OLM.CNIEnabled
-	common.Config.OLM.CNIEnabled = false
-	return originalValue
+func resetCNIConfig() {
+	once = sync.Once{}
+	config = Config{}
 }
 
 func TestIsCNIConfigEnabledByDefault(t *testing.T) {
