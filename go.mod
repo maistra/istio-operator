@@ -64,7 +64,7 @@ replace github.com/Azure/go-autorest => github.com/Azure/go-autorest v13.3.2+inc
 
 replace k8s.io/cli-runtime => k8s.io/cli-runtime v0.18.3
 
-replace k8s.io/client-go => k8s.io/client-go v0.18.3
+replace k8s.io/client-go => github.com/maistra/kubernetes-client-go v0.0.0-20240704065002-d72687b232f2 // branch v0.18.3-patch
 
 replace k8s.io/api => k8s.io/api v0.18.3
 

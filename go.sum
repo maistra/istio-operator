@@ -667,6 +667,8 @@ github.com/mailru/easyjson v0.0.0-20190614124828-94de47d64c63/go.mod h1:C1wdFJiN
 github.com/mailru/easyjson v0.0.0-20190626092158-b2ccc519800e/go.mod h1:C1wdFJiN94OJF2b5HbByQZoLdCWB1Yqtg26g4irojpc=
 github.com/mailru/easyjson v0.7.0 h1:aizVhC/NAAcKWb+5QsU1iNOZb4Yws5UO2I+aIprQITM=
 github.com/mailru/easyjson v0.7.0/go.mod h1:KAzv3t3aY1NaHWoQz1+4F1ccyAH66Jk7yos7ldAVICs=
+github.com/maistra/kubernetes-client-go v0.0.0-20240704065002-d72687b232f2 h1:MDYbFkdrlp/b4t2xIkd+ItCeBoA+HAs5IbrPK8yYwCg=
+github.com/maistra/kubernetes-client-go v0.0.0-20240704065002-d72687b232f2/go.mod h1:4a/dpQEvzAhT1BbuWW09qvIaGw6Gbu1gZYiQZIi1DMw=
 github.com/maistra/operator-sdk v0.0.0-20210824135520-3b25565223d4 h1:xokmdp2Sq11u/2yH+dLUWu27BUchnYWwGKhQZZeHycM=
 github.com/maistra/operator-sdk v0.0.0-20210824135520-3b25565223d4/go.mod h1:xP/DNvnYnIoGK1bLKiD0s7aYZp2fa4AI6t1v3INaoZg=
 github.com/markbates/inflect v1.0.4 h1:5fh1gzTFhfae06u3hzHYO9xe3l3v3nW5Pwt3naLTP5g=
@@ -1414,8 +1416,6 @@ k8s.io/apiserver v0.18.3/go.mod h1:tHQRmthRPLUtwqsOnJJMoI8SW3lnoReZeE861lH8vUw=
 k8s.io/autoscaler v0.0.0-20190607113959-1b4f1855cb8e/go.mod h1:QEXezc9uKPT91dwqhSJq3GNI3B1HxFRQHiku9kmrsSA=
 k8s.io/cli-runtime v0.18.3 h1:8IBtaTYmXiXipKdx2FAKotvnQMjcF0kSLvX4szY340c=
 k8s.io/cli-runtime v0.18.3/go.mod h1:pqbbi4nqRIQhUWAVzen8uE8DD/zcZLwf+8sQYO4lwLk=
-k8s.io/client-go v0.18.3 h1:QaJzz92tsN67oorwzmoB0a9r9ZVHuD5ryjbCKP0U22k=
-k8s.io/client-go v0.18.3/go.mod h1:4a/dpQEvzAhT1BbuWW09qvIaGw6Gbu1gZYiQZIi1DMw=
 k8s.io/code-generator v0.18.3 h1:5H57pYEbkMMXCLKD16YQH3yDPAbVLweUsB1M3m70D1c=
 k8s.io/code-generator v0.18.3/go.mod h1:TgNEVx9hCyPGpdtCWA34olQYLkh3ok9ar7XfSsr8b6c=
 k8s.io/component-base v0.0.0-20191122220729-2684fb322cb9/go.mod h1:NFuUusy/X4Tk21m21tcNUihnmp4OI7lXU7/xA+rYXkc=
