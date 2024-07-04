@@ -50,37 +50,12 @@ func Add(mgr manager.Manager) error {
 	namespaceFilter := webhookcommon.NamespaceFilter(watchNamespaceStr)
 
 	hookServer := mgr.GetWebhookServer()
-
-	log.Info("Adding Maistra ServiceMeshControlPlane conversion handler")
 	hookServer.Register(smcpConverterServicePath, &conversion.Webhook{})
-
-	log.Info("Adding Maistra ServiceMeshExtension conversion handler")
 	hookServer.Register(SmeConverterServicePath, &conversion.Webhook{})
-
-	log.Info("Adding Maistra ServiceMeshControlPlane validation handler")
-	hookServer.Register(smcpValidatorServicePath, &webhook.Admission{
-		Handler: validation.NewControlPlaneValidator(namespaceFilter),
-	})
-
-	log.Info("Adding Maistra ServiceMeshControlPlane mutation handler")
-	hookServer.Register(smcpMutatorServicePath, &webhook.Admission{
-		Handler: mutation.NewControlPlaneMutator(namespaceFilter),
-	})
-
-	log.Info("Adding Maistra ServiceMeshMemberRoll validation handler")
-	hookServer.Register(smmrValidatorServicePath, &webhook.Admission{
-		Handler: validation.NewMemberRollValidator(namespaceFilter),
-	})
-
-	log.Info("Adding Maistra ServiceMeshMemberRoll mutation handler")
-	hookServer.Register(smmrMutatorServicePath, &webhook.Admission{
-		Handler: mutation.NewMemberRollMutator(namespaceFilter),
-	})
-
-	log.Info("Adding Maistra ServiceMeshMember validation handler")
-	hookServer.Register(smmValidatorServicePath, &webhook.Admission{
-		Handler: validation.NewMemberValidator(),
-	})
-
+	hookServer.Register(smcpValidatorServicePath, &webhook.Admission{Handler: validation.NewControlPlaneValidator(namespaceFilter)})
+	hookServer.Register(smcpMutatorServicePath, &webhook.Admission{Handler: mutation.NewControlPlaneMutator(namespaceFilter)})
+	hookServer.Register(smmrValidatorServicePath, &webhook.Admission{Handler: validation.NewMemberRollValidator(namespaceFilter)})
+	hookServer.Register(smmrMutatorServicePath, &webhook.Admission{Handler: mutation.NewMemberRollMutator(namespaceFilter)})
+	hookServer.Register(smmValidatorServicePath, &webhook.Admission{Handler: validation.NewMemberValidator()})
 	return nil
 }
