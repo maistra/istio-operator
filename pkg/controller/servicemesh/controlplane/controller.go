@@ -43,11 +43,7 @@ func Add(mgr manager.Manager) error {
 	if !ok {
 		return fmt.Errorf("expected mgr to be a DiscoveryClientProvider")
 	}
-	dc, err := dcProvider.GetDiscoveryClient()
-	if err != nil {
-		return err
-	}
-
+	dc := dcProvider.GetDiscoveryClient()
 	reconciler := newReconciler(mgr.GetClient(), mgr.GetScheme(), mgr.GetEventRecorderFor(controllerName), operatorNamespace, cni.GetConfig(mgr), dc)
 	return add(mgr, reconciler)
 }

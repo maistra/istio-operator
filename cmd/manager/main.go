@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	"github.com/magiconair/properties"
 	"github.com/mitchellh/mapstructure"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
@@ -20,11 +19,13 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/discovery"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -130,8 +131,6 @@ func main() {
 		})
 	}
 
-	ctx := context.Background()
-
 	// Set default manager options
 	options := manager.Options{
 		Namespace:              namespace,
@@ -183,8 +182,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Add the Metrics Service
-	addMetrics(ctx, cfg)
+	err = mgr.Add(manager.RunnableFunc(func(stop <-chan struct{}) error {
+		createMetricsResources(context.Background(), cfg, mgr.GetClient(), dc)
+		return nil
+	}))
+	if err != nil {
+		log.Error(err, "error adding metrics runnable")
+		os.Exit(1)
+	}
 
 	err = mgr.AddReadyzCheck("readiness", func(req *http.Request) error {
 		// no need to check anything; the readyz probe succeeds only when the
@@ -205,9 +210,9 @@ func main() {
 	}
 }
 
-// addMetrics will create the Services and Service Monitors to allow the operator export the metrics by using
+// createMetricsResources creates the Service and ServiceMonitor resource to allow the operator export the metrics by using
 // the Prometheus operator
-func addMetrics(ctx context.Context, cfg *rest.Config) {
+func createMetricsResources(ctx context.Context, cfg *rest.Config, cl client.Client, dc discovery.DiscoveryInterface) {
 	// Get the namespace the operator is currently deployed in.
 	operatorNs, err := k8sutil.GetOperatorNamespace()
 	if err != nil {
@@ -223,7 +228,7 @@ func addMetrics(ctx context.Context, cfg *rest.Config) {
 	}
 
 	// Create Service object to expose the metrics port(s).
-	service, err := metrics.CreateMetricsService(ctx, cfg, servicePorts)
+	service, err := metrics.CreateMetricsService0(ctx, cl, servicePorts)
 	if err != nil {
 		log.Info("Could not create metrics Service", "error", err.Error())
 	}
@@ -233,8 +238,8 @@ func addMetrics(ctx context.Context, cfg *rest.Config) {
 	services := []*v1.Service{service}
 
 	// The ServiceMonitor is created in the same namespace where the operator is deployed
-	_, err = metrics.CreateServiceMonitors(cfg, operatorNs, services)
-	if err != nil {
+	_, err = metrics.CreateServiceMonitors0(cfg, dc, operatorNs, services)
+	if err != nil && !apierrors.IsNotFound(err) {
 		log.Info("Could not create ServiceMonitor object", "error", err.Error())
 		// If this operator is deployed to a cluster without the prometheus-operator running, it will return
 		// ErrServiceMonitorNotPresent, which can be used to safely skip ServiceMonitor creation.

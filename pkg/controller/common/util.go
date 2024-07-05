@@ -335,6 +335,6 @@ func (m EnhancedManager) GetLogger() logr.Logger {
 	return m.delegate.GetLogger()
 }
 
-func (m EnhancedManager) GetDiscoveryClient() (discovery.DiscoveryInterface, error) {
-	return m.dc, nil
+func (m EnhancedManager) GetDiscoveryClient() discovery.DiscoveryInterface {
+	return m.dc
 }
