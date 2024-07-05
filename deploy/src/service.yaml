@@ -1,10 +1,9 @@
+# NOTE: this is only needed on vanilla Kubernetes; On OpenShift, the Operator Lifecycle Manager (OLM) creates the service automatically
 apiVersion: v1
 kind: Service
 metadata:
-  name: maistra-admission-controller
+  name: istio-operator-service
   namespace: istio-operator
-  annotations:
-    service.beta.openshift.io/serving-cert-secret-name: maistra-operator-serving-cert
 spec:
   ports:
   - port: 443

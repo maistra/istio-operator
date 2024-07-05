@@ -1,0 +1,65 @@
+# NOTE: these are only needed on vanilla Kubernetes; On OpenShift, the Operator Lifecycle Manager (OLM) creates them automatically
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: smcp.mutation.maistra.io
+webhooks:
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    caBundle: CA_BUNDLE
+    service:
+      name: istio-operator-service
+      namespace: openshift-operators
+      path: /mutate-smcp
+      port: 443
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: smcp.mutation.maistra.io
+  reinvocationPolicy: Never
+  rules:
+  - apiGroups:
+    - maistra.io
+    apiVersions:
+    - v1
+    - v2
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - servicemeshcontrolplanes
+    scope: '*'
+  sideEffects: NoneOnDryRun
+  timeoutSeconds: 10
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: smmr.mutation.maistra.io
+webhooks:
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    caBundle: CA_BUNDLE
+    service:
+      name: istio-operator-service
+      namespace: openshift-operators
+      path: /mutate-smmr
+      port: 443
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: smmr.mutation.maistra.io
+  reinvocationPolicy: Never
+  rules:
+  - apiGroups:
+    - maistra.io
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - servicemeshmemberrolls
+    scope: '*'
+  sideEffects: NoneOnDryRun
+  timeoutSeconds: 10

@@ -50,16 +50,27 @@ install-operator-k8s() { # installs istio-operator on kubernetes
     sed -e "s/namespace: istio-operator/namespace: $NS/g" "${ROOT}/deploy/src/serviceaccount.yaml" | kubectl apply -n "$NS" -f -
     sed -e "s/namespace: istio-operator/namespace: $NS/g" "${ROOT}/deploy/src/service.yaml" | kubectl apply -n "$NS" -f -
 
-    openssl req -x509 -newkey rsa:4096 -keyout /tmp/key.pem -out /tmp/cert.pem -sha256 -days 365 -nodes -subj "/CN=istio-operator" -addext "subjectAltName = DNS:maistra-admission-controller.$NS.svc"
+    openssl req -x509 -newkey rsa:4096 -keyout /tmp/key.pem -out /tmp/cert.pem -sha256 -days 365 -nodes -subj "/CN=istio-operator" -addext "subjectAltName = DNS:istio-operator-service.$NS.svc"
 
-    kubectl create -n "$NS" secret tls maistra-operator-serving-cert --key=/tmp/key.pem --cert=/tmp/cert.pem
-    kubectl create -n "$NS" configmap maistra-operator-cabundle --from-file=service-ca.crt=/tmp/cert.pem
+    caBundle=$(base64 /tmp/cert.pem -w0)
+    sed -e "s/CA_BUNDLE/$caBundle/g" "${ROOT}/deploy/src/mutatingwebhookconfigurations.yaml" | kubectl apply -f -
+    sed -e "s/CA_BUNDLE/$caBundle/g" "${ROOT}/deploy/src/validatingwebhookconfigurations.yaml" | kubectl apply -f -
+
+    kubectl create -n "$NS" secret tls istio-operator-service-cert --key=/tmp/key.pem --cert=/tmp/cert.pem
 
     sed -e "s@quay.io/maistra/istio-ubi8-operator:${MAISTRA_VERSION}@${OPERATOR_IMAGE}@g" \
         -e "s@namespace: istio-operator@namespace: $NS@g" \
         -e "s@quay.io/maistra/istio-cni-ubi8:${MAISTRA_VERSION}@${ISTIO_CNI_IMAGE_NAME}@g" \
         -e "s@quay.io/maistra/pilot-ubi8:${MAISTRA_VERSION}@${PILOT_IMAGE_NAME}@g" \
         -e "s@quay.io/maistra/proxyv2-ubi8:${MAISTRA_VERSION}@${PROXY_IMAGE_NAME}@g" \
+        -e '/volumeMounts:/a \
+        - name: webhook-tls-volume \
+          readOnly: true \
+          mountPath: /tmp/k8s-webhook-server/serving-certs' \
+        -e '/volumes:/a \
+      - name: webhook-tls-volume \
+        secret: \
+          secretName: istio-operator-service-cert' \
         "${ROOT}/deploy/src/deployment-maistra.yaml" \
         | tee "/tmp/deployment.yaml"
         kubectl apply -f /tmp/deployment.yaml

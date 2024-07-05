@@ -58,9 +58,6 @@ echo "--------------------------------"
 echo "Deploy istio operator in kind"
 echo "--------------------------------"
 "${WD}"/deploy-operator.sh
-# wait for validation webhook
-echo "Wait 30s for validation webhook..."
-sleep 30
 
 # create a SMCP and test httpbin
 echo "--------------------------------"
