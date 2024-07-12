@@ -224,8 +224,6 @@ function patchGalley() {
 {{- end }}\
           - name: ENABLE_IOR\
             value: "{{ $iorEnabled }}"\
-          - name: PILOT_CA_CERT_CONFIG_MAP_NAME\
-            value: "{{ .Values.global.caCertConfigMapName }}"\
 {{- if .Values.gatewayAPI.enabled }}\
 {{- if .Values.gatewayAPI.controllerMode }}\
           - name: PILOT_ENABLE_GATEWAY_CONTROLLER_MODE\
