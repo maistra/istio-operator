@@ -12,6 +12,7 @@ import (
 	"github.com/ghodss/yaml"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -140,6 +141,50 @@ func TestNewerCRDVersionAlwaysWinsRegardlessDeploymentOrder(t *testing.T) {
 			assert.Equals(crd.Labels["maistra-version"], tc.newCRD, "Expected newer version of CRD", t)
 		})
 	}
+}
+
+func TestSkipsCRDManagedByOLM(t *testing.T) {
+	olmCRD := &apiextensionsv1.CustomResourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test",
+			Labels: map[string]string{
+				"olm.managed": "true",
+			},
+		},
+		Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+			Group: "istio.io",
+			Names: apiextensionsv1.CustomResourceDefinitionNames{
+				Kind: "Test",
+			},
+			Scope: "Namespaced",
+			Versions: []apiextensionsv1.CustomResourceDefinitionVersion{
+				{
+					Name: "rbacv1",
+				},
+			},
+		},
+	}
+
+	myCRD := newCRDYAML("test", "2.6.0")
+
+	cl, tracker := test.CreateClient()
+	tracker.AddReactor("update", "customresourcedefinitions", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
+		t.Fatal("code tried to update the OLM-managed CRD")
+		return false, nil, nil
+	})
+	assert.Success(cl.Create(ctx, olmCRD), "cl.Create", t)
+
+	dir := createTempDirectoryWithCRDFiles(myCRD)
+	defer deleteDir(dir)
+
+	assert.Success(InstallCRDs(ctx, cl, dir), "InstallCRDs", t)
+
+	crdList := listCRDs(cl)
+	assert.Equals(len(crdList.Items), 1, "Unexpected number of CRDs", t)
+
+	crd := crdList.Items[0]
+	assert.Equals(crd.Name, "test", "Unexpected CRD name", t)
+	assert.Equals(crd.Labels["maistra-version"], "", "Expected OLM-managed CRD to be preserved", t)
 }
 
 // Older versions of OpenShift/Kubernetes reject CRDs that contain the

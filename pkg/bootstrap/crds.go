@@ -224,6 +224,10 @@ func createCRD(ctx context.Context, cl client.Client, crd *apiextensionsv1.Custo
 	existingCrd.SetName(crd.GetName())
 	err := cl.Get(ctx, client.ObjectKey{Name: crd.GetName()}, existingCrd)
 	if err == nil {
+		if isManagedByOLM(existingCrd) {
+			log.Info("CRD is managed by OLM, skipping update")
+			return nil
+		}
 		newVersion, err := getMaistraVersion(crd)
 		if err != nil {
 			return fmt.Errorf("could not determine version of new CRD %s: %v", crd.GetName(), err)
@@ -247,8 +251,8 @@ func createCRD(ctx context.Context, cl client.Client, crd *apiextensionsv1.Custo
 			log.V(2).Info("CRD exists")
 		}
 		return nil
-	}
-	if errors.IsNotFound(err) {
+
+	} else if errors.IsNotFound(err) {
 		log.Info("creating CRD")
 		err = cl.Create(ctx, crd)
 		if err != nil {
@@ -258,6 +262,10 @@ func createCRD(ctx context.Context, cl client.Client, crd *apiextensionsv1.Custo
 		return nil
 	}
 	return err
+}
+
+func isManagedByOLM(crd *apiextensionsv1.CustomResourceDefinition) bool {
+	return crd.Labels["olm.managed"] == "true"
 }
 
 func getMaistraVersion(crd *apiextensionsv1.CustomResourceDefinition) (*semver.Version, error) {
