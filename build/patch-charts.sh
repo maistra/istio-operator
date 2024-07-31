@@ -90,51 +90,6 @@ gatewayAPI:
 }
 
 function patchGalley() {
-  echo "patching Galley specific Helm charts"
-  # galley
-  # Webhooks are not namespaced!  we do this to ensure we're not setting owner references on them
-  # add namespace selectors
-  # remove define block
-  webhookconfig=${HELM_DIR}/istio-control/istio-discovery/templates/validatingwebhookconfiguration.yaml
-
-  # remove original objectSelector
-  sed_wrap -i '/.*objectSelector:/,/.*{{- end }}/d' "${webhookconfig}"
-
-  # replace namespaceSelector and insert maistra objectSelector
-  sed_wrap -i -e 's|\(\(^ *\)rules:\)|\2namespaceSelector:\
-\2  matchExpressions:\
-\2  - key: maistra.io/member-of\
-\2    operator: In\
-\2    values:\
-\2    - {{ .Release.Namespace }}\
-\2objectSelector:\
-\2  matchExpressions:\
-\2  - key: maistra-version\
-\2    operator: DoesNotExist\
-\1|' "${webhookconfig}"
-  sed_wrap -i -e '/rules:/ a\
-      - operations:\
-        - CREATE\
-        - UPDATE\
-        apiGroups:\
-        - authentication.maistra.io\
-        apiVersions:\
-        - "*"\
-        resources:\
-        - "*"\
-      - operations:\
-        - CREATE\
-        - UPDATE\
-        apiGroups:\
-        - rbac.maistra.io\
-        apiVersions:\
-        - "*"\
-        resources:\
-        - "*"' "${webhookconfig}"
-
-  # ensure resource updates fail if the webhook is offline
-  sed_wrap -i -e 's/failurePolicy: Ignore/failurePolicy: Fail/' "${webhookconfig}"
-
   # add name to webhook port (XXX: move upstream)
   # change the location of the healthCheckFile from /health to /tmp/health
   # add --validation-port=8443
