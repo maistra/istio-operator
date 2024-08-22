@@ -1,0 +1,41 @@
+name: "CodeQL"
+
+on:
+  push:
+    branches: [ "maistra-2.3", "maistra-0.1", "maistra-0.1.0", "maistra-0.2", "maistra-0.3", "maistra-0.4", "maistra-0.5", "maistra-0.6", "maistra-0.7", "maistra-0.8", "maistra-0.9", "maistra-0.10", "maistra-0.11", "maistra-0.12", "maistra-1.0", "maistra-1.1", "maistra-1.2", "maistra-2.0", "maistra-2.1", "maistra-2.2" ]
+  pull_request:
+    branches: [ "maistra-2.3" ]
+  schedule:
+    - cron: "43 10 * * 0"
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ go ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: ${{ matrix.language }}
+          queries: +security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v2
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+        with:
+          category: "/language:${{ matrix.language }}"
