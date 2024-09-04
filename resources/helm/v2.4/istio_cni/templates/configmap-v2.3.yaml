@@ -5,7 +5,7 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   labels:
-    maistra-version: "2.4.10"
+    maistra-version: "2.4.11"
   name: istio-cni-config-v2-3
   namespace: {{ .Release.Namespace }}
 data:

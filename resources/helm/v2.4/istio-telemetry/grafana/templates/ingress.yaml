@@ -6,7 +6,7 @@ metadata:
   name: grafana{{ if gt $index 0 }}-{{ $index }}{{ end }}
   namespace: {{ $.Release.Namespace }}
   labels:
-    maistra-version: "2.4.10"
+    maistra-version: "2.4.11"
     app: grafana
     release: {{ $.Release.Name }}
 {{- if gt (len $.Values.grafana.ingress.annotations) 0 }}
