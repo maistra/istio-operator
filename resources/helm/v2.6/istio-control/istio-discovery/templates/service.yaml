@@ -8,7 +8,7 @@ metadata:
 {{ toYaml .Values.pilot.serviceAnnotations | indent 4 }}
   {{- end }}
   labels:
-    maistra-version: "2.6.1"
+    maistra-version: "2.6.2"
     istio.io/rev: {{ .Values.revision | default "default" | quote }}
     app: istiod
     istio: pilot

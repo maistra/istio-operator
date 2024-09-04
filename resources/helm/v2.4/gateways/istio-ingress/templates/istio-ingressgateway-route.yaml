@@ -10,7 +10,7 @@ metadata:
   namespace: {{ $gateway.namespace | default .Release.Namespace }}
 {{- end }}
   labels:
-    maistra-version: "2.4.10"
+    maistra-version: "2.4.11"
     release: {{ .Release.Name }}
     {{- range $key, $val := $gateway.labels }}
     {{ $key }}: {{ $val }}

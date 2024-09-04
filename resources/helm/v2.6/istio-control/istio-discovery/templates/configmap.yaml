@@ -93,7 +93,7 @@ metadata:
   name: istio-{{ .Values.revision | default "default" }}
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.6.1"
+    maistra-version: "2.6.2"
     istio.io/rev: {{ .Values.revision | default "default" | quote }}
     release: {{ .Release.Name }}
 data:

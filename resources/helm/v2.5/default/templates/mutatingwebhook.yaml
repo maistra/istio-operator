@@ -32,7 +32,7 @@ kind: MutatingWebhookConfiguration
 metadata:
   name: istio-revision-tag-default
   labels:
-    maistra-version: "2.5.4"
+    maistra-version: "2.5.5"
     istio.io/tag: "default"
     istio.io/rev: {{ .Values.revision | default "default" }}
     app: sidecar-injector

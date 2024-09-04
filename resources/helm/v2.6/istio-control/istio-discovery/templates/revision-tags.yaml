@@ -40,7 +40,7 @@ metadata:
   name: istio-revision-tag-{{ $tagName }}-{{ $.Release.Namespace }}
 {{- end }}
   labels:
-    maistra-version: "2.6.1"
+    maistra-version: "2.6.2"
     istio.io/tag: {{ $tagName }}
     istio.io/rev: {{ $.Values.revision | default "default" | quote }}
     app: sidecar-injector

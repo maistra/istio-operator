@@ -6,7 +6,7 @@ metadata:
   name: prometheus{{ if gt $index 0 }}-{{ $index }}{{ end }}
   namespace: {{ $.Release.Namespace }}
   labels:
-    maistra-version: "2.5.4"
+    maistra-version: "2.5.5"
     app: prometheus
     release: {{ $.Release.Name }}
 {{- if gt (len $.Values.prometheus.ingress.annotations) 0 }}

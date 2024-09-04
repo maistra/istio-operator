@@ -9,7 +9,7 @@ metadata:
   namespace: {{ $gateway.namespace | default .Release.Namespace }}
 {{- end }}
   labels:
-    maistra-version: "2.5.4"
+    maistra-version: "2.5.5"
 {{ $gateway.labels | toYaml | indent 4 }}
     release: {{ .Release.Name }}
   annotations:

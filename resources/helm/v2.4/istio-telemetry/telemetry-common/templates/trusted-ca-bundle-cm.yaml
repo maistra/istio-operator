@@ -4,7 +4,7 @@ metadata:
   name: trusted-ca-bundle
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.4.10"
+    maistra-version: "2.4.11"
     app: istio
     release: {{ .Release.Name }}
     config.openshift.io/inject-trusted-cabundle: "true"

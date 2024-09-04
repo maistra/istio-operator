@@ -8,7 +8,7 @@ metadata:
     {{ $key }}: {{ $val | quote }}
     {{- end }}
   labels:
-    maistra-version: "2.6.1"
+    maistra-version: "2.6.2"
     app: grafana
     release: {{ .Release.Name }}
 spec:
