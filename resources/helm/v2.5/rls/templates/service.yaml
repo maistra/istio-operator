@@ -4,7 +4,7 @@ metadata:
   name: rls-{{ .Values.revision | default "default" }}
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.5.7"
+    maistra-version: "2.5.6"
     app: rls
     istio.io/rev: {{ .Values.revision | default "default" }}
     heritage: {{ .Release.Service }}
