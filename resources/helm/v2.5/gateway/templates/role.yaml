@@ -6,7 +6,7 @@ metadata:
   name: {{ include "gateway.serviceAccountName" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.5.6"
+    maistra-version: "2.5.7"
     {{- include "gateway.labels" . | nindent 4}}
   annotations:
     {{- .Values.annotations | toYaml | nindent 4 }}
@@ -21,7 +21,7 @@ metadata:
   name: {{ include "gateway.serviceAccountName" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.5.6"
+    maistra-version: "2.5.7"
     {{- include "gateway.labels" . | nindent 4}}
   annotations:
     {{- .Values.annotations | toYaml | nindent 4 }}

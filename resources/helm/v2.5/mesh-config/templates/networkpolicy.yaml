@@ -4,7 +4,7 @@ metadata:
   name: istio-mesh-{{ .Values.revision | default "default" }}
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.5.6"
+    maistra-version: "2.5.7"
     app: istio
     release: {{ .Release.Name }}
 spec:
@@ -23,7 +23,7 @@ metadata:
   name: istio-expose-route-{{ .Values.revision | default "default" }}
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.5.6"
+    maistra-version: "2.5.7"
     app: istio
     release: {{ .Release.Name }}
 spec:

@@ -3,7 +3,7 @@ apiVersion: kiali.io/v1alpha1
 kind: Kiali
 metadata:
   labels:
-    maistra-version: "2.5.6"
+    maistra-version: "2.5.7"
   name: {{ .Values.kiali.resourceName | default "kiali" }}
   namespace: {{ .Release.Namespace }}
 spec:

@@ -8,7 +8,7 @@ metadata:
   name: istio-cni-node-v2-5
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.5.6"
+    maistra-version: "2.5.7"
     k8s-app: istio-cni-node-v2-5
     release: {{ .Release.Name }}
 spec:
