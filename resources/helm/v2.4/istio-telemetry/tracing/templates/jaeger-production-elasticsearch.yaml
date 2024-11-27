@@ -5,7 +5,7 @@ metadata:
   name: {{ .Values.tracing.jaeger.resourceName | default "jaeger"}}
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.4.12"
+    maistra-version: "2.4.13"
     app: {{ .Values.tracing.provider }}
     release: {{ .Release.Name }}
 spec:

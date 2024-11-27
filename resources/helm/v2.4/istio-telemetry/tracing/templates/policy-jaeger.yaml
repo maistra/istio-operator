@@ -6,7 +6,7 @@ metadata:
   name: disable-mtls-jaeger-collector
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.4.12"
+    maistra-version: "2.4.13"
     app: {{ .Values.tracing.provider }}
     release: {{ .Release.Name }}
 spec:
@@ -27,7 +27,7 @@ metadata:
   name: disable-mtls-jaeger-collector
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.4.12"
+    maistra-version: "2.4.13"
     app: {{ .Values.tracing.provider }}
     release: {{ .Release.Name }}
 spec:
@@ -42,7 +42,7 @@ metadata:
   name: disable-mtls-zipkin
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.4.12"
+    maistra-version: "2.4.13"
     app: {{ .Values.tracing.provider }}
     release: {{ .Release.Name }}
 spec:

@@ -11,7 +11,7 @@ metadata:
     {{- end }}
     {{- end }}
   labels:
-    maistra-version: "2.4.12"
+    maistra-version: "2.4.13"
     app: prometheus
     release: {{ .Release.Name }}
 spec:
@@ -33,7 +33,7 @@ metadata:
   name: prometheus-nodeport
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.4.12"
+    maistra-version: "2.4.13"
     maistra-version: "2.0.1.1"
     app: prometheus
     release: {{ .Release.Name }}

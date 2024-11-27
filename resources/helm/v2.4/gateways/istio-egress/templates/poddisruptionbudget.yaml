@@ -10,7 +10,7 @@ metadata:
   name: {{ $gateway.name }}
   namespace: {{ $gateway.namespace | default .Release.Namespace }}
   labels:
-    maistra-version: "2.4.12"
+    maistra-version: "2.4.13"
 {{ $gateway.labels | toYaml | trim | indent 4 }}
     release: {{ .Release.Name }}
     istio.io/rev: {{ .Values.revision | default "default" }}
