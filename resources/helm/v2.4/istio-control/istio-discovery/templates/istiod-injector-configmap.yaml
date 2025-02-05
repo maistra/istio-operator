@@ -5,7 +5,7 @@ metadata:
   name: istio-sidecar-injector-{{ .Values.revision | default "default" }}
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.4.14"
+    maistra-version: "2.4.15"
     istio.io/rev: {{ .Values.revision | default "default" }}
     release: {{ .Release.Name }}
 data:

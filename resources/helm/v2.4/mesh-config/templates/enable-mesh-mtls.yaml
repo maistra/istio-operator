@@ -10,7 +10,7 @@ metadata:
   name: "default"
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.4.14"
+    maistra-version: "2.4.15"
     app: istio
     release: {{ .Release.Name }}
 spec:
@@ -25,7 +25,7 @@ metadata:
   name: "default"
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.4.14"
+    maistra-version: "2.4.15"
     app: istio
     release: {{ .Release.Name }}
 spec:
@@ -46,7 +46,7 @@ metadata:
   name: "api-server"
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.4.14"
+    maistra-version: "2.4.15"
     app: istio
     release: {{ .Release.Name }}
 spec:

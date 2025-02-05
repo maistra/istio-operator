@@ -2,7 +2,7 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   labels:
-    maistra-version: "2.4.14"
+    maistra-version: "2.4.15"
     app: rls
     istio.io/rev: {{ .Values.revision | default "default" }}
     heritage: {{ .Release.Service }}

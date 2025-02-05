@@ -4,7 +4,7 @@ metadata:
   name: zipkin
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.4.14"
+    maistra-version: "2.4.15"
     app: {{ .Values.tracing.provider }}
     release: {{ .Release.Name }}
 spec:

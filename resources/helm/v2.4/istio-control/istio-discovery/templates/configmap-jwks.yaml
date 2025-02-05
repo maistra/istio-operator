@@ -5,7 +5,7 @@ metadata:
   name: pilot-jwks-extra-cacerts-{{ .Values.revision | default "default" }}
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.4.14"
+    maistra-version: "2.4.15"
     release: {{ .Release.Name }}
     istio.io/rev: {{ .Values.revision | default "default" }}
 data:
