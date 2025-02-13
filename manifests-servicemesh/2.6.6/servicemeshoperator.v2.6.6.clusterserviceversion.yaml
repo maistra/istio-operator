@@ -15,10 +15,10 @@ metadata:
     certified: "false"
     repository: https://github.com/maistra/istio-operator
     description: |-
-      The OpenShift Service Mesh Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh. OpenShift Service Mesh is based on the open source Istio project.
+      The OpenShift Service Mesh 2 Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh 2.6 and earlier releases. OpenShift Service Mesh 2 is based on the open source Istio project.
 
     containerImage: ${OSSM_OPERATOR_IMAGE}
-    createdAt: 2025-02-05T14:09:51CET
+    createdAt: 2025-02-13T14:41:40UTC
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <2.6.6-0"
     operators.openshift.io/infrastructure-features: '["Disconnected","fips"]'
@@ -95,25 +95,25 @@ metadata:
 spec:
   version: 2.6.6-0
   maturity: alpha
-  displayName: Red Hat OpenShift Service Mesh
+  displayName: Red Hat OpenShift Service Mesh 2
   description: |-
-    Red Hat OpenShift Service Mesh is a platform that provides behavioral insight and operational control over a service mesh, providing a uniform way to connect, secure, and monitor microservice applications.
+    Red Hat OpenShift Service Mesh 2 is a platform that provides behavioral insight and operational control over a service mesh, providing a uniform way to connect, secure, and monitor microservice applications.
 
     ### Overview
 
-    Red Hat OpenShift Service Mesh, based on the open source [Istio](https://istio.io/) project, adds a transparent layer on existing
-    distributed applications without requiring any changes to the service code. You add Red Hat OpenShift Service Mesh
+    Red Hat OpenShift Service Mesh 2, based on the open source [Istio](https://istio.io/) project, adds a transparent layer on existing
+    distributed applications without requiring any changes to the service code. You add Red Hat OpenShift Service Mesh 2
     support to services by deploying a special sidecar proxy throughout your environment that intercepts all network
     communication between microservices. You configure and manage the service mesh using the control plane features.
 
-    Red Hat OpenShift Service Mesh provides an easy way to create a network of deployed services that provides discovery,
+    Red Hat OpenShift Service Mesh 2 provides an easy way to create a network of deployed services that provides discovery,
     load balancing, service-to-service authentication, failure recovery, metrics, and monitoring. A service mesh also
     provides more complex operational functionality, including A/B testing, canary releases, rate limiting, access
     control, and end-to-end authentication.
 
     ### Core Capabilities
 
-    Red Hat OpenShift Service Mesh supports uniform application of a number of key capabilities across a network of services:
+    Red Hat OpenShift Service Mesh 2 supports uniform application of a number of key capabilities across a network of services:
 
     + **Traffic Management** - Control the flow of traffic and API calls between services, make calls more reliable,
       and make the network more robust in the face of adverse conditions.
@@ -130,7 +130,7 @@ spec:
 
     ### Joining Projects Into a Mesh
 
-    Once an instance of Red Hat OpenShift Service Mesh has been installed, it will only exercise control over services within its own
+    Once an instance of Red Hat OpenShift Service Mesh 2 has been installed, it will only exercise control over services within its own
     project.  Other projects may be added into the mesh using one of two methods:
 
     1. A **ServiceMeshMember** resource may be created in other projects to add those projects into the mesh.  The
@@ -240,7 +240,7 @@ spec:
   provider:
     name: Red Hat, Inc.
   links:
-  - name: Red Hat OpenShift Service Mesh
+  - name: Red Hat OpenShift Service Mesh 2
     url: https://docs.openshift.com/container-platform/latest/service_mesh/v2x/servicemesh-release-notes.html
   - name: Istio
     url: https://istio.io/
