@@ -15,7 +15,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:
-    maistra-version: "2.5.9"
+    maistra-version: "2.5.10"
     istio.io/rev: {{ .Values.revision | default "default" }}
 spec:
   priority: -1
@@ -148,7 +148,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:
-    maistra-version: "2.5.9"
+    maistra-version: "2.5.10"
     istio.io/rev: {{ .Values.revision | default "default" }}
 spec:
   priority: -1
@@ -275,7 +275,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:
-    maistra-version: "2.5.9"
+    maistra-version: "2.5.10"
     istio.io/rev: {{ .Values.revision | default "default" }}
 spec:
   priority: -1
@@ -407,7 +407,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:
-    maistra-version: "2.5.9"
+    maistra-version: "2.5.10"
     istio.io/rev: {{ .Values.revision | default "default" }}
 spec:
   priority: -1
@@ -532,7 +532,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:
-    maistra-version: "2.5.9"
+    maistra-version: "2.5.10"
     istio.io/rev: {{ .Values.revision | default "default" }}
 spec:
   priority: -1

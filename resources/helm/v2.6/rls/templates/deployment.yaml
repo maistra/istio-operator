@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    maistra-version: "2.6.6"
+    maistra-version: "2.6.7"
     app: rls
     istio.io/rev: {{ .Values.revision | default "default" }}
     heritage: {{ .Release.Service }}

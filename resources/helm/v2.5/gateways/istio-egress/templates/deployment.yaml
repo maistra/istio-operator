@@ -94,7 +94,7 @@ metadata:
   namespace: {{ $gateway.namespace | default .Release.Namespace }}
   labels:
     maistra.io/gateway: {{ $gateway.name | default "istio-egressgateway" }}.{{ $gateway.namespace | default .Release.Namespace }}
-    maistra-version: "2.5.9"
+    maistra-version: "2.5.10"
 {{ $gateway.labels | toYaml | indent 4 }}
     release: {{ .Release.Name }}
     istio.io/rev: {{ .Values.revision | default "default" }}

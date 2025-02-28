@@ -10,7 +10,7 @@ metadata:
     {{ $key }}: {{ $val | quote }}
     {{- end }}
   labels:
-    maistra-version: "2.6.6"
+    maistra-version: "2.6.7"
 {{ $gateway.labels | toYaml | indent 4 }}
     release: {{ .Release.Name }}
     istio.io/rev: {{ .Values.revision | default "default" | quote }}

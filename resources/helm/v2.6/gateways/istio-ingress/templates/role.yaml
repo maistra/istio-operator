@@ -5,7 +5,7 @@ metadata:
   name: {{ $gateway.name }}-sds
   namespace: {{ $gateway.namespace | default .Release.Namespace }}
   labels:
-    maistra-version: "2.6.6"
+    maistra-version: "2.6.7"
     release: {{ .Release.Name }}
     istio.io/rev: {{ .Values.revision | default "default" | quote }}
 rules:
