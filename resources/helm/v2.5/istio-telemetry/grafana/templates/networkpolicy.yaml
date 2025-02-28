@@ -5,7 +5,7 @@ metadata:
   name: istio-grafana-ingress
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.5.9"
+    maistra-version: "2.5.10"
     app: grafana
     release: {{ .Release.Name }}
   annotations:
