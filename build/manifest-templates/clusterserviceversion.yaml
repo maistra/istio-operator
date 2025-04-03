@@ -201,7 +201,6 @@ __DEPLOYMENT_SPEC__
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:General'
           - 'urn:alm:descriptor:com.tectonic.ui:select:v2.6'
           - 'urn:alm:descriptor:com.tectonic.ui:select:v2.5'
-          - 'urn:alm:descriptor:com.tectonic.ui:select:v2.4'
       - displayName: Control Plane Mode
         description: 'NOTE: only applies if version is v2.4 or higher'
         path: mode
