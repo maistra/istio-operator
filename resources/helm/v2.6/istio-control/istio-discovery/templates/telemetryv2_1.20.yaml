@@ -8,14 +8,13 @@
 apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
-  name: stats-filter-1.18-{{ .Values.revision | default "default" }}
+  name: stats-filter-1.20{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}
   {{- if .Values.meshConfig.rootNamespace }}
   namespace: {{ .Values.meshConfig.rootNamespace }}
   {{- else }}
   namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:
-    maistra-version: "2.6.7"
     istio.io/rev: {{ .Values.revision | default "default" }}
 spec:
   priority: -1
@@ -24,7 +23,7 @@ spec:
       match:
         context: SIDECAR_OUTBOUND
         proxy:
-          proxyVersion: '^1\.18.*'
+          proxyVersion: '^1\.20.*'
         listener:
           filterChain:
             filter:
@@ -48,7 +47,7 @@ spec:
       match:
         context: SIDECAR_INBOUND
         proxy:
-          proxyVersion: '^1\.18.*'
+          proxyVersion: '^1\.20.*'
         listener:
           filterChain:
             filter:
@@ -74,7 +73,7 @@ spec:
       match:
         context: GATEWAY
         proxy:
-          proxyVersion: '^1\.18.*'
+          proxyVersion: '^1\.20.*'
         listener:
           filterChain:
             filter:
@@ -101,14 +100,13 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
-  name: tcp-stats-filter-1.18-{{ .Values.revision | default "default" }}
+  name: tcp-stats-filter-1.20{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}
   {{- if .Values.meshConfig.rootNamespace }}
   namespace: {{ .Values.meshConfig.rootNamespace }}
   {{- else }}
   namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:
-    maistra-version: "2.6.7"
     istio.io/rev: {{ .Values.revision | default "default" }}
 spec:
   priority: -1
@@ -117,7 +115,7 @@ spec:
       match:
         context: SIDECAR_INBOUND
         proxy:
-          proxyVersion: '^1\.18.*'
+          proxyVersion: '^1\.20.*'
         listener:
           filterChain:
             filter:
@@ -139,7 +137,7 @@ spec:
       match:
         context: SIDECAR_OUTBOUND
         proxy:
-          proxyVersion: '^1\.18.*'
+          proxyVersion: '^1\.20.*'
         listener:
           filterChain:
             filter:
@@ -161,7 +159,7 @@ spec:
       match:
         context: GATEWAY
         proxy:
-          proxyVersion: '^1\.18.*'
+          proxyVersion: '^1\.20.*'
         listener:
           filterChain:
             filter:
@@ -186,14 +184,13 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
-  name: stackdriver-filter-1.18-{{ .Values.revision | default "default" }}
+  name: stackdriver-filter-1.20{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}
   {{- if .Values.meshConfig.rootNamespace }}
   namespace: {{ .Values.meshConfig.rootNamespace }}
   {{- else }}
   namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:
-    maistra-version: "2.6.7"
     istio.io/rev: {{ .Values.revision | default "default" }}
 spec:
   priority: -1
@@ -203,7 +200,7 @@ spec:
       match:
         context: SIDECAR_OUTBOUND
         proxy:
-          proxyVersion: '^1\.18.*'
+          proxyVersion: '^1\.20.*'
         listener:
           filterChain:
             filter:
@@ -241,7 +238,7 @@ spec:
       match:
         context: SIDECAR_INBOUND
         proxy:
-          proxyVersion: '^1\.18.*'
+          proxyVersion: '^1\.20.*'
         listener:
           filterChain:
             filter:
@@ -280,7 +277,7 @@ spec:
       match:
         context: GATEWAY
         proxy:
-          proxyVersion: '^1\.18.*'
+          proxyVersion: '^1\.20.*'
         listener:
           filterChain:
             filter:
@@ -318,14 +315,13 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
-  name: tcp-stackdriver-filter-1.18-{{ .Values.revision | default "default" }}
+  name: tcp-stackdriver-filter-1.20{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}
   {{- if .Values.meshConfig.rootNamespace }}
   namespace: {{ .Values.meshConfig.rootNamespace }}
   {{- else }}
   namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:
-    maistra-version: "2.6.7"
     istio.io/rev: {{ .Values.revision | default "default" }}
 spec:
   priority: -1
@@ -335,7 +331,7 @@ spec:
     match:
       context: SIDECAR_OUTBOUND
       proxy:
-        proxyVersion: '^1\.18.*'
+        proxyVersion: '^1\.20.*'
       listener:
         filterChain:
           filter:
@@ -371,7 +367,7 @@ spec:
     match:
       context: SIDECAR_INBOUND
       proxy:
-        proxyVersion: '^1\.18.*'
+        proxyVersion: '^1\.20.*'
       listener:
         filterChain:
           filter:
@@ -407,7 +403,7 @@ spec:
     match:
       context: GATEWAY
       proxy:
-        proxyVersion: '^1\.18.*'
+        proxyVersion: '^1\.20.*'
       listener:
         filterChain:
           filter:
@@ -443,14 +439,13 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
-  name: stackdriver-sampling-accesslog-filter-1.18-{{ .Values.revision | default "default" }}
+  name: stackdriver-sampling-accesslog-filter-1.20{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}
   {{- if .Values.meshConfig.rootNamespace }}
   namespace: {{ .Values.meshConfig.rootNamespace }}
   {{- else }}
   namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:
-    maistra-version: "2.6.7"
     istio.io/rev: {{ .Values.revision | default "default" }}
 spec:
   priority: -1
@@ -459,7 +454,7 @@ spec:
       match:
         context: SIDECAR_INBOUND
         proxy:
-          proxyVersion: '1\.18.*'
+          proxyVersion: '1\.20.*'
         listener:
           filterChain:
             filter:

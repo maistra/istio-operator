@@ -5,7 +5,6 @@ metadata:
   name: istio-grafana-pvc
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.6.7"
     app: grafana
     release: {{ .Release.Name }}
 spec:
@@ -14,5 +13,5 @@ spec:
     - {{ .Values.grafana.accessMode }}
   resources:
     requests:
-      storage: {{ .Values.grafana.persistenceResources.requests.storage | quote }}
+      storage: 5Gi
 {{- end }}

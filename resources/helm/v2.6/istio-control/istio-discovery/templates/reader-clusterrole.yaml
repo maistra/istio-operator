@@ -1,11 +1,9 @@
-{{- if and .Values.global.clusterWide .Values.global.multiCluster.enabled }}
 {{ $mcsAPIGroup := or .Values.pilot.env.MCS_API_GROUP "multicluster.x-k8s.io" }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: istio-reader-clusterrole-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}
+  name: istio-reader-clusterrole{{- if not (eq .Values.revision "")}}-{{ .Values.revision }}{{- end }}-{{ .Release.Namespace }}
   labels:
-    maistra-version: "2.6.7"
     app: istio-reader
     release: {{ .Release.Name }}
 rules:
@@ -58,4 +56,3 @@ rules:
     resources: ["validatingwebhookconfigurations"]
     verbs: ["get", "list", "watch", "update"]
 {{- end}}
-{{- end }}

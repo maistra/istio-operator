@@ -4,12 +4,11 @@ kind: NetworkPolicy
 metadata:
   name: {{ $gateway.name }}
 {{- if not $gateway.namespace }}
-  namespace: {{ $gateway.namespace | default .Release.Namespace }}
+  namespace: {{ .Release.Namespace }}
 {{- else }}
-  namespace: {{ $gateway.namespace | default .Release.Namespace }}
+  namespace: {{ $gateway.namespace }}
 {{- end }}
   labels:
-    maistra-version: "2.6.7"
 {{ $gateway.labels | toYaml | indent 4 }}
     release: {{ .Release.Name }}
   annotations:

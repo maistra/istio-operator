@@ -1,12 +1,11 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: istiod-internal-{{ .Values.revision | default "default" }}
-  namespace: {{ .Release.Namespace }}
+  name: istiod-internal{{- if not (eq .Values.revision "")}}-{{ .Values.revision }}{{- end }}
+  namespace: {{ .Values.global.istioNamespace }}
   annotations:
     "maistra.io/internal": "true"
   labels:
-    maistra-version: "2.6.7"
     app: istiod
     release: {{ .Release.Name }}
 rules:

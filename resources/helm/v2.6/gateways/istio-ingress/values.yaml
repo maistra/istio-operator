@@ -58,7 +58,7 @@ gateways:
     #    cloud.google.com/load-balancer-type: "internal"
 
     podAnnotations: {}
-    type: ClusterIP
+    type: LoadBalancer #change to NodePort, ClusterIP or LoadBalancer if need be
 
     ##############
     secretVolumes:
@@ -208,10 +208,6 @@ global:
   # for more detail.
   priorityClassName: ""
 
-  # Whether to enable the Kubernetes Ingress feature.
-  k8sIngress:
-    enabled: false
-
   proxy:
     image: proxyv2
 
@@ -229,8 +225,6 @@ global:
     # Log level for proxy, applies to gateways and sidecars.
     # Expected values are: trace|debug|info|warning|error|critical|off
     logLevel: warning
-
-    tracer: zipkin
 
   ##############################################################################################
   # The following values are found in other charts. To effectively modify these values, make   #
@@ -328,33 +322,6 @@ global:
     # max supported protocol version, e.g. TLSv1_3
     maxProtocolVersion: ""
 
-  # Configuration for each of the supported tracers
-  tracer:
-    # Configuration for envoy to send trace data to LightStep.
-    # Disabled by default.
-    # address: the <host>:<port> of the satellite pool
-    # accessToken: required for sending data to the pool
-    #
-    datadog:
-      # Host:Port for submitting traces to the Datadog agent.
-      address: "$(HOST_IP):8126"
-    lightstep:
-      address: ""                # example: lightstep-satellite:443
-      accessToken: ""            # example: abcdefg1234567
-    stackdriver:
-      # enables trace output to stdout.
-      debug: false
-      # The global default max number of message events per span.
-      maxNumberOfMessageEvents: 200
-      # The global default max number of annotation events per span.
-      maxNumberOfAnnotations: 200
-      # The global default max number of attributes per span.
-      maxNumberOfAttributes: 200
-    zipkin:
-      # Host:Port for reporting trace data in zipkin format. If not specified, will default to
-      # zipkin service (port 9411) in the same namespace as the other istio components.
-      address: ""
-
 meshConfig:
   enablePrometheusMerge: true
 
@@ -363,10 +330,7 @@ meshConfig:
   trustDomain: "cluster.local"
 
   defaultConfig:
-    proxyMetadata:
-      ISTIO_META_DNS_CAPTURE: "true"
-      ISTIO_META_DNS_AUTO_ALLOCATE: "true"
-      PROXY_XDS_VIA_AGENT: "true"
+    proxyMetadata: {}
     tracing:
     #      tlsSettings:
     #        mode: DISABLE # DISABLE, SIMPLE, MUTUAL, ISTIO_MUTUAL
@@ -376,22 +340,3 @@ meshConfig:
     #        sni:               # example: tracer.somedomain
     #        subjectAltNames: []
     # - tracer.somedomain
-
-gatewayAPI:
-  enabled: false
-  controllerMode: false
-
-telemetry:
-  enabled: true
-  v2:
-    enabled: true
-    prometheus:
-      enabled: true
-      configOverride:
-        gateway: {}
-        inboundSidecar: {}
-        outboundSidecar: {}
-    stackdriver:
-      enabled: false
-      configOverride: {}
-      disableOutbound: false

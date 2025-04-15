@@ -2,25 +2,20 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: istiod-clusterrole-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}
+  name: istiod-clusterrole{{- if not (eq .Values.revision "")}}-{{ .Values.revision }}{{- end }}-{{ .Release.Namespace }}
   labels:
-    maistra-version: "2.6.7"
     app: istiod
     release: {{ .Release.Name }}
 rules:
   # sidecar injection controller
-{{ if .Values.global.clusterWide }}
   - apiGroups: ["admissionregistration.k8s.io"]
     resources: ["mutatingwebhookconfigurations"]
     verbs: ["get", "list", "watch", "update", "patch"]
-{{ end }}
 
   # configuration validation webhook controller
-{{ if .Values.global.clusterWide }}
   - apiGroups: ["admissionregistration.k8s.io"]
     resources: ["validatingwebhookconfigurations"]
     verbs: ["get", "list", "watch", "update"]
-{{ end }}
 
   # istio configuration
   # removing CRD permissions can break older versions of Istio running alongside this control plane (https://github.com/istio/istio/issues/29382)
@@ -78,9 +73,27 @@ rules:
   # Istiod and bootstrap.
 {{- $omitCertProvidersForClusterRole := list "istiod" "custom" "none"}}
 {{- if or .Values.pilot.env.EXTERNAL_CA (not (has .Values.global.pilotCertProvider $omitCertProvidersForClusterRole)) }}
+  - apiGroups: ["certificates.k8s.io"]
+    resources:
+      - "certificatesigningrequests"
+      - "certificatesigningrequests/approval"
+      - "certificatesigningrequests/status"
+    verbs: ["update", "create", "get", "delete", "watch"]
+  - apiGroups: ["certificates.k8s.io"]
+    resources:
+      - "signers"
+    resourceNames:
+    - "kubernetes.io/legacy-unknown"
+{{- range .Values.global.certSigners }}
+    - {{ . | quote }}
+{{- end }}
+    verbs: ["approve"]
 {{- end}}
 
   # Used by Istiod to verify the JWT tokens
+  - apiGroups: ["authentication.k8s.io"]
+    resources: ["tokenreviews"]
+    verbs: ["create"]
 
   # Used by Istiod to verify gateway SDS
   - apiGroups: ["authorization.k8s.io"]
@@ -120,23 +133,13 @@ rules:
   - apiGroups: ["{{ $mcsAPIGroup }}"]
     resources: ["serviceimports"]
     verbs: ["get", "watch", "list"]
-  # Allow use of blockOwnerDeletion in ownerReferences pointing to Pods (see OSSM-1321)
-  - apiGroups: [""]
-    resources: ["pods/finalizers"]
-    verbs: ["update"]
-{{- if .Values.global.istiod.enableAnalysis }}
-  - apiGroups: ["apps"]
-    verbs: ["get", "watch", "list"]
-    resources: [ "deployments" ]
-{{- end }}
 ---
 {{- if not (eq (toString .Values.pilot.env.PILOT_ENABLE_GATEWAY_API_DEPLOYMENT_CONTROLLER) "false") }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: istiod-gateway-controller-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}
+  name: istiod-gateway-controller{{- if not (eq .Values.revision "")}}-{{ .Values.revision }}{{- end }}-{{ .Release.Namespace }}
   labels:
-    maistra-version: "2.6.7"
     app: istiod
     release: {{ .Release.Name }}
 rules:

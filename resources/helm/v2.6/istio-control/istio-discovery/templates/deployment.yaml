@@ -1,12 +1,13 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: istiod-{{ .Values.revision | default "default" }}
+  name: istiod{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.6.7"
     app: istiod
     istio.io/rev: {{ .Values.revision | default "default" | quote }}
+    install.operator.istio.io/owning-resource: {{ .Values.ownerName | default "unknown" }}
+    operator.istio.io/component: "Pilot"
     istio: pilot
     release: {{ .Release.Name }}
 {{- range $key, $val := .Values.pilot.deploymentLabels }}
@@ -24,8 +25,6 @@ spec:
       maxUnavailable: {{ .Values.pilot.rollingMaxUnavailable }}
   selector:
     matchLabels:
-      app: istiod
-      istio.io/rev: {{ .Values.revision | default "default" }}
       {{- if ne .Values.revision "" }}
       app: istiod
       istio.io/rev: {{ .Values.revision | default "default" | quote }}
@@ -38,7 +37,9 @@ spec:
         maistra-control-plane: {{ .Release.Namespace }}
         app: istiod
         istio.io/rev: {{ .Values.revision | default "default" | quote }}
+        install.operator.istio.io/owning-resource: {{ .Values.ownerName | default "unknown" }}
         sidecar.istio.io/inject: "false"
+        operator.istio.io/component: "Pilot"
         {{- if ne .Values.revision "" }}
         istio: istiod
         {{- else }}
@@ -77,13 +78,12 @@ spec:
       topologySpreadConstraints:
 {{- toYaml . | nindent 8 }}
 {{- end }}
-      serviceAccountName: istiod-{{ .Values.revision | default "default" }}
+      serviceAccountName: istiod{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}
 {{- if .Values.global.priorityClassName }}
       priorityClassName: "{{ .Values.global.priorityClassName }}"
 {{- end }}
       containers:
         - name: discovery
-          workingDir: "/"
 {{- if contains "/" .Values.pilot.image }}
           image: "{{ .Values.pilot.image }}"
 {{- else }}
@@ -94,17 +94,6 @@ spec:
 {{- end }}
           args:
           - "discovery"
-{{- if .Values.pilot.extraArgs }}
-  {{-  range .Values.pilot.extraArgs }}
-          - {{ . | quote }}
-  {{- end }}
-{{- end }}
-{{- if not .Values.global.clusterWide }}
-          - --memberRollName=default
-          - --enableNodeAccess=false
-          - --enableCRDScan=false
-          - --enableIngressClassName=false
-{{- end}}
           - --monitoringAddr=:15014
 {{- if .Values.global.logging.level }}
           - --log_output_level={{ .Values.global.logging.level }}
@@ -133,8 +122,7 @@ spec:
             protocol: TCP
           - containerPort: 15010
             protocol: TCP
-          - name: webhook
-            containerPort: 15017
+          - containerPort: 15017
             protocol: TCP
           - containerPort: 8188
             protocol: TCP
@@ -146,38 +134,6 @@ spec:
             periodSeconds: 3
             timeoutSeconds: 5
           env:
-{{- $iorEnabled := "true" }}
-{{- $gateway := index .Values "gateways" "istio-ingressgateway" }}
-{{- if or (not .Values.gateways.enabled) (not $gateway) (not $gateway.ior_enabled) }}
-{{- $iorEnabled = "false" }}
-{{- end }}
-          - name: ENABLE_IOR
-            value: "{{ $iorEnabled }}"
-{{- if .Values.gatewayAPI.enabled }}
-{{- if .Values.gatewayAPI.controllerMode }}
-          - name: PILOT_ENABLE_GATEWAY_CONTROLLER_MODE
-            value: "true"
-          - name: PILOT_GATEWAY_API_DEFAULT_GATEWAYCLASS
-            value: "ocp"
-          - name: PILOT_GATEWAY_API_CONTROLLER_NAME
-            value: "openshift.io/gateway-controller"
-          - name: PILOT_GATEWAY_API_DEPLOYMENT_DEFAULT_LABELS
-            value: "{\"gateway.openshift.io/inject\":\"true\"}"
-{{- end }}
-{{- else if not .Values.global.clusterWide }}
-          - name: PILOT_ENABLE_GATEWAY_API
-            value: "false"
-          - name: PILOT_ENABLE_GATEWAY_API_STATUS
-            value: "false"
-          - name: PILOT_ENABLE_GATEWAY_API_DEPLOYMENT_CONTROLLER
-            value: "false"
-{{- end }}
-          - name: PRIORITIZED_LEADER_ELECTION
-            value: "false"
-          - name: VALIDATION_WEBHOOK_CONFIG_NAME
-            value: ""
-          - name: INJECTION_WEBHOOK_CONFIG_NAME
-            value: ""
           - name: REVISION
             value: "{{ .Values.revision | default `default` }}"
           - name: JWT_POLICY
@@ -217,8 +173,6 @@ spec:
           - name: PILOT_TRACE_SAMPLING
             value: "{{ .Values.pilot.traceSampling }}"
 {{- end }}
-          - name: PILOT_ENABLE_STATUS
-            value: "{{ .Values.global.istiod.enableAnalysis }}"
           - name: PILOT_ENABLE_ANALYSIS
             value: "{{ .Values.global.istiod.enableAnalysis }}"
           - name: CLUSTER_ID
@@ -258,6 +212,9 @@ spec:
 {{ toYaml .Values.global.defaultResources | trim | indent 12 }}
 {{- end }}
           securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
             capabilities:
               drop:
               - ALL
@@ -266,9 +223,6 @@ spec:
 {{ toYaml .Values.pilot.seccompProfile | trim | indent 14 }}
 {{- end }}
           volumeMounts:
-{{- if .Values.pilot.extraVolumeMounts }}
-{{ toYaml .Values.pilot.extraVolumeMounts | indent 10 }}
-{{- end }}
           {{- if eq .Values.global.jwtPolicy "third-party-jwt" }}
           - name: istio-token
             mountPath: /var/run/secrets/tokens
@@ -342,13 +296,10 @@ spec:
   {{- if .Values.pilot.jwksResolverExtraRootCA }}
       - name: extracacerts
         configMap:
-          name: pilot-jwks-extra-cacerts-{{ .Values.revision | default "default" }}
+          name: pilot-jwks-extra-cacerts{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}
   {{- end }}
       {{- with .Values.pilot.volumes }}
         {{- toYaml . | nindent 6}}
       {{- end }}
 
-{{- if .Values.pilot.extraVolumes }}
-{{ toYaml .Values.pilot.extraVolumes | indent 6 }}
-{{- end }}
 ---

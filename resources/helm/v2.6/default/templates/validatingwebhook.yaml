@@ -3,13 +3,13 @@ kind: ValidatingWebhookConfiguration
 metadata:
   name: istiod-default-validator
   labels:
-    maistra-version: "2.6.7"
     app: istiod
     istio: istiod
     istio.io/rev: {{ .Values.revision | default "default" | quote }}
     istio.io/tag: "default"
     # Required to make sure this resource is removed
     # when purging Istio resources
+    operator.istio.io/component: Pilot
 webhooks:
   - name: validation.istio.io
     clientConfig:
@@ -17,8 +17,8 @@ webhooks:
       url: {{ .Values.base.validationURL }}
       {{- else }}
       service:
-        name: istiod-{{ .Values.revision | default "default" }}
-        namespace: {{ .Release.Namespace }}
+        name: istiod{{- if not (eq .Values.revision "") }}-{{ .Values.revision }}{{- end }}
+        namespace: {{ .Values.global.istioNamespace }}
         path: "/validate"
       {{- end }}
     rules:
