@@ -5,7 +5,7 @@ kind: ClusterRole
 metadata:
   name: istio-reader-clusterrole-{{ .Values.revision | default "default" }}-{{ .Release.Namespace }}
   labels:
-    maistra-version: "2.6.7"
+    maistra-version: "2.6.8"
     app: istio-reader
     release: {{ .Release.Name }}
 rules:
