@@ -18,7 +18,7 @@ metadata:
       The OpenShift Service Mesh 2 Operator enables you to install, configure, and manage an instance of Red Hat OpenShift Service Mesh 2.6 and earlier releases. OpenShift Service Mesh 2 is based on the open source Istio project.
 
     containerImage: ${OSSM_OPERATOR_IMAGE}
-    createdAt: 2025-09-09T13:13:36CEST
+    createdAt: 2025-09-09T13:46:27CEST
     support: Red Hat, Inc. 
     olm.skipRange: ">=1.0.2 <2.6.11-0"
     operators.openshift.io/infrastructure-features: '["Disconnected","fips"]'
@@ -621,7 +621,6 @@ spec:
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:General'
           - 'urn:alm:descriptor:com.tectonic.ui:select:v2.6'
-          - 'urn:alm:descriptor:com.tectonic.ui:select:v2.5'
       - displayName: Control Plane Mode
         description: 'NOTE: only applies if version is v2.4 or higher'
         path: mode
