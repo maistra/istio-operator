@@ -9,7 +9,7 @@ metadata:
   name: {{ include "gateway.name" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    maistra-version: "2.6.11"
+    maistra-version: "2.6.12"
     {{- include "gateway.labels" . | nindent 4 }}
   annotations:
     {{- .Values.annotations | toYaml | nindent 4 }}
