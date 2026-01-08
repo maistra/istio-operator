@@ -56,6 +56,17 @@ func (r *controlPlaneInstanceReconciler) patchKiali(ctx context.Context, grafana
 		},
 	}
 
+	// SMCP mode cluster wide access
+	if r.Instance.Spec.Mode == maistrav2.ClusterWideMode {
+		if err := updatedKiali.Spec.SetField("deployment.cluster_wide_access", true); err != nil {
+			return common.RequeueWithError(errorOnSettingValueInKialiCR("deployment.cluster_wide_access", err))
+		}
+	} else {
+		if err := updatedKiali.Spec.SetField("deployment.cluster_wide_access", false); err != nil {
+			return common.RequeueWithError(errorOnSettingValueInKialiCR("deployment.cluster_wide_access", err))
+		}
+	}
+
 	// grafana
 	var grafanaURL string
 	if grafanaEnabled {
