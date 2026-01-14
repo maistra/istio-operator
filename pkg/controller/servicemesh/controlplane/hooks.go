@@ -11,6 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
+	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
 	"github.com/maistra/istio-operator/pkg/controller/common"
 )
 
@@ -169,6 +170,12 @@ func (r *controlPlaneInstanceReconciler) patchKialiConfig(ctx context.Context, o
 	err = unstructured.SetNestedField(object.UnstructuredContent(), rawPassword, "spec", "external_services", "tracing", "auth", "password")
 	if err != nil {
 		return fmt.Errorf("could not set tracing password in kiali CR: %s", err)
+	}
+	// SMCP mode cluster wide access
+	clusterWideAccess := r.Instance.Spec.Mode == maistrav2.ClusterWideMode
+	err = unstructured.SetNestedField(object.UnstructuredContent(), clusterWideAccess, "spec", "deployment", "cluster_wide_access")
+	if err != nil {
+		return fmt.Errorf("could not set cluster_wide_access in kiali CR: %s", err)
 	}
 
 	return nil

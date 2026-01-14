@@ -114,7 +114,7 @@ func TestAddonsInstall(t *testing.T) {
 			},
 			create: IntegrationTestValidation{
 				Verifier: Verify("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).
-					Passes(ExpectedKialiCreate(jaegerExistingName, domain, prometheusPasswordExpected)),
+					Passes(ExpectedKialiCreate(jaegerExistingName, domain, prometheusPasswordExpected, false)),
 				Assertions: ActionAssertions{
 					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsSeen(),
 					Assert("create").On("jaegers").Named(jaegerName).In(controlPlaneNamespace).IsNotSeen(),
@@ -139,7 +139,7 @@ func TestAddonsInstall(t *testing.T) {
 			},
 			create: IntegrationTestValidation{
 				Verifier: Verify("patch").On("kialis").Named(kialiName).In(controlPlaneNamespace).
-					Passes(ExpectedKialiPatch(jaegerName, domain, true)),
+					Passes(ExpectedKialiPatch(jaegerName, domain, true, false)),
 				Assertions: ActionAssertions{
 					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsNotSeen(),
 					Assert("create").On("jaegers").Named(jaegerName).In(controlPlaneNamespace).IsSeen(),
@@ -164,7 +164,7 @@ func TestAddonsInstall(t *testing.T) {
 			},
 			create: IntegrationTestValidation{
 				Verifier: Verify("patch").On("kialis").Named(kialiExistingName).In(controlPlaneNamespace).
-					Passes(ExpectedKialiPatch(jaegerExistingName, domain, prometheusPasswordExpected)),
+					Passes(ExpectedKialiPatch(jaegerExistingName, domain, prometheusPasswordExpected, false)),
 				Assertions: ActionAssertions{
 					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsNotSeen(),
 					Assert("create").On("kialis").Named(kialiExistingName).In(controlPlaneNamespace).IsNotSeen(),
@@ -191,7 +191,7 @@ func TestAddonsInstall(t *testing.T) {
 			},
 			create: IntegrationTestValidation{
 				Verifier: Verify("patch").On("kialis").Named(kialiName).In(controlPlaneNamespace).
-					Passes(ExpectedKialiPatch(jaegerExistingName, domain, prometheusPasswordUnexpected)),
+					Passes(ExpectedKialiPatch(jaegerExistingName, domain, prometheusPasswordUnexpected, false)),
 				Assertions: ActionAssertions{
 					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsNotSeen(),
 					Assert("create").On("jaegers").Named(jaegerName).In(controlPlaneNamespace).IsNotSeen(),
@@ -235,6 +235,106 @@ func TestAddonsInstall(t *testing.T) {
 				},
 			},
 			unsupportedVersions: []string{versions.V2_0.String(), versions.V2_1.String(), versions.V2_2.String()},
+		},
+		{
+			name: "kiali.install.cluster_wide",
+			smcp: newSMCPForKialiSMCPModeTest(maistrav2.ClusterWideMode),
+			create: IntegrationTestValidation{
+				Verifier: Verify("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).
+					Passes(ExpectedKialiCreate(jaegerName, domain, prometheusPasswordExpected, true)),
+				Assertions: ActionAssertions{
+					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsSeen(),
+				},
+			},
+			unsupportedVersions: []string{versions.V2_4.String(), versions.V2_5.String()},
+		},
+		{
+			name: "kiali.install.multi_tenant",
+			smcp: newSMCPForKialiSMCPModeTest(maistrav2.MultiTenantMode),
+			create: IntegrationTestValidation{
+				Verifier: Verify("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).
+					Passes(ExpectedKialiCreate(jaegerName, domain, prometheusPasswordExpected, false)),
+				Assertions: ActionAssertions{
+					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsSeen(),
+				},
+			},
+			unsupportedVersions: []string{versions.V2_4.String(), versions.V2_5.String()},
+		},
+		{
+			name: "kiali.existing.multi_tenant.patch.cluster_wide",
+			smcp: newSMCPForKialiSMCPModeTest(maistrav2.ClusterWideMode),
+			resources: []runtime.Object{
+				&kialiv1alpha1.Kiali{Base: external.Base{
+					ObjectMeta: metav1.ObjectMeta{Name: kialiName, Namespace: controlPlaneNamespace},
+					Spec: maistrav1.NewHelmValues(map[string]interface{}{
+						"deployment": map[string]interface{}{
+							"cluster_wide_access": false,
+						},
+					}),
+				}},
+			},
+			create: IntegrationTestValidation{
+				Verifier: Verify("patch").On("kialis").Named(kialiName).In(controlPlaneNamespace).
+					Passes(ExpectedKialiPatch(jaegerName, domain, prometheusPasswordExpected, true)),
+				Assertions: ActionAssertions{
+					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsNotSeen(),
+				},
+			},
+			delete: IntegrationTestValidation{
+				Assertions: ActionAssertions{
+					Assert("delete").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsNotSeen(),
+				},
+			},
+			unsupportedVersions: []string{versions.V2_4.String(), versions.V2_5.String()},
+		},
+		{
+			name: "kiali.existing.cluster_wide.patch.multi_tenant",
+			smcp: newSMCPForKialiSMCPModeTest(maistrav2.MultiTenantMode),
+			resources: []runtime.Object{
+				&kialiv1alpha1.Kiali{Base: external.Base{
+					ObjectMeta: metav1.ObjectMeta{Name: kialiName, Namespace: controlPlaneNamespace},
+					Spec: maistrav1.NewHelmValues(map[string]interface{}{
+						"deployment": map[string]interface{}{
+							"cluster_wide_access": true,
+						},
+					}),
+				}},
+			},
+			create: IntegrationTestValidation{
+				Verifier: Verify("patch").On("kialis").Named(kialiName).In(controlPlaneNamespace).
+					Passes(ExpectedKialiPatch(jaegerName, domain, prometheusPasswordExpected, false)),
+				Assertions: ActionAssertions{
+					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsNotSeen(),
+				},
+			},
+			delete: IntegrationTestValidation{
+				Assertions: ActionAssertions{
+					Assert("delete").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsNotSeen(),
+				},
+			},
+			unsupportedVersions: []string{versions.V2_4.String(), versions.V2_5.String()},
+		},
+		{
+			name: "kiali.existing.no_exist_cluster_wide_access.patch.multi_tenant",
+			smcp: newSMCPForKialiSMCPModeTest(maistrav2.MultiTenantMode),
+			resources: []runtime.Object{
+				&kialiv1alpha1.Kiali{Base: external.Base{
+					ObjectMeta: metav1.ObjectMeta{Name: kialiName, Namespace: controlPlaneNamespace},
+				}},
+			},
+			create: IntegrationTestValidation{
+				Verifier: Verify("patch").On("kialis").Named(kialiName).In(controlPlaneNamespace).
+					Passes(ExpectedKialiPatch(jaegerName, domain, prometheusPasswordExpected, false)),
+				Assertions: ActionAssertions{
+					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsNotSeen(),
+				},
+			},
+			delete: IntegrationTestValidation{
+				Assertions: ActionAssertions{
+					Assert("delete").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsNotSeen(),
+				},
+			},
+			unsupportedVersions: []string{versions.V2_4.String(), versions.V2_5.String()},
 		},
 	}
 
@@ -290,6 +390,12 @@ func newSMCPForKialiJaegerPrometheusDisabledTest(smcpName, kialiName, jaegerName
 	return smcp
 }
 
+func newSMCPForKialiSMCPModeTest(controlPlaneMode maistrav2.ControlPlaneMode) *maistrav2.ServiceMeshControlPlane {
+	smcp := NewSMCPForKialiJaegerTests("testSMCP", "kiali", "jaeger")
+	smcp.Spec.Mode = controlPlaneMode
+	return smcp
+}
+
 func NewSMCPForPrometheusGrafanaTests(smcpName string, grafanaHosts, prometheusHosts []string) *maistrav2.ServiceMeshControlPlane {
 	return NewV2SMCPResource(smcpName, controlPlaneNamespace, &maistrav2.ControlPlaneSpec{
 		Addons: &maistrav2.AddonsConfig{
@@ -322,12 +428,12 @@ func NewSMCPForPrometheusGrafanaTests(smcpName string, grafanaHosts, prometheusH
 	})
 }
 
-func ExpectedKialiCreate(jaegerName, domain string, foundPrometheusPassword bool) VerifierTestFunc {
+func ExpectedKialiCreate(jaegerName, domain string, foundPrometheusPassword bool, clusterWideAccessEnabled bool) VerifierTestFunc {
 	return func(action clienttesting.Action) error {
 		createAction := action.(clienttesting.CreateAction)
 		obj := createAction.GetObject()
 		kiali := obj.(*unstructured.Unstructured)
-		if err := VerifyKialiUpdate(jaegerName, domain, foundPrometheusPassword, maistrav1.NewHelmValues(kiali.Object)); err != nil {
+		if err := VerifyKialiUpdate(jaegerName, domain, foundPrometheusPassword, clusterWideAccessEnabled, maistrav1.NewHelmValues(kiali.Object)); err != nil {
 			fmt.Printf("kiali:\n%v\n", kiali)
 			return err
 		}
@@ -335,7 +441,7 @@ func ExpectedKialiCreate(jaegerName, domain string, foundPrometheusPassword bool
 	}
 }
 
-func ExpectedKialiPatch(jaegerName, domain string, foundPrometheusPassword bool) VerifierTestFunc {
+func ExpectedKialiPatch(jaegerName, domain string, foundPrometheusPassword bool, clusterWideAccessEnabled bool) VerifierTestFunc {
 	return func(action clienttesting.Action) error {
 		patchAction := action.(clienttesting.PatchAction)
 		if patchAction.GetPatchType() != types.MergePatchType {
@@ -346,7 +452,7 @@ func ExpectedKialiPatch(jaegerName, domain string, foundPrometheusPassword bool)
 			return err
 		}
 		patchValues := maistrav1.NewHelmValues(patch)
-		if err := VerifyKialiUpdate(jaegerName, domain, foundPrometheusPassword, patchValues); err != nil {
+		if err := VerifyKialiUpdate(jaegerName, domain, foundPrometheusPassword, clusterWideAccessEnabled, patchValues); err != nil {
 			fmt.Printf("patch:\n%s\n", string(patchAction.GetPatch()))
 			return err
 		}
@@ -354,7 +460,7 @@ func ExpectedKialiPatch(jaegerName, domain string, foundPrometheusPassword bool)
 	}
 }
 
-func VerifyKialiUpdate(jaegerName, domain string, foundPrometheusPassword bool, values *maistrav1.HelmValues) error {
+func VerifyKialiUpdate(jaegerName, domain string, foundPrometheusPassword bool, clusterWideAccessEnabled bool, values *maistrav1.HelmValues) error {
 	var allErrors []error
 	expectedGrafanaURL := "https://grafana." + domain
 	if url, _, _ := values.GetString("spec.external_services.grafana.url"); url != expectedGrafanaURL {
@@ -382,6 +488,9 @@ func VerifyKialiUpdate(jaegerName, domain string, foundPrometheusPassword bool, 
 		} else {
 			allErrors = append(allErrors, fmt.Errorf("expected prometheus password to not be set"))
 		}
+	}
+	if enabled, _, _ := values.GetBool("spec.deployment.cluster_wide_access"); enabled != clusterWideAccessEnabled {
+		allErrors = append(allErrors, fmt.Errorf("expected cluster wide access to be %t, got %t", clusterWideAccessEnabled, enabled))
 	}
 	if len(allErrors) > 0 {
 		return errors.NewAggregate(allErrors)
