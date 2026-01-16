@@ -834,6 +834,11 @@ func TestReconcileKialiSetsClusterWideAccessWhenAccessibleNamespacesIsDoubleAste
 			accessibleNamespaces:      []string{"**", "bookinfo"},
 			expectedClusterWideAccess: true,
 		},
+		{
+			name:                      "cluster-wide-access-false-when-no-namespaces",
+			accessibleNamespaces:      []string{},
+			expectedClusterWideAccess: false,
+		},
 	}
 
 	for _, tc := range cases {
