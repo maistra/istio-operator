@@ -711,7 +711,23 @@ func (r *defaultKialiReconciler) reconcileKiali(ctx context.Context, kialiCRName
 		return pkgerrors.Wrapf(err, "cannot set deployment.accessible_namespaces in Kiali CR %s/%s", kialiCRNamespace, kialiCRName)
 	}
 
-	err = updatedKiali.Spec.SetStringSlice("api.namespaces.exclude", excludedNamespacesSet.List())
+	// if the accessible namespaces include "**", set the cluster wide access flag to true
+	// since other combination (like accessible_namespaces="**" and cluster_wide_access=false) are not allowed in Kiali operator and reconsilation fails
+	if accessibleNamespacesSet.Has("**") {
+		reqLogger.Info("Updating Kiali CR deployment.cluster_wide_access to true since accessible namespaces include **", "deployment.cluster_wide_access", true)
+		err = updatedKiali.Spec.SetField("deployment.cluster_wide_access", true)
+		if err != nil {
+			return pkgerrors.Wrapf(err, "cannot set deployment.cluster_wide_access in Kiali CR %s/%s", kialiCRNamespace, kialiCRName)
+		}
+	} else {
+		reqLogger.Info("Setting Kiali CR deployment.cluster_wide_access to false (no ** in accessible namespaces)",
+			"deployment.cluster_wide_access", false)
+		err = updatedKiali.Spec.SetField("deployment.cluster_wide_access", false)
+		if err != nil {
+			return pkgerrors.Wrapf(err, "cannot set deployment.cluster_wide_access in Kiali CR %s/%s", kialiCRNamespace, kialiCRName)
+		}
+	}
+
 	if err != nil {
 		return pkgerrors.Wrapf(err, "cannot set api.namespaces.exclude in Kiali CR %s/%s", kialiCRNamespace, kialiCRName)
 	}

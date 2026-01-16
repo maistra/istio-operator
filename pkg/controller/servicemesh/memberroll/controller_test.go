@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -21,6 +22,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/maistra/istio-operator/pkg/apis/external"
+	kialiv1alpha1 "github.com/maistra/istio-operator/pkg/apis/external/kiali/v1alpha1"
 	"github.com/maistra/istio-operator/pkg/apis/maistra/status"
 	maistrav1 "github.com/maistra/istio-operator/pkg/apis/maistra/v1"
 	maistrav2 "github.com/maistra/istio-operator/pkg/apis/maistra/v2"
@@ -808,6 +811,91 @@ func TestKialiResource(t *testing.T) {
 			kialiReconciler.assertInvokedWith(t, tc.expectedAccessibleNamespaces, tc.expectedExcludedNamespaces)
 		})
 	}
+}
+
+func TestReconcileKialiSetsClusterWideAccessWhenAccessibleNamespacesIsDoubleAsterisk(t *testing.T) {
+	cases := []struct {
+		name                      string
+		accessibleNamespaces      []string
+		expectedClusterWideAccess bool
+	}{
+		{
+			name:                      "cluster-wide-access-true-when-double-asterisk",
+			accessibleNamespaces:      []string{"**"},
+			expectedClusterWideAccess: true,
+		},
+		{
+			name:                      "cluster-wide-access-false-when-regular-namespaces",
+			accessibleNamespaces:      []string{"bookinfo", "foo"},
+			expectedClusterWideAccess: false,
+		},
+		{
+			name:                      "cluster-wide-access-true-when-double-asterisk-with-other-namespaces",
+			accessibleNamespaces:      []string{"**", "bookinfo"},
+			expectedClusterWideAccess: true,
+		},
+		{
+			name:                      "cluster-wide-access-false-when-no-namespaces",
+			accessibleNamespaces:      []string{},
+			expectedClusterWideAccess: false,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			kiali := newTestKiali()
+
+			s := scheme.Scheme
+			configureKialiScheme(s)
+
+			cl, _ := test.CreateClient(kiali)
+			kialiReconciler := &defaultKialiReconciler{Client: cl}
+
+			err := kialiReconciler.reconcileKiali(ctx, "kiali", controlPlaneNamespace, tc.accessibleNamespaces, []string{})
+			if err != nil {
+				t.Fatalf("reconcileKiali failed: %v", err)
+			}
+
+			updatedKiali := &kialiv1alpha1.Kiali{}
+			err = cl.Get(ctx, client.ObjectKey{Name: "kiali", Namespace: controlPlaneNamespace}, updatedKiali)
+			if err != nil {
+				t.Fatalf("Failed to get updated Kiali CR: %v", err)
+			}
+
+			clusterWideAccess, found, _ := updatedKiali.Spec.GetBool("deployment.cluster_wide_access")
+			assert.True(found, "Expected deployment.cluster_wide_access to be set", t)
+			assert.Equals(clusterWideAccess, tc.expectedClusterWideAccess, "Unexpected deployment.cluster_wide_access value", t)
+		})
+	}
+}
+
+func newTestKiali() *kialiv1alpha1.Kiali {
+	return &kialiv1alpha1.Kiali{
+		Base: external.Base{
+			ObjectMeta: meta.ObjectMeta{
+				Name:      "kiali",
+				Namespace: controlPlaneNamespace,
+			},
+			Spec: maistrav1.NewHelmValues(map[string]interface{}{
+				"deployment": map[string]interface{}{
+					"accessible_namespaces": []string{"initial"},
+				},
+				"api": map[string]interface{}{
+					"namespaces": map[string]interface{}{
+						"exclude": []string{},
+					},
+				},
+			}),
+		},
+	}
+}
+
+func configureKialiScheme(s *runtime.Scheme) {
+	kialiGroupVersion := schema.GroupVersion{
+		Group:   "kiali.io",
+		Version: "v1alpha1",
+	}
+	s.AddKnownTypes(kialiGroupVersion, &kialiv1alpha1.Kiali{})
 }
 
 func newSMCPClusterWide23() *maistrav2.ServiceMeshControlPlane {
