@@ -55,14 +55,16 @@ type installAddonsTestCase struct {
 
 func TestAddonsInstall(t *testing.T) {
 	const (
-		smcpName                     = "test"
-		domain                       = "test.com"
-		kialiName                    = "kiali"
-		kialiExistingName            = "kiali-existing"
-		jaegerName                   = "jaeger"
-		jaegerExistingName           = "jaeger-existing"
-		prometheusPasswordExpected   = true
-		prometheusPasswordUnexpected = false
+		smcpName                        = "test"
+		domain                          = "test.com"
+		kialiName                       = "kiali"
+		kialiExistingName               = "kiali-existing"
+		jaegerName                      = "jaeger"
+		jaegerExistingName              = "jaeger-existing"
+		prometheusPasswordExpected      = true
+		prometheusPasswordUnexpected    = false
+		disabledClusterWideModeExpected = false
+		enabledClusterWideModeExpected  = true
 	)
 
 	if testing.Verbose() {
@@ -114,7 +116,7 @@ func TestAddonsInstall(t *testing.T) {
 			},
 			create: IntegrationTestValidation{
 				Verifier: Verify("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).
-					Passes(ExpectedKialiCreate(jaegerExistingName, domain, prometheusPasswordExpected, false)),
+					Passes(ExpectedKialiCreate(jaegerExistingName, domain, prometheusPasswordExpected, disabledClusterWideModeExpected)),
 				Assertions: ActionAssertions{
 					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsSeen(),
 					Assert("create").On("jaegers").Named(jaegerName).In(controlPlaneNamespace).IsNotSeen(),
@@ -139,7 +141,7 @@ func TestAddonsInstall(t *testing.T) {
 			},
 			create: IntegrationTestValidation{
 				Verifier: Verify("patch").On("kialis").Named(kialiName).In(controlPlaneNamespace).
-					Passes(ExpectedKialiPatch(jaegerName, domain, true, false)),
+					Passes(ExpectedKialiPatch(jaegerName, domain, prometheusPasswordExpected, disabledClusterWideModeExpected)),
 				Assertions: ActionAssertions{
 					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsNotSeen(),
 					Assert("create").On("jaegers").Named(jaegerName).In(controlPlaneNamespace).IsSeen(),
@@ -164,7 +166,7 @@ func TestAddonsInstall(t *testing.T) {
 			},
 			create: IntegrationTestValidation{
 				Verifier: Verify("patch").On("kialis").Named(kialiExistingName).In(controlPlaneNamespace).
-					Passes(ExpectedKialiPatch(jaegerExistingName, domain, prometheusPasswordExpected, false)),
+					Passes(ExpectedKialiPatch(jaegerExistingName, domain, prometheusPasswordExpected, disabledClusterWideModeExpected)),
 				Assertions: ActionAssertions{
 					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsNotSeen(),
 					Assert("create").On("kialis").Named(kialiExistingName).In(controlPlaneNamespace).IsNotSeen(),
@@ -191,7 +193,7 @@ func TestAddonsInstall(t *testing.T) {
 			},
 			create: IntegrationTestValidation{
 				Verifier: Verify("patch").On("kialis").Named(kialiName).In(controlPlaneNamespace).
-					Passes(ExpectedKialiPatch(jaegerExistingName, domain, prometheusPasswordUnexpected, false)),
+					Passes(ExpectedKialiPatch(jaegerExistingName, domain, prometheusPasswordUnexpected, disabledClusterWideModeExpected)),
 				Assertions: ActionAssertions{
 					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsNotSeen(),
 					Assert("create").On("jaegers").Named(jaegerName).In(controlPlaneNamespace).IsNotSeen(),
@@ -241,7 +243,7 @@ func TestAddonsInstall(t *testing.T) {
 			smcp: newSMCPForKialiSMCPModeTest(maistrav2.ClusterWideMode),
 			create: IntegrationTestValidation{
 				Verifier: Verify("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).
-					Passes(ExpectedKialiCreate(jaegerName, domain, prometheusPasswordExpected, true)),
+					Passes(ExpectedKialiCreate(jaegerName, domain, prometheusPasswordExpected, enabledClusterWideModeExpected)),
 				Assertions: ActionAssertions{
 					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsSeen(),
 				},
@@ -253,7 +255,7 @@ func TestAddonsInstall(t *testing.T) {
 			smcp: newSMCPForKialiSMCPModeTest(maistrav2.MultiTenantMode),
 			create: IntegrationTestValidation{
 				Verifier: Verify("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).
-					Passes(ExpectedKialiCreate(jaegerName, domain, prometheusPasswordExpected, false)),
+					Passes(ExpectedKialiCreate(jaegerName, domain, prometheusPasswordExpected, disabledClusterWideModeExpected)),
 				Assertions: ActionAssertions{
 					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsSeen(),
 				},
@@ -275,7 +277,7 @@ func TestAddonsInstall(t *testing.T) {
 			},
 			create: IntegrationTestValidation{
 				Verifier: Verify("patch").On("kialis").Named(kialiName).In(controlPlaneNamespace).
-					Passes(ExpectedKialiPatch(jaegerName, domain, prometheusPasswordExpected, true)),
+					Passes(ExpectedKialiPatch(jaegerName, domain, prometheusPasswordExpected, enabledClusterWideModeExpected)),
 				Assertions: ActionAssertions{
 					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsNotSeen(),
 				},
@@ -302,7 +304,7 @@ func TestAddonsInstall(t *testing.T) {
 			},
 			create: IntegrationTestValidation{
 				Verifier: Verify("patch").On("kialis").Named(kialiName).In(controlPlaneNamespace).
-					Passes(ExpectedKialiPatch(jaegerName, domain, prometheusPasswordExpected, false)),
+					Passes(ExpectedKialiPatch(jaegerName, domain, prometheusPasswordExpected, disabledClusterWideModeExpected)),
 				Assertions: ActionAssertions{
 					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsNotSeen(),
 				},
@@ -324,7 +326,7 @@ func TestAddonsInstall(t *testing.T) {
 			},
 			create: IntegrationTestValidation{
 				Verifier: Verify("patch").On("kialis").Named(kialiName).In(controlPlaneNamespace).
-					Passes(ExpectedKialiPatch(jaegerName, domain, prometheusPasswordExpected, false)),
+					Passes(ExpectedKialiPatch(jaegerName, domain, prometheusPasswordExpected, disabledClusterWideModeExpected)),
 				Assertions: ActionAssertions{
 					Assert("create").On("kialis").Named(kialiName).In(controlPlaneNamespace).IsNotSeen(),
 				},
