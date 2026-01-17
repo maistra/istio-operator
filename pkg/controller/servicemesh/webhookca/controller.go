@@ -28,8 +28,6 @@ import (
 const controllerName = "webhookca-controller"
 
 const (
-	galleySecretName                 = "istio.istio-galley-service-account"
-	galleyWebhookNamePrefix          = "istio-galley-"
 	istiodSecretName                 = "istio-ca-secret"
 	istiodCustomCertSecretName       = "cacerts"
 	istiodCertManagerSecretName      = "istiod-tls"
@@ -45,14 +43,6 @@ const (
 // is used to auto register the webhook with the WebhookCABundleManager. Order of
 // secretNames determines priority.
 var autoRegistrationMap = map[string]CABundleSource{
-	galleyWebhookNamePrefix: &SecretCABundleSource{
-		SecretNameKeyPairs: []SecretNameKeyPair{
-			{
-				SecretName: galleySecretName,
-				Key:        common.IstioRootCertKey,
-			},
-		},
-	},
 	sidecarInjectorWebhookNamePrefix: &SecretCABundleSource{
 		SecretNameKeyPairs: []SecretNameKeyPair{
 			{

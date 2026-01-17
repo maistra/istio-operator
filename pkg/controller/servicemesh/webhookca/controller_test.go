@@ -25,7 +25,6 @@ import (
 
 const (
 	appNamespace               = "app-namespace"
-	galleyWebhookName          = galleyWebhookNamePrefix + appNamespace
 	sidecarInjectorWebhookName = sidecarInjectorWebhookNamePrefix + appNamespace
 	istiodMutatingWebhookName  = istiodWebhookNamePrefix + "default-" + appNamespace
 	istioValidatorWebhookName  = istioValidatorWebhookNamePrefix + "default-" + appNamespace
@@ -36,13 +35,6 @@ const (
 var (
 	caBundleStringValue = "CABundle"
 	caBundleValue       = []byte(caBundleStringValue)
-
-	galleyRequest = reconcile.Request{
-		NamespacedName: types.NamespacedName{
-			Namespace: validatingNamespaceValue,
-			Name:      galleyWebhookName,
-		},
-	}
 
 	sidecarRequest = reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -105,17 +97,6 @@ func cases() []testCase {
 			kind:        "Secret",
 			request:     sidecarRequest,
 			getter:      mutatingWebhook,
-		},
-		{
-			name:        "galley-webhook",
-			webhook:     newValidatingWebhookConfig(galleyWebhookName, caBundleValue),
-			webhookName: galleyWebhookName,
-			source:      autoRegistrationMap[galleyWebhookNamePrefix],
-			objectName:  galleySecretName,
-			dataKey:     common.IstioRootCertKey,
-			kind:        "Secret",
-			request:     galleyRequest,
-			getter:      validatingWebhook,
 		},
 		{
 			name:        "istiod-injector-webhook",

@@ -23,13 +23,8 @@ import (
 
 const (
 	testNamespace                         = "test-namespace-1"
-	test2Namespace                        = "test-namespace-2"
-	galleyWebhookNameTestPrefix           = "istio-galley"
-	sidecarInjectorWebhookNameTestPrefix  = "istio-sidecar-injector"
 	istiodMutatingWebhookNameTestPrefix   = "istiod-foo"
 	istiodValidatingWebhookNameTestPrefix = "istiod-foo"
-	v11GalleySecretName                   = "istio.istio-galley-service-account"
-	v11SidecarInjectorSecretName          = "istio.istio-sidecar-injector-service-account"
 	v20SelfSignedSecretName               = "istio-ca-secret"
 	v20PrivateKeySecretName               = "cacerts"
 )
@@ -42,62 +37,6 @@ func TestMAISTRA_2040(t *testing.T) {
 		resources   []runtime.Object
 		events      []ControllerTestEvent
 	}{
-		{
-			name:        "default.v1.1",
-			description: "testing webhook controller using a default installation",
-			events: []ControllerTestEvent{
-				{
-					Name: "create-galley-webhook",
-					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), create1xValidatingWebhook(testNamespace))
-					},
-					Verifier: VerifyActions(
-						Verify("get").On("secrets").Named(v11GalleySecretName).In(testNamespace).IsSeen(),
-					),
-					Timeout: eventTimeout,
-				},
-				{
-					Name: "create-galley-secret",
-					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), createWebhookSecret(galleySecretName, testNamespace, "root-cert.pem"))
-					},
-					Verifier: VerifyActions(
-						Verify("get").On("validatingwebhookconfigurations").
-							Named(webhookName(galleyWebhookNameTestPrefix, testNamespace)).IsSeen(),
-						Verify("get").On("secrets").Named(v11GalleySecretName).In(testNamespace).IsSeen(),
-						Verify("update").On("validatingwebhookconfigurations").
-							Named(webhookName(galleyWebhookNameTestPrefix, testNamespace)).
-							Passes(verifyCABundle(certForSecret(galleySecretName, testNamespace))),
-					),
-					Timeout: eventTimeout,
-				},
-				{
-					Name: "create-injector-webhook",
-					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), create1xMutatingWebhook(testNamespace))
-					},
-					Verifier: VerifyActions(
-						Verify("get").On("secrets").Named(v11SidecarInjectorSecretName).In(testNamespace).IsSeen(),
-					),
-					Timeout: eventTimeout,
-				},
-				{
-					Name: "create-injector-secret",
-					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), createWebhookSecret(sidecarInjectorSecretName, testNamespace, "root-cert.pem"))
-					},
-					Verifier: VerifyActions(
-						Verify("get").On("mutatingwebhookconfigurations").
-							Named(webhookName(sidecarInjectorWebhookNameTestPrefix, testNamespace)).IsSeen(),
-						Verify("get").On("secrets").Named(v11SidecarInjectorSecretName).In(testNamespace).IsSeen(),
-						Verify("update").On("mutatingwebhookconfigurations").
-							Named(webhookName(sidecarInjectorWebhookNameTestPrefix, testNamespace)).
-							Passes(verifyCABundle(certForSecret(sidecarInjectorSecretName, testNamespace))),
-					),
-					Timeout: eventTimeout,
-				},
-			},
-		},
 		{
 			name:        "default.v2.0.mutating",
 			description: "testing mutating webhook update by webhook controller using a default installation",
@@ -159,42 +98,6 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("update").On("validatingwebhookconfigurations").
 							Named(webhookName(istiodValidatingWebhookNameTestPrefix, testNamespace)).
 							Passes(verifyCABundle(certForSecret(v20SelfSignedSecretName, testNamespace))),
-					),
-					Timeout: eventTimeout,
-				},
-			},
-		},
-		{
-			name:        "preexisting_secret.v1.1",
-			description: "testing webhook controller with a pre-existing secret",
-			resources: []runtime.Object{
-				createWebhookSecret(galleySecretName, testNamespace, "root-cert.pem"),
-				createWebhookSecret(sidecarInjectorSecretName, testNamespace, "root-cert.pem"),
-			},
-			events: []ControllerTestEvent{
-				{
-					Name: "create-galley-webhook",
-					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), create1xValidatingWebhook(testNamespace))
-					},
-					Verifier: VerifyActions(
-						Verify("get").On("secrets").Named(v11GalleySecretName).In(testNamespace).IsSeen(),
-						Verify("update").On("validatingwebhookconfigurations").
-							Named(webhookName(galleyWebhookNameTestPrefix, testNamespace)).
-							Passes(verifyCABundle(certForSecret(galleySecretName, testNamespace))),
-					),
-					Timeout: eventTimeout,
-				},
-				{
-					Name: "create-injector-webhook",
-					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), create1xMutatingWebhook(testNamespace))
-					},
-					Verifier: VerifyActions(
-						Verify("get").On("secrets").Named(v11SidecarInjectorSecretName).In(testNamespace).IsSeen(),
-						Verify("update").On("mutatingwebhookconfigurations").
-							Named(webhookName(sidecarInjectorWebhookNameTestPrefix, testNamespace)).
-							Passes(verifyCABundle(certForSecret(sidecarInjectorSecretName, testNamespace))),
 					),
 					Timeout: eventTimeout,
 				},
@@ -308,162 +211,6 @@ func TestMAISTRA_2040(t *testing.T) {
 				},
 			},
 		},
-		{
-			name:        "maistra-2053",
-			description: "multiple installs should use the correct secret for their install",
-			resources:   []runtime.Object{&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: test2Namespace}}},
-			events: []ControllerTestEvent{
-				{
-					Name: "create-galley-webhook",
-					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), create1xValidatingWebhook(testNamespace))
-					},
-					Verifier: VerifyActions(
-						Verify("get").On("secrets").Named(v11GalleySecretName).In(testNamespace).IsSeen(),
-					),
-					Timeout: eventTimeout,
-				},
-				{
-					Name: "create-galley-secret",
-					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), createWebhookSecret(galleySecretName, testNamespace, "root-cert.pem"))
-					},
-					Verifier: VerifyActions(
-						Verify("get").On("validatingwebhookconfigurations").
-							Named(webhookName(galleyWebhookNameTestPrefix, testNamespace)).IsSeen(),
-						Verify("get").On("secrets").Named(v11GalleySecretName).In(testNamespace).IsSeen(),
-						Verify("update").On("validatingwebhookconfigurations").
-							Named(webhookName(galleyWebhookNameTestPrefix, testNamespace)).
-							Passes(verifyCABundle(certForSecret(galleySecretName, testNamespace))),
-					),
-					Timeout: eventTimeout,
-				},
-				{
-					Name: "create-injector-webhook",
-					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), create1xMutatingWebhook(testNamespace))
-					},
-					Verifier: VerifyActions(
-						Verify("get").On("secrets").Named(v11SidecarInjectorSecretName).In(testNamespace).IsSeen(),
-					),
-					Timeout: eventTimeout,
-				},
-				{
-					Name: "create-injector-secret",
-					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), createWebhookSecret(sidecarInjectorSecretName, testNamespace, "root-cert.pem"))
-					},
-					Verifier: VerifyActions(
-						Verify("get").On("mutatingwebhookconfigurations").
-							Named(webhookName(sidecarInjectorWebhookNameTestPrefix, testNamespace)).IsSeen(),
-						Verify("get").On("secrets").Named(v11SidecarInjectorSecretName).In(testNamespace).IsSeen(),
-						Verify("update").On("mutatingwebhookconfigurations").
-							Named(webhookName(sidecarInjectorWebhookNameTestPrefix, testNamespace)).
-							Passes(verifyCABundle(certForSecret(sidecarInjectorSecretName, testNamespace))),
-					),
-					Timeout: eventTimeout,
-				},
-				{
-					Name: "create-galley-webhook-ns2",
-					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), create1xValidatingWebhook(test2Namespace))
-					},
-					Verifier: VerifyActions(
-						Verify("get").On("secrets").Named(v11GalleySecretName).In(test2Namespace).IsSeen(),
-					),
-					Assertions: []ActionAssertion{
-						Assert("get").On("secrets").Named(v11GalleySecretName).In(testNamespace).IsNotSeen(),
-						Assert("update").On("validatingwebhookconfigurations").Named(webhookName(galleyWebhookNameTestPrefix, test2Namespace)).IsNotSeen(),
-					},
-					Timeout: eventTimeout,
-				},
-				{
-					Name: "create-galley-secret-ns2",
-					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), createWebhookSecret(galleySecretName, test2Namespace, "root-cert.pem"))
-					},
-					Verifier: VerifyActions(
-						Verify("get").On("validatingwebhookconfigurations").
-							Named(webhookName(galleyWebhookNameTestPrefix, test2Namespace)).IsSeen(),
-						Verify("get").On("secrets").Named(v11GalleySecretName).In(test2Namespace).IsSeen(),
-						Verify("update").On("validatingwebhookconfigurations").
-							Named(webhookName(galleyWebhookNameTestPrefix, test2Namespace)).
-							Passes(verifyCABundle(certForSecret(galleySecretName, test2Namespace))),
-					),
-					Assertions: []ActionAssertion{
-						Assert("get").On("secrets").Named(v11GalleySecretName).In(testNamespace).IsNotSeen(),
-					},
-					Timeout: eventTimeout,
-				},
-				{
-					Name: "create-injector-webhook-ns2",
-					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), create1xMutatingWebhook(test2Namespace))
-					},
-					Verifier: VerifyActions(
-						Verify("get").On("secrets").Named(v11SidecarInjectorSecretName).In(test2Namespace).IsSeen(),
-					),
-					Assertions: []ActionAssertion{
-						Assert("get").On("secrets").Named(v11SidecarInjectorSecretName).In(testNamespace).IsNotSeen(),
-						Assert("update").On("mutatingwebhookconfigurations").
-							Named(webhookName(sidecarInjectorWebhookNameTestPrefix, test2Namespace)).IsNotSeen(),
-					},
-					Timeout: eventTimeout,
-				},
-				{
-					Name: "create-injector-secret-ns2",
-					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), createWebhookSecret(sidecarInjectorSecretName, test2Namespace, "root-cert.pem"))
-					},
-					Verifier: VerifyActions(
-						Verify("get").On("mutatingwebhookconfigurations").
-							Named(webhookName(sidecarInjectorWebhookNameTestPrefix, test2Namespace)).IsSeen(),
-						Verify("get").On("secrets").Named(v11SidecarInjectorSecretName).In(test2Namespace).IsSeen(),
-						Verify("update").On("mutatingwebhookconfigurations").
-							Named(webhookName(sidecarInjectorWebhookNameTestPrefix, test2Namespace)).
-							Passes(verifyCABundle(certForSecret(sidecarInjectorSecretName, test2Namespace))),
-					),
-					Assertions: []ActionAssertion{
-						Assert("get").On("secrets").Named(v11SidecarInjectorSecretName).In(testNamespace).IsNotSeen(),
-					},
-					Timeout: eventTimeout,
-				},
-				{
-					Name: "update-galley-webhook",
-					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Update(context.TODO(), create1xValidatingWebhook(testNamespace))
-					},
-					Verifier: VerifyActions(
-						Verify("get").On("validatingwebhookconfigurations").
-							Named(webhookName(galleyWebhookNameTestPrefix, testNamespace)).IsSeen(),
-						Verify("update").On("validatingwebhookconfigurations").
-							Named(webhookName(galleyWebhookNameTestPrefix, testNamespace)).
-							Passes(verifyCABundle(certForSecret(galleySecretName, testNamespace))),
-					),
-					Assertions: []ActionAssertion{
-						Assert("get").On("secrets").Named(v11GalleySecretName).In(test2Namespace).IsNotSeen(),
-					},
-					Timeout: eventTimeout,
-				},
-				{
-					Name: "update-injector-webhook",
-					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Update(context.TODO(), create1xMutatingWebhook(testNamespace))
-					},
-					Verifier: VerifyActions(
-						Verify("get").On("mutatingwebhookconfigurations").
-							Named(webhookName(sidecarInjectorWebhookNameTestPrefix, testNamespace)).IsSeen(),
-						Verify("update").On("mutatingwebhookconfigurations").
-							Named(webhookName(sidecarInjectorWebhookNameTestPrefix, testNamespace)).
-							Passes(verifyCABundle(certForSecret(sidecarInjectorSecretName, testNamespace))),
-					),
-					Assertions: []ActionAssertion{
-						Assert("get").On("secrets").Named(v11SidecarInjectorSecretName).In(test2Namespace).IsNotSeen(),
-					},
-					Timeout: eventTimeout,
-				},
-			},
-		},
 	}
 
 	if testing.Verbose() {
@@ -511,53 +258,6 @@ func verifyCABundle(caBundle string) func(action clienttesting.Action) error {
 
 func webhookName(prefix, namespace string) string {
 	return fmt.Sprintf("%s-%s", prefix, namespace)
-}
-
-func create1xValidatingWebhook(namespace string) *arv1beta1.ValidatingWebhookConfiguration {
-	return &arv1beta1.ValidatingWebhookConfiguration{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: webhookName(galleyWebhookNameTestPrefix, namespace),
-		},
-		Webhooks: []arv1beta1.ValidatingWebhook{
-			{
-				Name: "pilot.validation.istio.io",
-				ClientConfig: arv1beta1.WebhookClientConfig{
-					Service: &arv1beta1.ServiceReference{
-						Namespace: namespace,
-						Name:      "istio-galley",
-					},
-				},
-			},
-			{
-				Name: "mixer.validation.istio.io",
-				ClientConfig: arv1beta1.WebhookClientConfig{
-					Service: &arv1beta1.ServiceReference{
-						Namespace: namespace,
-						Name:      "istio-galley",
-					},
-				},
-			},
-		},
-	}
-}
-
-func create1xMutatingWebhook(namespace string) *arv1beta1.MutatingWebhookConfiguration {
-	return &arv1beta1.MutatingWebhookConfiguration{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: webhookName(sidecarInjectorWebhookNameTestPrefix, namespace),
-		},
-		Webhooks: []arv1beta1.MutatingWebhook{
-			{
-				Name: "sidecar-injector.istio.io",
-				ClientConfig: arv1beta1.WebhookClientConfig{
-					Service: &arv1beta1.ServiceReference{
-						Namespace: namespace,
-						Name:      "istio-sidecar-injector",
-					},
-				},
-			},
-		},
-	}
 }
 
 func create2xValidatingWebhook() *arv1beta1.ValidatingWebhookConfiguration {
