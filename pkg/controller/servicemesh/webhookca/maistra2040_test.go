@@ -24,7 +24,7 @@ import (
 const (
 	testNamespace                         = "test-namespace-1"
 	istiodMutatingWebhookNameTestPrefix   = "istiod-foo"
-	istiodValidatingWebhookNameTestPrefix = "istiod-foo"
+	istiodValidatingWebhookNameTestPrefix = "istio-validator-basic-istio-system"
 	v20SelfSignedSecretName               = "istio-ca-secret"
 	v20PrivateKeySecretName               = "cacerts"
 )
@@ -264,6 +264,9 @@ func create2xValidatingWebhook() *arv1beta1.ValidatingWebhookConfiguration {
 	return &arv1beta1.ValidatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: webhookName(istiodValidatingWebhookNameTestPrefix, testNamespace),
+			Labels: map[string]string{
+				maistraManagedLabel: "true",
+			},
 		},
 		Webhooks: []arv1beta1.ValidatingWebhook{
 			{
@@ -271,7 +274,7 @@ func create2xValidatingWebhook() *arv1beta1.ValidatingWebhookConfiguration {
 				ClientConfig: arv1beta1.WebhookClientConfig{
 					Service: &arv1beta1.ServiceReference{
 						Namespace: testNamespace,
-						Name:      "istiod-foo",
+						Name:      "istiod-basic",
 					},
 				},
 			},

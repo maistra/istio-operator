@@ -37,7 +37,30 @@ const (
 	sidecarInjectorWebhookNamePrefix = "istio-sidecar-injector-"
 	ServiceMeshControlPlaneCRDName   = "servicemeshcontrolplanes.maistra.io"
 	ServiceMeshExtensionCRDName      = "servicemeshextensions.maistra.io"
+	maistraManagedLabel              = "maistra.io/managed"
 )
+
+// istioCABundleSources defines the CA bundle sources for the Istio webhooks
+var istioCABundleSources = &SecretCABundleSource{
+	SecretNameKeyPairs: []SecretNameKeyPair{
+		{
+			SecretName: istiodCustomCertSecretName,
+			Key:        common.IstiodCertKey,
+		},
+		{
+			SecretName: istiodCustomCertSecretName,
+			Key:        common.IstiodTLSSecretCertCAKey,
+		},
+		{
+			SecretName: istiodSecretName,
+			Key:        common.IstiodCertKey,
+		},
+		{
+			SecretName: istiodCertManagerSecretName,
+			Key:        common.IstiodTLSSecretCertCAKey,
+		},
+	},
+}
 
 // autoRegistrationMap maps webhook name prefixes to a list of secret names. This
 // is used to auto register the webhook with the WebhookCABundleManager. Order of
@@ -51,46 +74,7 @@ var autoRegistrationMap = map[string]CABundleSource{
 			},
 		},
 	},
-	istiodWebhookNamePrefix: &SecretCABundleSource{
-		SecretNameKeyPairs: []SecretNameKeyPair{
-			{
-				SecretName: istiodCustomCertSecretName,
-				Key:        common.IstiodCertKey,
-			},
-			{
-				SecretName: istiodCustomCertSecretName,
-				Key:        common.IstiodTLSSecretCertCAKey,
-			},
-			{
-				SecretName: istiodSecretName,
-				Key:        common.IstiodCertKey,
-			},
-			{
-				SecretName: istiodCertManagerSecretName,
-				Key:        common.IstiodTLSSecretCertCAKey,
-			},
-		},
-	},
-	istioValidatorWebhookNamePrefix: &SecretCABundleSource{
-		SecretNameKeyPairs: []SecretNameKeyPair{
-			{
-				SecretName: istiodCustomCertSecretName,
-				Key:        common.IstiodCertKey,
-			},
-			{
-				SecretName: istiodCustomCertSecretName,
-				Key:        common.IstiodTLSSecretCertCAKey,
-			},
-			{
-				SecretName: istiodSecretName,
-				Key:        common.IstiodCertKey,
-			},
-			{
-				SecretName: istiodCertManagerSecretName,
-				Key:        common.IstiodTLSSecretCertCAKey,
-			},
-		},
-	},
+	istiodWebhookNamePrefix: istioCABundleSources,
 }
 
 // Add creates a new Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -166,7 +150,7 @@ func add(mgr manager.Manager, r *reconciler) error {
 	err = c.Watch(
 		&source.Kind{Type: &v1.ValidatingWebhookConfiguration{}},
 		webhookEventHander,
-		webhookWatchPredicates(r.webhookCABundleManager))
+		validatingWebhookWatchPredicates(r.webhookCABundleManager))
 	if err != nil {
 		return err
 	}
@@ -266,6 +250,43 @@ func webhookWatchPredicates(webhookCABundleManager WebhookCABundleManager) predi
 			return false
 		},
 	}
+}
+
+func validatingWebhookWatchPredicates(webhookCABundleManager WebhookCABundleManager) predicate.Predicate {
+	return &predicate.Funcs{
+		CreateFunc: func(event event.CreateEvent) bool {
+			if isManagedByOperator(event.Meta) {
+				if err := webhookCABundleManager.ManageWebhookCABundle(event.Object, istioCABundleSources.Copy()); err == nil {
+					return true
+				}
+				return false
+			}
+			return webhookCABundleManager.IsManaged(event.Object)
+		},
+		UpdateFunc: func(event event.UpdateEvent) bool {
+			return webhookCABundleManager.IsManaged(event.ObjectNew)
+		},
+		DeleteFunc: func(event event.DeleteEvent) bool {
+			if isManagedByOperator(event.Meta) && webhookCABundleManager.IsManaged(event.Object) {
+				if err := webhookCABundleManager.UnmanageWebhookCABundle(event.Object); err != nil {
+					createLogger().Error(err, fmt.Sprintf("error removing webhook caBundle for %s/%s", event.Meta.GetNamespace(), event.Meta.GetName()))
+				}
+				return false
+			}
+			return false
+		},
+		GenericFunc: func(event event.GenericEvent) bool {
+			return false
+		},
+	}
+}
+
+func isManagedByOperator(meta metav1.Object) bool {
+	labels := meta.GetLabels()
+	if labels == nil {
+		return false
+	}
+	return labels[maistraManagedLabel] == "true"
 }
 
 // reconciles webhook configurations
