@@ -27,6 +27,7 @@ const (
 	istiodValidatingWebhookNameTestPrefix = "istio-validator-basic-istio-system"
 	v20SelfSignedSecretName               = "istio-ca-secret"
 	v20PrivateKeySecretName               = "cacerts"
+	caCertPem                             = "ca-cert.pem"
 )
 
 func TestMAISTRA_2040(t *testing.T) {
@@ -55,7 +56,7 @@ func TestMAISTRA_2040(t *testing.T) {
 				{
 					Name: "create-istio-ca-secret",
 					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), createWebhookSecret(v20SelfSignedSecretName, "ca-cert.pem"))
+						return mgr.GetClient().Create(context.TODO(), createWebhookSecret(v20SelfSignedSecretName))
 					},
 					Verifier: VerifyActions(
 						Verify("get").On("mutatingwebhookconfigurations").
@@ -88,7 +89,7 @@ func TestMAISTRA_2040(t *testing.T) {
 				{
 					Name: "create-istio-ca-secret",
 					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), createWebhookSecret(v20SelfSignedSecretName, "ca-cert.pem"))
+						return mgr.GetClient().Create(context.TODO(), createWebhookSecret(v20SelfSignedSecretName))
 					},
 					Verifier: VerifyActions(
 						Verify("get").On("validatingwebhookconfigurations").
@@ -107,7 +108,7 @@ func TestMAISTRA_2040(t *testing.T) {
 			name:        "preexisting_secret.v2.0.self-signed",
 			description: "testing webhook controller with a pre-existing self-signed secret",
 			resources: []runtime.Object{
-				createWebhookSecret(v20SelfSignedSecretName, "ca-cert.pem"),
+				createWebhookSecret(v20SelfSignedSecretName),
 			},
 			events: []ControllerTestEvent{
 				{
@@ -144,7 +145,7 @@ func TestMAISTRA_2040(t *testing.T) {
 			name:        "preexisting_secret.v2.0.private-key",
 			description: "testing webhook controller with a pre-existing private-key secret",
 			resources: []runtime.Object{
-				createWebhookSecret(v20PrivateKeySecretName, "ca-cert.pem"),
+				createWebhookSecret(v20PrivateKeySecretName),
 			},
 			events: []ControllerTestEvent{
 				{
@@ -179,8 +180,8 @@ func TestMAISTRA_2040(t *testing.T) {
 			name:        "preexisting_secret.v2.0.both",
 			description: "testing webhook controller with a pre-existing self-signed and private-key secret",
 			resources: []runtime.Object{
-				createWebhookSecret(v20SelfSignedSecretName, "ca-cert.pem"),
-				createWebhookSecret(v20PrivateKeySecretName, "ca-cert.pem"),
+				createWebhookSecret(v20SelfSignedSecretName),
+				createWebhookSecret(v20PrivateKeySecretName),
 			},
 			events: []ControllerTestEvent{
 				{
@@ -301,14 +302,14 @@ func create2xMutatingWebhook() *arv1beta1.MutatingWebhookConfiguration {
 	}
 }
 
-func createWebhookSecret(name, key string) *corev1.Secret {
+func createWebhookSecret(name string) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: testNamespace,
 		},
 		Data: map[string][]byte{
-			key: []byte(certForSecret(name)),
+			caCertPem: []byte(certForSecret(name)),
 		},
 	}
 }
