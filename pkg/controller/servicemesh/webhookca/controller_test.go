@@ -16,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/maistra/istio-operator/pkg/controller/common"
@@ -24,11 +25,11 @@ import (
 )
 
 const (
+	smcpName                   = "basic"
 	appNamespace               = "app-namespace"
-	galleyWebhookName          = galleyWebhookNamePrefix + appNamespace
 	sidecarInjectorWebhookName = sidecarInjectorWebhookNamePrefix + appNamespace
 	istiodMutatingWebhookName  = istiodWebhookNamePrefix + "default-" + appNamespace
-	istioValidatorWebhookName  = istioValidatorWebhookNamePrefix + "default-" + appNamespace
+	istioValidatorWebhookName  = istioValidatorWebhookNamePrefix + smcpName + "-" + appNamespace
 	istioOperatorWebhookName   = "istio-operator.servicemesh-resources.maistra.io"
 	caBundleConfigMapName      = "maistra-operator-cabundle"
 )
@@ -36,13 +37,6 @@ const (
 var (
 	caBundleStringValue = "CABundle"
 	caBundleValue       = []byte(caBundleStringValue)
-
-	galleyRequest = reconcile.Request{
-		NamespacedName: types.NamespacedName{
-			Namespace: validatingNamespaceValue,
-			Name:      galleyWebhookName,
-		},
-	}
 
 	sidecarRequest = reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -91,6 +85,7 @@ type testCase struct {
 	request              reconcile.Request
 	getter               webhookGetter
 	skipAutoRegistration bool
+	predicate            func(manager WebhookCABundleManager) predicate.Predicate
 }
 
 func cases() []testCase {
@@ -105,17 +100,7 @@ func cases() []testCase {
 			kind:        "Secret",
 			request:     sidecarRequest,
 			getter:      mutatingWebhook,
-		},
-		{
-			name:        "galley-webhook",
-			webhook:     newValidatingWebhookConfig(galleyWebhookName, caBundleValue),
-			webhookName: galleyWebhookName,
-			source:      autoRegistrationMap[galleyWebhookNamePrefix],
-			objectName:  galleySecretName,
-			dataKey:     common.IstioRootCertKey,
-			kind:        "Secret",
-			request:     galleyRequest,
-			getter:      validatingWebhook,
+			predicate:   webhookWatchPredicates,
 		},
 		{
 			name:        "istiod-injector-webhook",
@@ -127,6 +112,7 @@ func cases() []testCase {
 			kind:        "Secret",
 			request:     istiodInjectorRequest,
 			getter:      mutatingWebhook,
+			predicate:   webhookWatchPredicates,
 		},
 		{
 			name:        "istiod-injector-webhook-cacerts",
@@ -138,6 +124,7 @@ func cases() []testCase {
 			kind:        "Secret",
 			request:     istiodInjectorRequest,
 			getter:      mutatingWebhook,
+			predicate:   webhookWatchPredicates,
 		},
 		{
 			name:        "istiod-injector-webhook-cacerts-tls-secret",
@@ -149,39 +136,43 @@ func cases() []testCase {
 			kind:        "Secret",
 			request:     istiodInjectorRequest,
 			getter:      mutatingWebhook,
+			predicate:   webhookWatchPredicates,
 		},
 		{
 			name:        "istio-validating-validating-webhook",
 			webhook:     newValidatingWebhookConfig(istioValidatorWebhookName, caBundleValue),
 			webhookName: istioValidatorWebhookName,
-			source:      autoRegistrationMap[istioValidatorWebhookNamePrefix],
+			source:      istioCABundleSources,
 			objectName:  istiodSecretName,
 			dataKey:     common.IstiodCertKey,
 			kind:        "Secret",
 			request:     istiodValidatorRequest,
 			getter:      validatingWebhook,
+			predicate:   validatingWebhookWatchPredicates,
 		},
 		{
 			name:        "istio-validating-webhook-cacerts",
 			webhook:     newValidatingWebhookConfig(istioValidatorWebhookName, caBundleValue),
 			webhookName: istioValidatorWebhookName,
-			source:      autoRegistrationMap[istioValidatorWebhookNamePrefix],
+			source:      istioCABundleSources,
 			objectName:  istiodCustomCertSecretName,
 			dataKey:     common.IstiodCertKey,
 			kind:        "Secret",
 			request:     istiodValidatorRequest,
 			getter:      validatingWebhook,
+			predicate:   validatingWebhookWatchPredicates,
 		},
 		{
 			name:        "istio-validating-webhook-cacerts-tls-secret",
 			webhook:     newValidatingWebhookConfig(istioValidatorWebhookName, caBundleValue),
 			webhookName: istioValidatorWebhookName,
-			source:      autoRegistrationMap[istioValidatorWebhookNamePrefix],
+			source:      istioCABundleSources,
 			objectName:  istiodCustomCertSecretName,
 			dataKey:     common.IstiodTLSSecretCertCAKey,
 			kind:        "Secret",
 			request:     istiodValidatorRequest,
 			getter:      validatingWebhook,
+			predicate:   validatingWebhookWatchPredicates,
 		},
 		{
 			name:        "istio-validating-webhook-cert-manager",
@@ -193,6 +184,7 @@ func cases() []testCase {
 			kind:        "Secret",
 			request:     istiodValidatorRequest,
 			getter:      validatingWebhook,
+			predicate:   validatingWebhookWatchPredicates,
 		},
 		{
 			name:        "istio-operator-validating-webhook",
@@ -208,6 +200,7 @@ func cases() []testCase {
 			request:              operatorValidatorRequest,
 			getter:               validatingWebhook,
 			skipAutoRegistration: true,
+			predicate:            validatingWebhookWatchPredicates,
 		},
 		{
 			name:        "service-mesh-conversion",
@@ -223,6 +216,7 @@ func cases() []testCase {
 			request:              conversionRequest,
 			getter:               conversionWebhook,
 			skipAutoRegistration: true,
+			predicate:            webhookWatchPredicates,
 		},
 	}
 }
@@ -333,7 +327,7 @@ func TestReconcileAutomaticRegistration(t *testing.T) {
 			cl, tracker, r := createClientAndReconciler(tc.webhook, caBundle)
 
 			accessor, _ := meta.Accessor(tc.webhook)
-			watchPredicates := webhookWatchPredicates(r.webhookCABundleManager)
+			watchPredicates := tc.predicate(r.webhookCABundleManager)
 			watchPredicates.Create(event.CreateEvent{Meta: accessor, Object: tc.webhook})
 
 			assertReconcileSucceeds(r, tc.request, t)
@@ -449,6 +443,9 @@ func newValidatingWebhookConfig(name string, caBundleValue []byte) *v1.Validatin
 	webhookConfig := &v1.ValidatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
+			Labels: map[string]string{
+				maistraManagedLabel: "true",
+			},
 		},
 		Webhooks: []v1.ValidatingWebhook{
 			{
