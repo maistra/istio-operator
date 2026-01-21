@@ -55,15 +55,15 @@ func TestMAISTRA_2040(t *testing.T) {
 				{
 					Name: "create-istio-ca-secret",
 					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), createWebhookSecret(v20SelfSignedSecretName, testNamespace, "ca-cert.pem"))
+						return mgr.GetClient().Create(context.TODO(), createWebhookSecret(v20SelfSignedSecretName, "ca-cert.pem"))
 					},
 					Verifier: VerifyActions(
 						Verify("get").On("mutatingwebhookconfigurations").
-							Named(webhookName(istiodMutatingWebhookNameTestPrefix, testNamespace)).IsSeen(),
+							Named(webhookName(istiodMutatingWebhookNameTestPrefix)).IsSeen(),
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("get").On("secrets").Named(v20SelfSignedSecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("mutatingwebhookconfigurations").
-							Named(webhookName(istiodMutatingWebhookNameTestPrefix, testNamespace)).
+							Named(webhookName(istiodMutatingWebhookNameTestPrefix)).
 							Passes(verifyCABundle(certForSecret(v20SelfSignedSecretName, testNamespace))),
 					),
 					Timeout: eventTimeout,
@@ -88,15 +88,15 @@ func TestMAISTRA_2040(t *testing.T) {
 				{
 					Name: "create-istio-ca-secret",
 					Execute: func(mgr *FakeManager, tracker *EnhancedTracker) error {
-						return mgr.GetClient().Create(context.TODO(), createWebhookSecret(v20SelfSignedSecretName, testNamespace, "ca-cert.pem"))
+						return mgr.GetClient().Create(context.TODO(), createWebhookSecret(v20SelfSignedSecretName, "ca-cert.pem"))
 					},
 					Verifier: VerifyActions(
 						Verify("get").On("validatingwebhookconfigurations").
-							Named(webhookName(istiodValidatingWebhookNameTestPrefix, testNamespace)).IsSeen(),
+							Named(webhookName(istiodValidatingWebhookNameTestPrefix)).IsSeen(),
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("get").On("secrets").Named(v20SelfSignedSecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("validatingwebhookconfigurations").
-							Named(webhookName(istiodValidatingWebhookNameTestPrefix, testNamespace)).
+							Named(webhookName(istiodValidatingWebhookNameTestPrefix)).
 							Passes(verifyCABundle(certForSecret(v20SelfSignedSecretName, testNamespace))),
 					),
 					Timeout: eventTimeout,
@@ -107,7 +107,7 @@ func TestMAISTRA_2040(t *testing.T) {
 			name:        "preexisting_secret.v2.0.self-signed",
 			description: "testing webhook controller with a pre-existing self-signed secret",
 			resources: []runtime.Object{
-				createWebhookSecret(v20SelfSignedSecretName, testNamespace, "ca-cert.pem"),
+				createWebhookSecret(v20SelfSignedSecretName, "ca-cert.pem"),
 			},
 			events: []ControllerTestEvent{
 				{
@@ -119,7 +119,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("get").On("secrets").Named(v20SelfSignedSecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("mutatingwebhookconfigurations").
-							Named(webhookName(istiodMutatingWebhookNameTestPrefix, testNamespace)).
+							Named(webhookName(istiodMutatingWebhookNameTestPrefix)).
 							Passes(verifyCABundle(certForSecret(v20SelfSignedSecretName, testNamespace))),
 					),
 					Timeout: eventTimeout,
@@ -133,7 +133,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("get").On("secrets").Named(v20SelfSignedSecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("validatingwebhookconfigurations").
-							Named(webhookName(istiodValidatingWebhookNameTestPrefix, testNamespace)).
+							Named(webhookName(istiodValidatingWebhookNameTestPrefix)).
 							Passes(verifyCABundle(certForSecret(v20SelfSignedSecretName, testNamespace))),
 					),
 					Timeout: eventTimeout,
@@ -144,7 +144,7 @@ func TestMAISTRA_2040(t *testing.T) {
 			name:        "preexisting_secret.v2.0.private-key",
 			description: "testing webhook controller with a pre-existing private-key secret",
 			resources: []runtime.Object{
-				createWebhookSecret(v20PrivateKeySecretName, testNamespace, "ca-cert.pem"),
+				createWebhookSecret(v20PrivateKeySecretName, "ca-cert.pem"),
 			},
 			events: []ControllerTestEvent{
 				{
@@ -155,7 +155,7 @@ func TestMAISTRA_2040(t *testing.T) {
 					Verifier: VerifyActions(
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("mutatingwebhookconfigurations").
-							Named(webhookName(istiodMutatingWebhookNameTestPrefix, testNamespace)).
+							Named(webhookName(istiodMutatingWebhookNameTestPrefix)).
 							Passes(verifyCABundle(certForSecret(v20PrivateKeySecretName, testNamespace))),
 					),
 					Timeout: eventTimeout,
@@ -168,7 +168,7 @@ func TestMAISTRA_2040(t *testing.T) {
 					Verifier: VerifyActions(
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("validatingwebhookconfigurations").
-							Named(webhookName(istiodValidatingWebhookNameTestPrefix, testNamespace)).
+							Named(webhookName(istiodValidatingWebhookNameTestPrefix)).
 							Passes(verifyCABundle(certForSecret(v20PrivateKeySecretName, testNamespace))),
 					),
 					Timeout: eventTimeout,
@@ -179,8 +179,8 @@ func TestMAISTRA_2040(t *testing.T) {
 			name:        "preexisting_secret.v2.0.both",
 			description: "testing webhook controller with a pre-existing self-signed and private-key secret",
 			resources: []runtime.Object{
-				createWebhookSecret(v20SelfSignedSecretName, testNamespace, "ca-cert.pem"),
-				createWebhookSecret(v20PrivateKeySecretName, testNamespace, "ca-cert.pem"),
+				createWebhookSecret(v20SelfSignedSecretName, "ca-cert.pem"),
+				createWebhookSecret(v20PrivateKeySecretName, "ca-cert.pem"),
 			},
 			events: []ControllerTestEvent{
 				{
@@ -191,7 +191,7 @@ func TestMAISTRA_2040(t *testing.T) {
 					Verifier: VerifyActions(
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("mutatingwebhookconfigurations").
-							Named(webhookName(istiodMutatingWebhookNameTestPrefix, testNamespace)).
+							Named(webhookName(istiodMutatingWebhookNameTestPrefix)).
 							Passes(verifyCABundle(certForSecret(v20PrivateKeySecretName, testNamespace))),
 					),
 					Timeout: eventTimeout,
@@ -204,7 +204,7 @@ func TestMAISTRA_2040(t *testing.T) {
 					Verifier: VerifyActions(
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("validatingwebhookconfigurations").
-							Named(webhookName(istiodValidatingWebhookNameTestPrefix, testNamespace)).
+							Named(webhookName(istiodValidatingWebhookNameTestPrefix)).
 							Passes(verifyCABundle(certForSecret(v20PrivateKeySecretName, testNamespace))),
 					),
 					Timeout: eventTimeout,
@@ -256,14 +256,14 @@ func verifyCABundle(caBundle string) func(action clienttesting.Action) error {
 	}
 }
 
-func webhookName(prefix, namespace string) string {
-	return fmt.Sprintf("%s-%s", prefix, namespace)
+func webhookName(prefix string) string {
+	return fmt.Sprintf("%s-%s", prefix, testNamespace)
 }
 
 func create2xValidatingWebhook() *arv1beta1.ValidatingWebhookConfiguration {
 	return &arv1beta1.ValidatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: webhookName(istiodValidatingWebhookNameTestPrefix, testNamespace),
+			Name: webhookName(istiodValidatingWebhookNameTestPrefix),
 			Labels: map[string]string{
 				maistraManagedLabel: "true",
 			},
@@ -285,7 +285,7 @@ func create2xValidatingWebhook() *arv1beta1.ValidatingWebhookConfiguration {
 func create2xMutatingWebhook() *arv1beta1.MutatingWebhookConfiguration {
 	return &arv1beta1.MutatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: webhookName(istiodMutatingWebhookNameTestPrefix, testNamespace),
+			Name: webhookName(istiodMutatingWebhookNameTestPrefix),
 		},
 		Webhooks: []arv1beta1.MutatingWebhook{
 			{
@@ -301,14 +301,14 @@ func create2xMutatingWebhook() *arv1beta1.MutatingWebhookConfiguration {
 	}
 }
 
-func createWebhookSecret(name, namespace, key string) *corev1.Secret {
+func createWebhookSecret(name, key string) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: namespace,
+			Namespace: testNamespace,
 		},
 		Data: map[string][]byte{
-			key: []byte(certForSecret(name, namespace)),
+			key: []byte(certForSecret(name, testNamespace)),
 		},
 	}
 }
