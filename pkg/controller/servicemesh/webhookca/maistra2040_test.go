@@ -64,7 +64,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("get").On("secrets").Named(v20SelfSignedSecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("mutatingwebhookconfigurations").
 							Named(webhookName(istiodMutatingWebhookNameTestPrefix)).
-							Passes(verifyCABundle(certForSecret(v20SelfSignedSecretName, testNamespace))),
+							Passes(verifyCABundle(certForSecret(v20SelfSignedSecretName))),
 					),
 					Timeout: eventTimeout,
 				},
@@ -97,7 +97,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("get").On("secrets").Named(v20SelfSignedSecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("validatingwebhookconfigurations").
 							Named(webhookName(istiodValidatingWebhookNameTestPrefix)).
-							Passes(verifyCABundle(certForSecret(v20SelfSignedSecretName, testNamespace))),
+							Passes(verifyCABundle(certForSecret(v20SelfSignedSecretName))),
 					),
 					Timeout: eventTimeout,
 				},
@@ -120,7 +120,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("get").On("secrets").Named(v20SelfSignedSecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("mutatingwebhookconfigurations").
 							Named(webhookName(istiodMutatingWebhookNameTestPrefix)).
-							Passes(verifyCABundle(certForSecret(v20SelfSignedSecretName, testNamespace))),
+							Passes(verifyCABundle(certForSecret(v20SelfSignedSecretName))),
 					),
 					Timeout: eventTimeout,
 				},
@@ -134,7 +134,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("get").On("secrets").Named(v20SelfSignedSecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("validatingwebhookconfigurations").
 							Named(webhookName(istiodValidatingWebhookNameTestPrefix)).
-							Passes(verifyCABundle(certForSecret(v20SelfSignedSecretName, testNamespace))),
+							Passes(verifyCABundle(certForSecret(v20SelfSignedSecretName))),
 					),
 					Timeout: eventTimeout,
 				},
@@ -156,7 +156,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("mutatingwebhookconfigurations").
 							Named(webhookName(istiodMutatingWebhookNameTestPrefix)).
-							Passes(verifyCABundle(certForSecret(v20PrivateKeySecretName, testNamespace))),
+							Passes(verifyCABundle(certForSecret(v20PrivateKeySecretName))),
 					),
 					Timeout: eventTimeout,
 				},
@@ -169,7 +169,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("validatingwebhookconfigurations").
 							Named(webhookName(istiodValidatingWebhookNameTestPrefix)).
-							Passes(verifyCABundle(certForSecret(v20PrivateKeySecretName, testNamespace))),
+							Passes(verifyCABundle(certForSecret(v20PrivateKeySecretName))),
 					),
 					Timeout: eventTimeout,
 				},
@@ -192,7 +192,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("mutatingwebhookconfigurations").
 							Named(webhookName(istiodMutatingWebhookNameTestPrefix)).
-							Passes(verifyCABundle(certForSecret(v20PrivateKeySecretName, testNamespace))),
+							Passes(verifyCABundle(certForSecret(v20PrivateKeySecretName))),
 					),
 					Timeout: eventTimeout,
 				},
@@ -205,7 +205,7 @@ func TestMAISTRA_2040(t *testing.T) {
 						Verify("get").On("secrets").Named(v20PrivateKeySecretName).In(testNamespace).IsSeen(),
 						Verify("update").On("validatingwebhookconfigurations").
 							Named(webhookName(istiodValidatingWebhookNameTestPrefix)).
-							Passes(verifyCABundle(certForSecret(v20PrivateKeySecretName, testNamespace))),
+							Passes(verifyCABundle(certForSecret(v20PrivateKeySecretName))),
 					),
 					Timeout: eventTimeout,
 				},
@@ -308,11 +308,11 @@ func createWebhookSecret(name, key string) *corev1.Secret {
 			Namespace: testNamespace,
 		},
 		Data: map[string][]byte{
-			key: []byte(certForSecret(name, testNamespace)),
+			key: []byte(certForSecret(name)),
 		},
 	}
 }
 
-func certForSecret(name, namespace string) string {
-	return fmt.Sprintf("%s-%s", name, namespace)
+func certForSecret(name string) string {
+	return fmt.Sprintf("%s-%s", name, testNamespace)
 }
