@@ -2,6 +2,50 @@
 
 set -e -u
 
+# controller-tools v0.4.1 panics on Go 1.22+ (nil StdSizes in go/types).
+select_go_for_controller_gen() {
+  local version minor
+  version="$(go env GOVERSION)"
+  minor="${version#go1.}"
+  minor="${minor%%.*}"
+  if [[ -n "${minor}" && "${minor}" -lt 22 ]]; then
+    return 0
+  fi
+
+  local candidates=(
+    "${GVM_ROOT:+$GVM_ROOT/gos/go1.20/bin/go}"
+    "${HOME}/.gvm/gos/go1.20/bin/go"
+    "$(command -v go1.20 2>/dev/null || true)"
+  )
+  local candidate go_bin
+  for candidate in "${candidates[@]}"; do
+    if [[ -n "${candidate}" && -x "${candidate}" ]]; then
+      go_bin="${candidate}"
+      break
+    fi
+  done
+
+  if [[ -n "${go_bin:-}" ]]; then
+    echo "Using ${go_bin} for controller-gen (${version} is incompatible with controller-tools v0.4.1)" >&2
+    CONTROLLER_GEN_GO="${go_bin}"
+    export CONTROLLER_GEN_GO
+    # gvm sets GOROOT for the active toolchain; clear it so the selected binary's GOROOT is used.
+    unset GOROOT
+    export GOROOT="$("${go_bin}" env GOROOT)"
+    export PATH="${GOROOT}/bin:${PATH}"
+    # Avoid mixing build cache entries from a newer default Go toolchain.
+    export GOCACHE="${GOCACHE:-${HOME}/.cache/go-build-controller-gen-v0.4.1}"
+    mkdir -p "${GOCACHE}"
+    unset GOTOOLCHAIN
+    return 0
+  fi
+
+  echo "ERROR: controller-tools v0.4.1 requires Go 1.21 or older for CRD generation (found ${version})." >&2
+  echo "Install Go 1.20, e.g. 'gvm install go1.20.14 -s && gvm use go1.20', then re-run make gen." >&2
+  exit 1
+}
+select_go_for_controller_gen
+
 : "${MAISTRA_VERSION:?"Need to set maistra version, e.g. 2.0.1"}"
 BUNDLE_DIRS="manifests-maistra/${MAISTRA_VERSION} manifests-servicemesh/${MAISTRA_VERSION}"
 
@@ -11,7 +55,7 @@ done
 
 function generateCRDs() {
   echo "Generating CRDs"
-  go run sigs.k8s.io/controller-tools/cmd/controller-gen crd \
+  "${CONTROLLER_GEN_GO:-go}" run sigs.k8s.io/controller-tools/cmd/controller-gen crd \
       paths=./pkg/apis/maistra/... \
       crd:maxDescLen=0,preserveUnknownFields=false,crdVersions=v1 \
       output:dir=./deploy/crds
