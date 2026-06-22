@@ -6,7 +6,7 @@ metadata:
   annotations:
     "maistra.io/internal": "true"
   labels:
-    maistra-version: "2.6.17"
+    maistra-version: "2.6.18"
     app: istiod
     release: {{ .Release.Name }}
 roleRef:
